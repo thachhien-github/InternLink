@@ -1,0 +1,9 @@
+﻿namespace InternLink.Application.Interfaces;
+
+/// <summary>
+/// JWT helper service interface
+/// </summary>
+public interface IJwtService
+{
+    string CreateToken(string userId, IEnumerable<string>? roles = null);
+}

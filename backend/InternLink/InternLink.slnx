@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="InternLink.API/InternLink.API.csproj" />
+  <Project Path="InternLink.Application/InternLink.Application.csproj" />
+  <Project Path="InternLink.Domain/InternLink.Domain.csproj" />
+  <Project Path="InternLink.Infrastructure/InternLink.Infrastructure.csproj" />
+  <Project Path="InternLink.Shared/InternLink.Shared.csproj" />
+</Solution>
