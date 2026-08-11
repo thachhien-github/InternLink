@@ -50,34 +50,35 @@ export const Sidebar = ({
     }
   ];
 
-  return <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between h-screen sticky top-0 z-40 select-none shadow-xs">
+  return (
+    <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
       <div>
         {/* Top Branding Header */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+          <div className="p-2 bg-indigo-50/80 rounded-xl border border-indigo-100/80 shrink-0">
             <img
               src="/logo/logo_internlink-02.png"
               alt="InternLink Mark Logo"
-              className="w-9 h-9 object-contain shrink-0"
+              className="w-7 h-7 object-contain"
             />
-            <div>
-              <div className="flex items-center font-black text-xl tracking-tight leading-none">
-                <span className="text-[#1f295d]">Intern</span>
-                <span className="text-[#3b66c4]">Link</span>
-              </div>
-              <p className="text-[10px] text-[#3b66c4] font-extrabold uppercase tracking-wider flex items-center gap-1 mt-1">
-                <Sparkles className="w-2.5 h-2.5 shrink-0" /> SUPER ADMIN
-              </p>
+          </div>
+          <div>
+            <div className="flex items-center font-bold text-lg tracking-tight leading-none">
+              <span className="text-[#0b132b]">Intern</span>
+              <span className="text-[#6366f1]">Link</span>
             </div>
+            <p className="il-portal-badge">
+              <Sparkles className="w-2.5 h-2.5 shrink-0" /> SUPER ADMIN
+            </p>
           </div>
         </div>
 
         {/* Navigation Items Grouped */}
-        <nav className="p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-170px)] scrollbar-none">
+        <nav className="p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-170px)] il-scrollbar">
           {navSections.map((section, idx) => (
             <div key={idx} className="space-y-1">
               {section.title && (
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-2 pb-1">
                   {section.title}
                 </p>
               )}
@@ -88,10 +89,14 @@ export const Sidebar = ({
                   <button
                     key={item.id}
                     onClick={() => onNavigate(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-150 ${isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20 scale-[1.01]" : "text-slate-600 hover:bg-slate-100/90 hover:text-slate-900"}`}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "il-active-pill font-bold"
+                        : "text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-900"
+                    }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                       <span className="truncate whitespace-nowrap">{item.label}</span>
                     </div>
 
@@ -102,12 +107,12 @@ export const Sidebar = ({
                         </span>
                       )}
                       {item.badge && !item.badgeText && (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap shrink-0 ${item.badgeColor || (isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600")}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold il-kpi-val whitespace-nowrap shrink-0 ${item.badgeColor || (isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600")}`}>
                           {item.badge}
                         </span>
                       )}
                       {item.badgeAlert && !item.badgeText && (
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
                       )}
                     </div>
                   </button>
@@ -121,32 +126,31 @@ export const Sidebar = ({
       {
     /* Admin User Info Footer */
   }
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+      <div className="p-3 border-t border-slate-100 bg-slate-50/60">
         <div
-    onClick={() => onNavigate("admin-account")}
-    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100/90 transition-all cursor-pointer border border-transparent hover:border-slate-200/80 group"
-  >
-          {
-    /* Avatar / Emblem with online status */
-  }
+          onClick={() => onNavigate("admin-account")}
+          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white hover:shadow-xs transition-all cursor-pointer border border-transparent hover:border-slate-200/80 group"
+        >
+          {/* Avatar / Emblem with online status */}
           <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-indigo-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs ring-2 ring-blue-500/20 group-hover:ring-blue-500/40 transition-all">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-indigo-900 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/50 transition-all">
               VPK
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" title="Trực tuyến" />
           </div>
 
           <div className="overflow-hidden min-w-0 flex-1">
-            <p className="text-xs font-extrabold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors">
+            <p className="text-xs font-bold text-slate-900 truncate leading-tight group-hover:text-indigo-600 transition-colors">
               Văn phòng Khoa
             </p>
-            <p className="text-[10px] text-blue-600 font-bold truncate mt-0.5 flex items-center gap-1">
-              <Sparkles className="w-2.5 h-2.5 text-blue-500" /> Super Admin Workspace
+            <p className="text-[10px] text-indigo-600 font-bold truncate mt-0.5 flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5 text-indigo-500" /> Super Admin Workspace
             </p>
           </div>
         </div>
       </div>
-    </aside>;
+    </aside>
+  );
 };
 
 export { Sidebar as AdminSidebar };

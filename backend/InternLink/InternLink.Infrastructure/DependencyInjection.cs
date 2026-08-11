@@ -54,6 +54,36 @@ public static class DependencyInjection
         // Auth service
         services.AddScoped<InternLink.Application.Interfaces.IAuthService, InternLink.Infrastructure.Services.AuthService>();
 
+        // Lecturer workflow service
+        services.AddScoped<InternLink.Application.Interfaces.ILecturerService, InternLink.Infrastructure.Services.LecturerService>();
+
+        // Lecturer profile CRUD / import / overview
+        services.AddScoped<InternLink.Application.Interfaces.ILecturerProfileService, InternLink.Infrastructure.Services.LecturerProfileService>();
+
+        // Student management service
+        services.AddScoped<InternLink.Application.Interfaces.IStudentService, InternLink.Infrastructure.Services.StudentService>();
+
+        // Company management service
+        services.AddScoped<InternLink.Application.Interfaces.ICompanyService, InternLink.Infrastructure.Services.CompanyService>();
+
+        // Internship management service
+        services.AddScoped<InternLink.Application.Interfaces.IInternshipService, InternLink.Infrastructure.Services.InternshipService>();
+
+        // Document management service
+        services.AddScoped<InternLink.Application.Interfaces.IDocumentService, InternLink.Infrastructure.Services.DocumentService>();
+
+        // Evaluation and grading service
+        services.AddScoped<InternLink.Application.Interfaces.IEvaluationService, InternLink.Infrastructure.Services.EvaluationService>();
+
+        // Submission and feedback service
+        services.AddScoped<InternLink.Application.Interfaces.ISubmissionService, InternLink.Infrastructure.Services.SubmissionService>();
+
+        // Weekly report service
+        services.AddScoped<InternLink.Application.Interfaces.IWeeklyReportService, InternLink.Infrastructure.Services.WeeklyReportService>();
+
+        // Notification service
+        services.AddScoped<InternLink.Application.Interfaces.INotificationService, InternLink.Infrastructure.Services.NotificationService>();
+
         // Authorization policies for roles
         services.AddAuthorization(options =>
         {

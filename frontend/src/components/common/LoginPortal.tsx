@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Lock, User, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle,
-  X, Info, KeyRound, Shield, Send, Loader2, GraduationCap, UserCheck, School
+  Lock, Eye, EyeOff, CheckCircle2, AlertCircle,
+  X, KeyRound, Shield, Send, Loader2, GraduationCap, UserCheck, ArrowRight, User
 } from 'lucide-react';
 
 interface LoginUser {
@@ -22,7 +22,6 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [noticeVisible, setNoticeVisible] = useState(true);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotId, setForgotId] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
@@ -31,9 +30,6 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const updateTime = () => {};
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
     if (usernameInputRef.current) {
       usernameInputRef.current.focus();
     }
@@ -41,7 +37,6 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     if (savedUser) {
       setUsername(savedUser);
     }
-    return () => clearInterval(timer);
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,196 +132,230 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   };
 
   return (
-    <div
-      className="min-h-screen text-slate-800 font-sans flex flex-col justify-between items-center py-6 px-4 relative selection:bg-blue-100 selection:text-blue-900 bg-cover bg-center bg-no-repeat bg-fixed"
-      style={{ backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')" }}
-    >
-      <div className="flex flex-col w-full max-w-[440px] mx-auto z-10 my-auto items-center">
-        {/* Floating Header Branding */}
-        <div className="flex flex-col items-center text-center gap-2 mb-6">
-          <div className="flex items-center justify-center p-3 bg-white/95 rounded-2xl shadow-xl backdrop-blur-md border border-white/40 max-w-[280px]">
-            <img
-              src="/logo/logo_internlink-01.png"
-              alt="InternLink Logo"
-              className="h-12 object-contain"
-            />
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[#f8f9ff] text-[#0b1c30] font-sans antialiased selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden">
+      {/* Subtle Soft Ambient Background Lighting */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#0058be]/10 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-[450px] h-[450px] bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none" />
+
+      {/* FLOATING CENTERED WINDOW CARD (Splits 65/35 inside floating card) */}
+      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12),0_10px_20px_-5px_rgba(0,0,0,0.06)] border border-slate-200/80 overflow-hidden flex flex-col lg:flex-row min-h-[580px] z-10 my-auto il-animate-up">
+        
+        {/* LEFT HERO PANEL INSIDE FLOATING CARD (LF - 62% Width Desktop) */}
+        <div className="relative w-full lg:w-[62%] min-h-[300px] lg:min-h-full flex flex-col justify-end p-8 lg:p-12 bg-[#040d2a] overflow-hidden select-none">
+          {/* Architectural Background Image with Subtle Gradient Overlay */}
+          <div
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat transition-all duration-500"
+            style={{
+              backgroundImage: `linear-gradient(to top, rgba(4, 13, 42, 0.75) 0%, rgba(4, 13, 42, 0.2) 45%, rgba(4, 13, 42, 0.05) 100%), url('https://thongtindaotao.hcmct.edu.vn/static/media/br_login.c3b60201.jpg')`
+            }}
+          />
+
+          {/* Glassmorphic Decorative Lights */}
+          <div className="absolute top-1/4 left-1/4 w-[30vw] h-[30vw] rounded-full bg-[#0058be] opacity-20 blur-[100px] mix-blend-screen pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/4 w-[25vw] h-[25vw] rounded-full bg-indigo-500 opacity-15 blur-[90px] mix-blend-screen pointer-events-none" />
+
+          {/* Hero Slogan Content Overlay (Compact Small Size with Smooth Gradient) */}
+          <div className="relative z-10 w-full max-w-xs bg-gradient-to-r from-[#040d2a]/70 via-[#040d2a]/35 to-transparent backdrop-blur-xs p-3.5 lg:p-4 rounded-2xl border border-white/10 shadow-lg text-left">
+            <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/15 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#d8e2ff]" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-white font-display">
+                HỆ THỐNG THỰC TẬP SINH
+              </span>
+            </div>
+
+            <h2 className="text-xs lg:text-sm text-white font-bold tracking-tight mb-1.5 leading-snug font-display">
+              Kết nối tài năng,<br />
+              <span className="text-[#bdc5ea]">bứt phá sự nghiệp.</span>
+            </h2>
+
+            <p className="text-[11px] text-white/85 font-medium leading-relaxed">
+              Nền tảng kết nối sinh viên và doanh nghiệp, tối ưu hóa quy trình quản lý thực tập với công nghệ hiện đại.
+            </p>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-4 py-1 mt-1 rounded-full border border-white/20 bg-white/10 text-white text-xs font-semibold backdrop-blur-md shadow-xs">
-            <span>HK1 • 2026 - 2027</span>
-          </div>
+          {/* Architectural Bottom Accent Line */}
+          <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#bdc5ea] via-[#0058be] to-transparent" />
         </div>
 
-        {/* SYSTEM NOTICE ANNOUNCEMENT BANNER */}
-        {noticeVisible && (
-          <div className="w-full mb-5 animate-in fade-in slide-in-from-top-2">
-            <div className="bg-orange-50/95 border border-orange-200/90 text-orange-900 p-3 rounded-xl text-xs font-medium flex items-start gap-2.5 shadow-md relative backdrop-blur-sm">
-              <Info className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-              <p className="pr-6 text-[13px] leading-relaxed text-orange-900">
-                <strong className="font-semibold">Thông báo từ Ban Điều hành:</strong> Tiếp nhận Báo cáo thực tập định kỳ từ 01/09 đến 15/09.
-              </p>
-              <button onClick={() => setNoticeVisible(false)} className="absolute top-2.5 right-2.5 text-orange-400 hover:text-orange-600 transition-colors cursor-pointer" title="Đóng thông báo">
-                <X className="w-4 h-4" />
-              </button>
+        {/* RIGHT LOGIN PANEL INSIDE FLOATING CARD (RF - 38% Width Desktop) */}
+        <div className="w-full lg:w-[38%] p-6 lg:p-8 flex flex-col justify-between items-center bg-white">
+          <div className="w-full flex flex-col items-center my-auto">
+            {/* Logo Header */}
+            <div className="mb-6 flex justify-center">
+              <img
+                src="/logo/logo_internlink-01.png"
+                alt="InternLink Logo"
+                className="w-auto object-contain h-16 lg:h-20 hover:scale-105 transition-transform duration-300"
+              />
             </div>
-          </div>
-        )}
 
-        {/* CENTERED LOGIN CARD */}
-        <div className="w-full bg-white rounded-2xl shadow-xl shadow-black/20 border border-slate-100 p-8 space-y-6 text-left relative overflow-hidden">
-          <div className="space-y-1 text-center">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Đăng nhập hệ thống</h1>
-          </div>
-
-          {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <div className="flex-1"><span>{errorMessage}</span></div>
-              <button onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-800"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Field 1: Username */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>Tên đăng nhập</span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  ref={usernameInputRef}
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Nhập MSGV hoặc MSSV"
-                  autoComplete="username"
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 outline-none transition-all"
-                />
+            {/* Form Container */}
+            <div className="w-full">
+              <div className="flex flex-col gap-1 mb-5 text-left">
+                <h2 className="text-xl lg:text-2xl font-bold text-[#0b1c30] tracking-tight font-display">Đăng nhập</h2>
+                <p className="text-xs text-slate-500 font-medium">Vui lòng nhập thông tin tài khoản của bạn.</p>
               </div>
-            </div>
 
-            {/* Field 2: Password */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700">Mật khẩu</label>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4" />
+              {errorMessage && (
+                <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-start gap-2 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="flex-1"><span>{errorMessage}</span></div>
+                  <button type="button" onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-800 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Nhập mật khẩu"
-                  autoComplete="current-password"
-                  required
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 outline-none transition-all"
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer" title={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              )}
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                {/* Username Input */}
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#0058be] transition-colors">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    ref={usernameInputRef}
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Tên đăng nhập / MSGV / MSSV"
+                    autoComplete="username"
+                    required
+                    className="w-full pl-11 pr-4 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-xl transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
+                  />
+                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-xl" />
+                </div>
+
+                {/* Password Input */}
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#0058be] transition-colors">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Mật khẩu"
+                    autoComplete="current-password"
+                    required
+                    className="w-full pl-11 pr-11 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-xl transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    title={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-xl" />
+                </div>
+
+                {capsLockOn && (
+                  <div className="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5 -mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                    <span>Chế độ Caps Lock đang bật</span>
+                  </div>
+                )}
+
+                {/* Options Row */}
+                <div className="flex items-center justify-between pt-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer group select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-[#0058be] focus:ring-[#0058be] cursor-pointer"
+                    />
+                    <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">Ghi nhớ đăng nhập</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-xs font-semibold text-[#0058be] hover:text-[#004395] transition-colors cursor-pointer"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="relative w-full py-3.5 bg-[#0058be] text-white font-semibold text-xs rounded-xl shadow-[0_4px_16px_rgba(0,88,190,0.25)] hover:shadow-[0_8px_24px_rgba(0,88,190,0.4)] transition-all duration-300 overflow-hidden group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Đang xử lý...</span></>
+                    ) : (
+                      <>
+                        <span>Đăng nhập hệ thống</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0058be] via-[#2170e4] to-[#0058be] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </button>
-              </div>
-              {capsLockOn && (
-                <div className="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5 pt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                  <span>Chế độ viết hoa (Caps Lock) đang bật</span>
+              </form>
+
+              {/* QUICK PRESETS FOR DEMO TESTING */}
+              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center font-display">Chế độ xem demo nhanh:</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFill('student')}
+                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-[#0058be] rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 text-[#0058be] group-hover:scale-110 transition-transform" />
+                    <span>Sinh viên</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFill('lecturer')}
+                    className="p-2 bg-[#f8f9ff] hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200/60 text-slate-700 hover:text-indigo-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform" />
+                    <span>Giảng viên</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFill('admin')}
+                    className="p-2 bg-[#f8f9ff] hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/60 text-slate-700 hover:text-emerald-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                    <span>Quản trị</span>
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Options Row */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 rounded bg-slate-100 border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                <span className="text-xs text-slate-600 font-medium">Ghi nhớ tài khoản</span>
-              </label>
-              <button type="button" onClick={() => setShowForgotModal(true)} className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
-                Quên mật khẩu?
-              </button>
-            </div>
-
-            {/* Submit Button */}
-            <button type="submit" disabled={isLoading} className="w-full py-2.5 px-4 bg-blue-900 hover:bg-blue-950 active:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group mt-2">
-              {isLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin text-white" /><span>Đang kiểm tra...</span></>
-              ) : (
-                <><Lock className="w-4 h-4" /><span>Đăng nhập</span></>
-              )}
-            </button>
-            <p className="text-center text-[11px] text-slate-400 font-medium">Nhấn Enter để đăng nhập</p>
-          </form>
-
-          {/* QUICK PRESETS FOR DEMO TESTING */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center">Mẫu tài khoản thử nghiệm nhanh:</span>
-            <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => handleAutoFill('student')} className="px-2 py-1.5 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200 text-slate-700 hover:text-blue-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5" title="Tài khoản Sinh viên">
-                <GraduationCap className="w-3.5 h-3.5 text-blue-600 shrink-0" /><span>Sinh viên</span>
-              </button>
-              <button type="button" onClick={() => handleAutoFill('lecturer')} className="px-2 py-1.5 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200 text-slate-700 hover:text-blue-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5" title="Tài khoản Giảng viên">
-                <UserCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" /><span>Giảng viên</span>
-              </button>
-              <button type="button" onClick={() => handleAutoFill('admin')} className="px-2 py-1.5 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200 text-slate-700 hover:text-blue-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5" title="Tài khoản Quản trị viên">
-                <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" /><span>Quản trị</span>
-              </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Status Indicators below card */}
-        <div className="flex flex-col items-center gap-2 mt-6">
-          <div className="flex items-center gap-2 text-emerald-800 bg-emerald-50/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold border border-emerald-200/50 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
-            <span>Hệ thống hoạt động bình thường</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-white/90 text-[12px] font-medium drop-shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Kết nối được mã hóa và bảo vệ</span>
+          {/* Minimal Footer Inside Floating Box */}
+          <div className="w-full pt-4 flex flex-row justify-between items-center gap-2 text-slate-400 font-medium text-[10px] border-t border-slate-100">
+            <p className="whitespace-nowrap">© 2026 InternLink</p>
+            <div className="flex gap-3 whitespace-nowrap">
+              <a href="#" onClick={(e) => { e.preventDefault(); alert("Liên hệ hỗ trợ: support@internlink.edu.vn - Hotline: 024.3754.7506"); }} className="hover:text-[#0058be] transition-colors">Hỗ trợ</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); alert("Quy chế thực tập Khoa CNTT - Học kỳ I 2026-2027."); }} className="hover:text-[#0058be] transition-colors">Quy chế</a>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* FLOATING FOOTER */}
-      <footer className="mt-8 pb-4 flex flex-col items-center gap-2 text-[12px] text-white/80 w-full max-w-lg mx-auto drop-shadow-sm z-10">
-        <div className="flex items-center gap-2 flex-wrap justify-center font-medium">
-          <span>InternLink v1.0.0</span>
-          <span className="w-1 h-1 rounded-full bg-white/40" />
-          <span>Build 2026.08</span>
-          <span className="w-1 h-1 rounded-full bg-white/40 hidden sm:block" />
-          <span className="hidden sm:block">© 2026 InternLink. All rights reserved.</span>
-        </div>
-        <div className="sm:hidden text-center mb-1">© 2026 InternLink. All rights reserved.</div>
-        <div className="flex items-center gap-4 flex-wrap justify-center mt-1">
-          <a href="#support" onClick={(e) => { e.preventDefault(); alert('Vui lòng gửi mail đến hotro@fit.edu.vn hoặc gọi (028) 3725 2002.'); }} className="hover:text-white transition-colors hover:underline">Hỗ trợ</a>
-          <span className="w-1 h-1 rounded-full bg-white/40" />
-          <a href="#privacy" onClick={(e) => { e.preventDefault(); alert('Quy định bảo mật thông tin đào tạo InternLink.'); }} className="hover:text-white transition-colors hover:underline">Privacy Policy</a>
-          <span className="w-1 h-1 rounded-full bg-white/40" />
-          <a href="#terms" onClick={(e) => { e.preventDefault(); alert('Điều khoản sử dụng Cổng Thực tập.'); }} className="hover:text-white transition-colors hover:underline">Điều khoản sử dụng</a>
-        </div>
-      </footer>
-
-      {/* FORGOT PASSWORD MODAL DIALOG */}
+      {/* FORGOT PASSWORD MODAL */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 space-y-5 text-left relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                <div className="p-2 bg-blue-50 text-[#0058be] rounded-xl border border-blue-100">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Yêu cầu khôi phục mật khẩu</h3>
-                  <p className="text-[11px] text-slate-500">Gửi thông tin xác minh tới Văn phòng Khoa</p>
+                  <h3 className="text-base font-bold text-[#0b1c30] font-display">Yêu cầu khôi phục mật khẩu</h3>
+                  <p className="text-xs text-slate-500">Gửi thông tin xác minh tới Văn phòng Khoa</p>
                 </div>
               </div>
-              <button onClick={() => setShowForgotModal(false)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
+              <button type="button" onClick={() => setShowForgotModal(false)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -334,29 +363,29 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             {forgotSubmitted ? (
               <div className="p-6 text-center space-y-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 animate-in zoom-in-95">
                 <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-600" />
-                <h4 className="font-bold text-sm text-slate-900">Yêu cầu đã được gửi thành công!</h4>
+                <h4 className="font-bold text-sm text-slate-900 font-display">Yêu cầu đã được gửi thành công!</h4>
                 <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                  Thông tin khôi phục cho MSGV/MSSV <strong>{forgotId}</strong> đã được ghi nhận. Quản trị viên Khoa sẽ xác minh và phản hồi tới email <strong>{forgotEmail}</strong>.
+                  Thông tin khôi phục cho mã <strong>{forgotId}</strong> đã ghi nhận. Quản trị viên sẽ phản hồi tới <strong>{forgotEmail}</strong>.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">Mã số (MSGV / MSSV) <span className="text-rose-500">*</span></label>
-                  <input type="text" required value={forgotId} onChange={(e) => setForgotId(e.target.value)} placeholder="Ví dụ: GV001 hoặc SV2026001" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all" />
+                  <input type="text" required value={forgotId} onChange={(e) => setForgotId(e.target.value)} placeholder="GV001 hoặc SV2026001" className="w-full px-3.5 py-2.5 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white transition-all" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Email nhận phản hồi <span className="text-rose-500">*</span></label>
-                  <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="Nhập email sinh viên/giảng viên" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all" />
+                  <label className="text-xs font-bold text-slate-700">Email phản hồi <span className="text-rose-500">*</span></label>
+                  <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="Nhập email trường cấp" className="w-full px-3.5 py-2.5 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white transition-all" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Lý do / Ghi chú bổ sung (Tùy chọn)</label>
-                  <textarea rows={2} value={forgotReason} onChange={(e) => setForgotReason(e.target.value)} placeholder="Mô tả lý do không thể đăng nhập..." className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white resize-none transition-all" />
+                  <label className="text-xs font-bold text-slate-700">Ghi chú bổ sung</label>
+                  <textarea rows={2} value={forgotReason} onChange={(e) => setForgotReason(e.target.value)} placeholder="Mô tả sự cố gặp phải..." className="w-full px-3.5 py-2 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white resize-none transition-all" />
                 </div>
                 <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                   <button type="button" onClick={() => setShowForgotModal(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors">Hủy bỏ</button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs shadow-blue-600/30 transition-all">
-                    <Send className="w-3.5 h-3.5" /><span>Gửi yêu cầu</span>
+                  <button type="submit" className="px-4 py-2 bg-[#0058be] hover:bg-[#004395] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20 transition-all">
+                    <Send className="w-3.5 h-3.5" /><span>Gửi xác thực</span>
                   </button>
                 </div>
               </form>

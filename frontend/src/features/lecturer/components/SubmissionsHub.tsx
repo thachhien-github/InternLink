@@ -15,6 +15,8 @@ import {
   FileSpreadsheet,
   Bot
 } from 'lucide-react';
+import { PageHeader } from '../../../components/common/PageHeader';
+
 export const SubmissionsHub = ({
   submissions,
   onUpdateSubmissionStatus,
@@ -107,47 +109,27 @@ export const SubmissionsHub = ({
     setShowDetailModal(false);
   };
   return <div className="space-y-5 animate-in fade-in duration-200">
-      {
-    /* Top Title Banner */
-  }
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
-              <FileCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight">
-                Kho Báo Cáo & Bài Nộp Sinh Viên
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Tổng hợp tất cả bài báo cáo tuần, giữa kỳ &amp; cuối kỳ do sinh viên tải lên đợt Thực tập Học kỳ I - 2026
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {
-    /* Quick Batch Export Actions */
-  }
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-    onClick={() => onToast?.("\u0110\xE3 xu\u1EA5t danh s\xE1ch t\u1ED5ng h\u1EE3p b\xE0i n\u1ED9p d\u01B0\u1EDBi \u0111\u1ECBnh d\u1EA1ng Excel (.XLSX)")}
-    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs rounded-xl transition-colors border border-slate-200/80 flex items-center gap-1.5"
-  >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Xuất Excel</span>
-          </button>
-
-          <button
-    onClick={handleBatchDownload}
-    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors shadow-xs flex items-center gap-1.5"
-  >
-            <Download className="w-4 h-4" />
-            <span>Tải toàn bộ (.ZIP)</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon={FileCheck}
+        title="Kho Báo Cáo & Bài Nộp Sinh Viên"
+        subtitle="Tổng hợp tất cả bài báo cáo tuần, giữa kỳ & cuối kỳ do sinh viên tải lên đợt Thực tập Học kỳ I - 2026"
+        actions={[
+          {
+            label: "Xuất Excel",
+            icon: FileSpreadsheet,
+            variant: "ghost",
+            onClick: () => onToast?.("Đã xuất danh sách tổng hợp bài nộp dưới định dạng Excel (.XLSX)"),
+            ariaLabel: "Xuất danh sách bài nộp ra file Excel"
+          },
+          {
+            label: "Tải toàn bộ (.ZIP)",
+            icon: Download,
+            variant: "primary",
+            onClick: handleBatchDownload,
+            ariaLabel: "Tải toàn bộ file báo cáo dưới dạng ZIP"
+          }
+        ]}
+      />
 
       {
     /* 4 Summary KPI Metric Cards */

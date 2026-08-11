@@ -8,6 +8,13 @@ export const Header = ({
   onLogout,
   searchQuery,
   onSearchChange
+}: {
+  activeTab: any;
+  onNavigate: any;
+  onSwitchPortal: any;
+  onLogout: any;
+  searchQuery?: any;
+  onSearchChange?: any;
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);

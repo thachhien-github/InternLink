@@ -2,9 +2,9 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 1.1
 
-**Status:** Draft
+**Status:** Active — aligned with EF Core implementation
 
 ---
 
@@ -20,60 +20,45 @@ Tài liệu này là cầu nối giữa Entity Relationship Diagram (ERD) và qu
 
 ## Table
 
-- PascalCase
-- Ví dụ
-
-```
-Student
-Company
-Internship
-```
-
----
+- PascalCase, **số nhiều** (EF Core / SQL Server convention)
+- Ví dụ: `Students`, `Companies`, `Internships`
 
 ## Column
 
 - PascalCase
+- Ví dụ: `StudentCode`, `CompanyName`, `CreatedAt`
 
-Ví dụ
-
-```
-StudentId
-CompanyName
-CreatedAt
-```
-
----
-
-## Primary Key
+## Primary Key (Database)
 
 ```
-<EntityName>Id
+{EntityName}Id
 ```
 
-Ví dụ
-
-```
-StudentId
-CompanyId
-SubmissionId
-```
-
----
+Ví dụ: `StudentId`, `CompanyId`, `LecturerId`
 
 ## Foreign Key
 
 ```
-<EntityName>Id
+{ReferencedEntity}Id
 ```
 
-Ví dụ
+Ví dụ: `StudentId`, `CompanyId`, `LecturerId`, `UserId`
 
-```
-StudentId
-CompanyId
-LecturerId
-```
+## Implementation Note (C#)
+
+- Entity C# kế thừa `BaseEntity` với property `Id`
+- EF Fluent API map `Id` → cột `{EntityName}Id` trong database
+- Ví dụ: `Student.Id` ↔ `Students.StudentId`
+
+## Common Audit Fields
+
+| Column | Data Type | Description |
+|--------|-----------|-------------|
+| CreatedAt | DATETIME2 | Ngày tạo |
+| UpdatedAt | DATETIME2 | Ngày cập nhật |
+| CreatedBy | NVARCHAR | Người tạo (optional) |
+| UpdatedBy | NVARCHAR | Người cập nhật (optional) |
+| IsDeleted | BIT | Xóa mềm |
 
 ---
 
@@ -81,182 +66,203 @@ LecturerId
 
 ---
 
-## User
+## Users
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | UserId | UNIQUEIDENTIFIER | No | Primary Key |
 | Username | NVARCHAR(100) | No | Tên đăng nhập |
 | PasswordHash | NVARCHAR(MAX) | No | Mật khẩu đã mã hóa |
-| Role | NVARCHAR(20) | No | Lecturer / Student |
+| FullName | NVARCHAR(200) | Yes | Họ tên |
+| Email | NVARCHAR(200) | Yes | Email |
+| Role | INT | No | SuperAdmin / Lecturer / Student |
+| IsActive | BIT | No | Tài khoản hoạt động |
+| LastLoginAt | DATETIME2 | Yes | Lần đăng nhập cuối |
 | CreatedAt | DATETIME2 | No | Ngày tạo |
+| UpdatedAt | DATETIME2 | Yes | Ngày cập nhật |
+| IsDeleted | BIT | No | Xóa mềm |
 
 ---
 
-## Lecturer
+## Lecturers
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | LecturerId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | No | FK -> User |
-| FullName | NVARCHAR(100) | No | Họ tên |
-| Email | NVARCHAR(100) | No | Email |
-| Phone | NVARCHAR(20) | Yes | Số điện thoại |
+| UserId | UNIQUEIDENTIFIER | Yes | FK → Users (unique khi có) |
+| StaffCode | NVARCHAR(50) | No | Mã giảng viên (unique) |
+| FullName | NVARCHAR(200) | No | Họ tên |
+| Email | NVARCHAR(200) | Yes | Email |
+| Phone | NVARCHAR(50) | Yes | Số điện thoại |
+| Department | NVARCHAR(150) | Yes | Khoa / bộ môn |
 
 ---
 
-## Student
+## Students
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | StudentId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | No | FK -> User |
-| StudentCode | NVARCHAR(20) | No | MSSV |
-| FullName | NVARCHAR(100) | No | Họ tên |
-| Class | NVARCHAR(50) | No | Lớp |
-| Major | NVARCHAR(100) | No | Chuyên ngành |
-| Email | NVARCHAR(100) | No | Email |
-| Phone | NVARCHAR(20) | Yes | Số điện thoại |
+| UserId | UNIQUEIDENTIFIER | Yes | FK → Users (unique khi có) |
+| StudentCode | NVARCHAR(50) | No | MSSV |
+| FullName | NVARCHAR(200) | No | Họ tên |
+| Class | NVARCHAR(100) | Yes | Lớp |
+| Major | NVARCHAR(150) | Yes | Chuyên ngành |
+| Email | NVARCHAR(200) | Yes | Email |
+| Phone | NVARCHAR(50) | Yes | Số điện thoại |
 
 ---
 
-## Company
+## Companies
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | CompanyId | UNIQUEIDENTIFIER | No | Primary Key |
-| CompanyName | NVARCHAR(200) | No | Tên doanh nghiệp |
-| Website | NVARCHAR(255) | Yes | Website |
-| Address | NVARCHAR(255) | Yes | Địa chỉ |
-| Industry | NVARCHAR(100) | Yes | Lĩnh vực |
-| ContactPerson | NVARCHAR(100) | Yes | Người liên hệ |
-| ContactEmail | NVARCHAR(100) | Yes | Email liên hệ |
-| ContactPhone | NVARCHAR(20) | Yes | SĐT liên hệ |
+| CompanyName | NVARCHAR(250) | No | Tên doanh nghiệp |
+| Website | NVARCHAR(250) | Yes | Website |
+| Address | NVARCHAR(500) | Yes | Địa chỉ |
+| Industry | NVARCHAR(150) | Yes | Lĩnh vực |
+| ContactPerson | NVARCHAR(200) | Yes | Người liên hệ |
+| ContactEmail | NVARCHAR(200) | Yes | Email liên hệ |
+| ContactPhone | NVARCHAR(50) | Yes | SĐT liên hệ |
 | Capacity | INT | Yes | Số lượng tiếp nhận |
-| Note | NVARCHAR(MAX) | Yes | Ghi chú |
+| IsActive | BIT | No | Trạng thái hoạt động |
 
 ---
 
-## Internship
+## Internships
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | InternshipId | UNIQUEIDENTIFIER | No | Primary Key |
-| StudentId | UNIQUEIDENTIFIER | No | FK -> Student |
-| LecturerId | UNIQUEIDENTIFIER | No | FK -> Lecturer |
-| CompanyId | UNIQUEIDENTIFIER | No | FK -> Company |
-| Position | NVARCHAR(100) | No | Vị trí thực tập |
-| StartDate | DATE | No | Ngày bắt đầu |
-| EndDate | DATE | No | Ngày kết thúc |
-| Status | NVARCHAR(30) | No | Trạng thái thực tập |
+| StudentId | UNIQUEIDENTIFIER | No | FK → Students |
+| LecturerId | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
+| CompanyId | UNIQUEIDENTIFIER | No | FK → Companies |
+| Position | NVARCHAR(200) | Yes | Vị trí thực tập |
+| StartDate | DATE | Yes | Ngày bắt đầu |
+| EndDate | DATE | Yes | Ngày kết thúc |
+| Status | INT | No | Trạng thái thực tập |
+| SupervisorName | NVARCHAR(200) | Yes | Người hướng dẫn tại DN |
+| Notes | NVARCHAR(MAX) | Yes | Ghi chú |
 
 ---
 
-## WeeklyReport
+## WeeklyReports
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | WeeklyReportId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK -> Internship |
+| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
 | WeekNumber | INT | No | Tuần báo cáo |
-| Content | NVARCHAR(MAX) | Yes | Nội dung |
+| Title | NVARCHAR(250) | No | Tiêu đề |
+| Content | NVARCHAR(8000) | No | Nội dung |
+| Status | INT | No | Draft / Submitted / Reviewed |
 | SubmittedAt | DATETIME2 | Yes | Thời gian nộp |
+| LecturerComment | NVARCHAR(2000) | Yes | Nhận xét GV |
 
 ---
 
-## InternshipLog
+## Submissions
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
-| InternshipLogId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK -> Internship |
-| WorkDate | DATE | No | Ngày làm việc |
-| Description | NVARCHAR(MAX) | No | Nội dung công việc |
-
----
-
-## Submission
-
-| Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | SubmissionId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK -> Internship |
-| Title | NVARCHAR(200) | No | Tiêu đề |
-| FileUrl | NVARCHAR(500) | No | Đường dẫn tệp |
+| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
+| Type | INT | No | Loại nộp (WeeklyReport, …) |
+| Status | INT | No | Trạng thái nộp |
+| Title | NVARCHAR(250) | Yes | Tiêu đề |
+| Description | NVARCHAR(1000) | Yes | Mô tả |
+| FileName | NVARCHAR(250) | Yes | Tên file |
+| FileUrl | NVARCHAR(1000) | Yes | Đường dẫn tệp |
 | Version | INT | No | Phiên bản |
 | SubmittedAt | DATETIME2 | No | Thời gian nộp |
 
 ---
 
-## Feedback
+## Feedbacks
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | FeedbackId | UNIQUEIDENTIFIER | No | Primary Key |
-| SubmissionId | UNIQUEIDENTIFIER | No | FK -> Submission |
-| LecturerId | UNIQUEIDENTIFIER | No | FK -> Lecturer |
-| Comment | NVARCHAR(MAX) | No | Nhận xét |
+| SubmissionId | UNIQUEIDENTIFIER | No | FK → Submissions |
+| LecturerId | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
+| Comment | NVARCHAR(2000) | No | Nhận xét |
+| IsPublic | BIT | No | Hiển thị cho sinh viên |
 | CreatedAt | DATETIME2 | No | Thời gian phản hồi |
 
 ---
 
-## Evaluation
+## Evaluations
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | EvaluationId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK -> Internship |
-| ProcessScore | DECIMAL(4,2) | Yes | Điểm quá trình |
-| ReportScore | DECIMAL(4,2) | Yes | Điểm báo cáo |
-| CompanyScore | DECIMAL(4,2) | Yes | Điểm doanh nghiệp |
-| FinalScore | DECIMAL(4,2) | Yes | Điểm tổng kết |
-| Comment | NVARCHAR(MAX) | Yes | Nhận xét |
+| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships (1:1) |
+| EvaluatedById | UNIQUEIDENTIFIER | Yes | FK → Users (GV thực hiện) |
+| TechnicalScore | INT | No | Điểm kỹ thuật (0–10) |
+| CommunicationScore | INT | No | Điểm giao tiếp |
+| TeamworkScore | INT | No | Điểm làm việc nhóm |
+| InitiativeScore | INT | No | Điểm chủ động |
+| FinalGrade | DECIMAL(5,2) | No | Điểm tổng |
+| Comments | NVARCHAR(3000) | Yes | Nhận xét |
+| Strengths | NVARCHAR(2000) | Yes | Điểm mạnh |
+| AreasForImprovement | NVARCHAR(2000) | Yes | Cần cải thiện |
+| EvaluatedAt | DATETIME2 | No | Ngày đánh giá |
+| IsFinalized | BIT | No | Đã chốt điểm |
 
 ---
 
-## Document
+## Documents
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | DocumentId | UNIQUEIDENTIFIER | No | Primary Key |
-| Title | NVARCHAR(200) | No | Tiêu đề |
-| Category | NVARCHAR(100) | No | Loại biểu mẫu |
-| FileUrl | NVARCHAR(500) | No | Đường dẫn tệp |
-| UploadedBy | UNIQUEIDENTIFIER | No | FK -> Lecturer |
+| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
+| Title | NVARCHAR(300) | No | Tiêu đề |
+| Description | NVARCHAR(2000) | Yes | Mô tả |
+| Category | NVARCHAR(100) | Yes | Loại biểu mẫu |
+| FileName | NVARCHAR(250) | No | Tên file gốc |
+| FilePath | NVARCHAR(500) | No | Đường dẫn lưu trữ |
+| FileSize | BIGINT | No | Kích thước (bytes) |
+| MimeType | NVARCHAR(100) | No | MIME type |
+| UploadedById | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
 | UploadedAt | DATETIME2 | No | Ngày tải lên |
+| IsRequired | BIT | No | Bắt buộc hay không |
 
 ---
 
-## Notification
+## Notifications
 
 | Column | Data Type | Nullable | Description |
-|----------|-----------|----------|-------------|
+|--------|-----------|----------|-------------|
 | NotificationId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | No | FK -> User |
+| UserId | UNIQUEIDENTIFIER | No | FK → Users |
 | Title | NVARCHAR(200) | No | Tiêu đề |
-| Content | NVARCHAR(MAX) | No | Nội dung |
+| Content | NVARCHAR(2000) | No | Nội dung |
+| Link | NVARCHAR(500) | Yes | Liên kết |
 | IsRead | BIT | No | Đã đọc |
+| ReadAt | DATETIME2 | Yes | Thời gian đọc |
 | CreatedAt | DATETIME2 | No | Thời gian tạo |
 
 ---
 
-# 4. Common Audit Fields
+# 4. Planned (not yet implemented)
 
-Một số bảng có thể bổ sung các trường dùng chung:
+## InternshipLogs
 
-| Column | Data Type | Description |
-|----------|-----------|-------------|
-| CreatedAt | DATETIME2 | Ngày tạo |
-| UpdatedAt | DATETIME2 | Ngày cập nhật |
-| DeletedAt | DATETIME2 | Ngày xóa mềm |
-| IsDeleted | BIT | Xóa mềm |
+| Column | Data Type | Nullable | Description |
+|--------|-----------|----------|-------------|
+| InternshipLogId | UNIQUEIDENTIFIER | No | Primary Key |
+| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
+| WorkDate | DATE | No | Ngày làm việc |
+| Description | NVARCHAR(MAX) | No | Nội dung công việc |
 
 ---
 
 # 5. Notes
 
-- Sử dụng `UNIQUEIDENTIFIER` làm khóa chính để thuận tiện khi mở rộng hệ thống.
+- Sử dụng `UNIQUEIDENTIFIER` làm khóa chính.
 - Các trường văn bản sử dụng `NVARCHAR` để hỗ trợ tiếng Việt.
-- Mật khẩu chỉ lưu dưới dạng `PasswordHash`, không lưu mật khẩu gốc.
-- Tất cả các mối quan hệ khóa ngoại sẽ được cấu hình bằng Entity Framework Core Fluent API.
-- Các giá trị như `Role`, `Status`, `Category` nên được định nghĩa bằng `enum` trong tầng Domain để đảm bảo tính nhất quán giữa mã nguồn và cơ sở dữ liệu.
+- Mật khẩu chỉ lưu dưới dạng `PasswordHash`.
+- Enum lưu DB dạng `int`; API trả về dạng `string`.
+- Feedback và Document upload liên kết trực tiếp `Lecturers`, không qua `Users`.

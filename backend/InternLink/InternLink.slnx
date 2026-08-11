@@ -4,4 +4,5 @@
   <Project Path="InternLink.Domain/InternLink.Domain.csproj" />
   <Project Path="InternLink.Infrastructure/InternLink.Infrastructure.csproj" />
   <Project Path="InternLink.Shared/InternLink.Shared.csproj" />
+  <Project Path="InternLink.Tests/InternLink.Tests.csproj" />
 </Solution>

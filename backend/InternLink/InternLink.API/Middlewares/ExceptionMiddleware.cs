@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using InternLink.Shared.Responses;
-using Microsoft.AspNetCore.Http;
 
 namespace InternLink.API.Middlewares;
 
@@ -31,11 +30,20 @@ public class ExceptionMiddleware
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        var error = ApiError.From("An unexpected error occurred.", exception.Message, StatusCodes.Status500InternalServerError);
+        var (status, title) = exception switch
+        {
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, exception.Message),
+            KeyNotFoundException => (StatusCodes.Status404NotFound, exception.Message),
+            InvalidOperationException => (StatusCodes.Status400BadRequest, exception.Message),
+            ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
+            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
+        };
+
+        var error = ApiError.From(title, exception.Message, status);
         var response = ApiResponse<object>.Fail(error);
         var payload = JsonSerializer.Serialize(response);
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.StatusCode = status;
         return context.Response.WriteAsync(payload);
     }
 }

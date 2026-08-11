@@ -1,7 +1,6 @@
 using System.Reflection;
-using AutoMapper;
 using FluentValidation;
-// using FluentValidation.AspNetCore; (removed - not required)
+using FluentValidation.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternLink.Application;
@@ -13,13 +12,10 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        // AutoMapper - scan this assembly for profiles
-        services.AddAutoMapper(Assembly.GetExecutingAssembly());
+        services.AddAutoMapper(cfg => { }, Assembly.GetExecutingAssembly());
 
-        // FluentValidation - scan this assembly for validators
+        services.AddFluentValidationAutoValidation();
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-
-        // Register application services here (none by default)
 
         return services;
     }

@@ -27,6 +27,7 @@ import {
   STUDENT_FEEDBACKS,
   STUDENT_NOTIFICATIONS
 } from '../../../data/studentMockData';
+import { EducationDashboardChart } from '../components/EducationDashboardChart';
 export const DashboardView = ({
   onNavigate,
   onShowToast
@@ -123,99 +124,136 @@ export const DashboardView = ({
           {
     /* SECTION 1: QUICK OVERVIEW (4 KPI Cards) */
   }
+          {/* SECTION 1: QUICK OVERVIEW (4 Bento KPI Cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {
-    /* KPI 1: Tiến độ thực tập */
-  }
-            <div className="bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/30 p-4 rounded-2xl border border-blue-200/80 border-l-4 border-l-blue-600 shadow-2xs hover:shadow-md transition-all space-y-2.5">
-              <div className="flex items-center justify-between text-blue-700">
-                <span className="text-xs font-bold uppercase tracking-wider">Tiến độ thực tập</span>
-                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+            {/* KPI 1: Tiến độ thực tập */}
+            <div className="il-bento-card p-5 space-y-3 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-display">Tiến độ thực tập</span>
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold">
                   <Target className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                <div className="text-3xl font-bold text-slate-900 il-kpi-val">
                   {STUDENT_PROFILE.overallProgress}%
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium">Đã đi qua 7 / 8 tuần thực tập</p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">Đã đi qua 7 / 8 tuần thực tập</p>
               </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                 <div
-    className="bg-blue-600 h-full rounded-full transition-all duration-500"
-    style={{ width: `${STUDENT_PROFILE.overallProgress}%` }}
-  />
+                  className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${STUDENT_PROFILE.overallProgress}%` }}
+                />
               </div>
             </div>
 
-            {
-    /* KPI 2: Báo cáo đã nộp */
-  }
-            <div className="bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/30 p-4 rounded-2xl border border-emerald-200/80 border-l-4 border-l-emerald-600 shadow-2xs hover:shadow-md transition-all space-y-2.5">
-              <div className="flex items-center justify-between text-emerald-700">
-                <span className="text-xs font-bold uppercase tracking-wider">Báo cáo đã nộp</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            {/* KPI 2: Báo cáo đã nộp */}
+            <div className="il-bento-card p-5 space-y-3 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-display">Báo cáo đã nộp</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
                   <FileCheck2 className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <div className="text-2xl font-black text-slate-900 tracking-tight">
-                  {STUDENT_PROFILE.reportsSubmitted} <span className="text-sm font-bold text-slate-400">/ {STUDENT_PROFILE.totalReports}</span>
+                <div className="text-3xl font-bold text-slate-900 il-kpi-val">
+                  {STUDENT_PROFILE.reportsSubmitted} <span className="text-sm font-semibold text-slate-400">/ {STUDENT_PROFILE.totalReports}</span>
                 </div>
-                <p className="text-[11px] text-emerald-600 font-bold">Còn 3 báo cáo tuần nữa</p>
+                <p className="text-[11px] text-emerald-600 font-bold mt-1">Còn 3 báo cáo tuần nữa</p>
               </div>
-              <div className="text-[10px] text-slate-500 font-semibold pt-0.5">Tỷ lệ nộp đúng hạn: 100%</div>
+              <div className="text-[10px] text-slate-400 font-semibold">Tỷ lệ nộp đúng hạn: 100%</div>
             </div>
 
-            {
-    /* KPI 3: Điểm hiện tại */
-  }
-            <div className="bg-gradient-to-br from-amber-50/60 via-white to-orange-50/30 p-4 rounded-2xl border border-amber-200/80 border-l-4 border-l-amber-500 shadow-2xs hover:shadow-md transition-all space-y-2.5">
-              <div className="flex items-center justify-between text-amber-700">
-                <span className="text-xs font-bold uppercase tracking-wider">Điểm hiện tại</span>
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            {/* KPI 3: Điểm hiện tại */}
+            <div className="il-bento-card p-5 space-y-3 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-display">Điểm hiện tại</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold">
                   <Award className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <div className="text-2xl font-black text-amber-700 tracking-tight">
-                  {STUDENT_PROFILE.currentGrade} <span className="text-xs font-bold text-slate-400">/ 10</span>
+                <div className="text-3xl font-bold text-amber-900 il-kpi-val">
+                  {STUDENT_PROFILE.currentGrade} <span className="text-sm font-semibold text-slate-400">/ 10</span>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium">Trung bình đánh giá GV & Doanh nghiệp</p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">Trung bình đánh giá GV & Doanh nghiệp</p>
               </div>
-              <div className="text-[10px] text-amber-800 bg-amber-100/80 font-bold px-2 py-0.5 rounded-md inline-block">
+              <div className="text-[10px] text-amber-700 bg-amber-50 font-bold px-2 py-0.5 rounded-md border border-amber-200/60 inline-block w-fit font-display">
                 Xếp loại: Xuất sắc
               </div>
             </div>
 
-            {
-    /* KPI 4: Hạn nộp tiếp theo */
-  }
-            <div className="bg-gradient-to-br from-rose-50/80 via-white to-pink-50/30 p-4 rounded-2xl border border-rose-200/80 border-l-4 border-l-rose-500 shadow-2xs hover:shadow-md transition-all space-y-2.5">
-              <div className="flex items-center justify-between text-rose-700">
-                <span className="text-xs font-bold uppercase tracking-wider">Hạn nộp tiếp theo</span>
-                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold animate-pulse">
+            {/* KPI 4: Hạn nộp tiếp theo */}
+            <div className="il-bento-card p-5 space-y-3 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-display">Hạn nộp tiếp theo</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold animate-pulse">
                   <Clock className="w-4 h-4" />
                 </div>
               </div>
               <div>
-                <div className="text-2xl font-black text-rose-700 tracking-tight">
+                <div className="text-3xl font-bold text-rose-600 il-kpi-val">
                   3 ngày
                 </div>
-                <p className="text-[11px] text-rose-900 font-bold">Hạn Báo cáo tuần 6 (22/09)</p>
+                <p className="text-[11px] text-rose-900 font-bold mt-1">Hạn Báo cáo tuần 6 (22/09)</p>
               </div>
               <button
-    onClick={() => {
-      setSubmitWeek("B\xE1o c\xE1o tu\u1EA7n 6");
-      setShowSubmitModal(true);
-    }}
-    className="w-full py-1.5 text-center text-[11px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors shadow-2xs"
-  >
+                onClick={() => {
+                  setSubmitWeek("Báo cáo tuần 6");
+                  setShowSubmitModal(true);
+                }}
+                className="w-full py-2 text-center text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition-all shadow-md shadow-rose-600/20 cursor-pointer font-display"
+              >
                 Nộp bài ngay
               </button>
             </div>
           </div>
 
+          {
+    /* MAIN CHART FOCUS SECTION */
+  }
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1fr]">
+            <EducationDashboardChart />
+            <div className="space-y-5">
+              <div className="bg-white border border-slate-200/80 rounded-[10px] p-5 shadow-xs">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">Tình hình học thuật</h2>
+                    <p className="text-sm text-slate-500">Kết quả báo cáo và đánh giá theo lộ trình thực tập.</p>
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tuần 6</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-[10px] border border-slate-200/80 bg-slate-50 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Điểm trung bình</p>
+                    <p className="mt-3 text-3xl font-black text-emerald-700">8.6</p>
+                    <p className="text-sm text-slate-500 mt-1">Ổn định, đủ điều kiện học phần.</p>
+                  </div>
+                  <div className="rounded-[10px] border border-slate-200/80 bg-slate-50 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Báo cáo đúng hạn</p>
+                    <p className="mt-3 text-3xl font-black text-indigo-700">100%</p>
+                    <p className="text-sm text-slate-500 mt-1">Tuân thủ tiến độ cho cả kỳ.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white border border-slate-200/80 rounded-[10px] p-5 shadow-xs">
+                <h2 className="text-base font-semibold text-slate-900 mb-3">Quan sát nhanh</h2>
+                <div className="space-y-3">
+                  <div className="p-4 rounded-[10px] bg-indigo-50 border border-indigo-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Đánh giá giảng viên</p>
+                    <p className="mt-2 text-2xl font-black text-slate-900">8.8</p>
+                    <p className="text-sm text-slate-500 mt-1">Chất lượng phản hồi tăng nhẹ.</p>
+                  </div>
+                  <div className="p-4 rounded-[10px] bg-slate-50 border border-slate-200">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Đánh giá doanh nghiệp</p>
+                    <p className="mt-2 text-2xl font-black text-slate-900">8.6</p>
+                    <p className="text-sm text-slate-500 mt-1">Phối hợp thực hành tốt.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
 
           {

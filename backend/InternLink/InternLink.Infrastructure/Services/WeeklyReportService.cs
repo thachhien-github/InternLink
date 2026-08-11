@@ -1,0 +1,204 @@
+using AutoMapper;
+using InternLink.Application.DTOs;
+using InternLink.Application.Interfaces;
+using InternLink.Domain.Entities;
+using InternLink.Domain.Enums;
+using InternLink.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace InternLink.Infrastructure.Services;
+
+public class WeeklyReportService : IWeeklyReportService
+{
+    private readonly AppDbContext _db;
+    private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
+
+    public WeeklyReportService(AppDbContext db, IMapper mapper, INotificationService notificationService)
+    {
+        _db = db;
+        _mapper = mapper;
+        _notificationService = notificationService;
+    }
+
+    public async Task<WeeklyReportDto?> GetByIdAsync(Guid id)
+    {
+        var report = await _db.WeeklyReports
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+        return report == null ? null : _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<IEnumerable<WeeklyReportDto>> GetMineAsync(Guid userId)
+    {
+        var internship = await GetStudentInternshipAsync(userId);
+        if (internship == null)
+            return Array.Empty<WeeklyReportDto>();
+
+        var reports = await _db.WeeklyReports
+            .Where(r => r.InternshipId == internship.Id && !r.IsDeleted)
+            .OrderByDescending(r => r.WeekNumber)
+            .ToListAsync();
+
+        return _mapper.Map<List<WeeklyReportDto>>(reports);
+    }
+
+    public async Task<IEnumerable<WeeklyReportDto>> GetByInternshipAsync(Guid internshipId)
+    {
+        var reports = await _db.WeeklyReports
+            .Where(r => r.InternshipId == internshipId && !r.IsDeleted)
+            .OrderByDescending(r => r.WeekNumber)
+            .ToListAsync();
+
+        return _mapper.Map<List<WeeklyReportDto>>(reports);
+    }
+
+    public async Task<WeeklyReportDto> CreateDraftAsync(Guid userId, CreateWeeklyReportRequest request)
+    {
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .FirstOrDefaultAsync(i => i.Id == request.InternshipId && !i.IsDeleted);
+
+        if (internship == null)
+            throw new InvalidOperationException("Internship not found");
+
+        if (internship.Student?.UserId != userId)
+            throw new UnauthorizedAccessException("Internship does not belong to the current student");
+
+        var duplicate = await _db.WeeklyReports
+            .AnyAsync(r => r.InternshipId == request.InternshipId
+                           && r.WeekNumber == request.WeekNumber
+                           && !r.IsDeleted);
+
+        if (duplicate)
+            throw new InvalidOperationException($"A weekly report for week {request.WeekNumber} already exists");
+
+        var report = new WeeklyReport
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = request.InternshipId,
+            WeekNumber = request.WeekNumber,
+            Title = request.Title,
+            Content = request.Content,
+            Status = WeeklyReportStatus.Draft,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.WeeklyReports.Add(report);
+        await _db.SaveChangesAsync();
+
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<WeeklyReportDto?> UpdateDraftAsync(Guid id, Guid userId, UpdateWeeklyReportRequest request)
+    {
+        var report = await LoadOwnedReportAsync(id, userId);
+        if (report == null)
+            return null;
+
+        if (report.Status != WeeklyReportStatus.Draft && report.Status != WeeklyReportStatus.RevisionRequested)
+            throw new InvalidOperationException("Only draft or revision-requested reports can be updated");
+
+        if (!string.IsNullOrWhiteSpace(request.Title))
+            report.Title = request.Title;
+
+        if (!string.IsNullOrWhiteSpace(request.Content))
+            report.Content = request.Content;
+
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<WeeklyReportDto?> SubmitAsync(Guid id, Guid userId)
+    {
+        var report = await LoadOwnedReportAsync(id, userId);
+        if (report == null)
+            return null;
+
+        if (report.Status != WeeklyReportStatus.Draft && report.Status != WeeklyReportStatus.RevisionRequested)
+            throw new InvalidOperationException("Only draft or revision-requested reports can be submitted");
+
+        report.Status = WeeklyReportStatus.Submitted;
+        report.SubmittedAt = DateTime.UtcNow;
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<WeeklyReportDto?> ReviewAsync(Guid id, ReviewWeeklyReportRequest request)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+        if (report == null)
+            return null;
+
+        if (!Enum.TryParse<WeeklyReportStatus>(request.Status, true, out var status))
+            throw new InvalidOperationException($"Invalid status: {request.Status}");
+
+        if (status is not (WeeklyReportStatus.Reviewed or WeeklyReportStatus.RevisionRequested or WeeklyReportStatus.Approved))
+            throw new InvalidOperationException("Review status must be Reviewed, RevisionRequested, or Approved");
+
+        report.Status = status;
+        report.LecturerComment = request.LecturerComment;
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var studentUserId = report.Internship.Student?.UserId;
+        if (studentUserId.HasValue)
+        {
+            await _notificationService.CreateAsync(new CreateNotificationRequest
+            {
+                UserId = studentUserId.Value,
+                Title = "Weekly report reviewed",
+                Content = $"Your week {report.WeekNumber} report was marked as {status}.",
+                Link = $"/weekly-reports/{report.Id}"
+            });
+        }
+
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<bool> SoftDeleteAsync(Guid id, Guid userId)
+    {
+        var report = await LoadOwnedReportAsync(id, userId);
+        if (report == null)
+            return false;
+
+        if (report.Status != WeeklyReportStatus.Draft)
+            throw new InvalidOperationException("Only draft reports can be deleted");
+
+        report.IsDeleted = true;
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    private async Task<WeeklyReport?> LoadOwnedReportAsync(Guid id, Guid userId)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+        if (report == null)
+            return null;
+
+        if (report.Internship.Student?.UserId != userId)
+            throw new UnauthorizedAccessException("Weekly report does not belong to the current student");
+
+        return report;
+    }
+
+    private async Task<Internship?> GetStudentInternshipAsync(Guid userId)
+    {
+        return await _db.Internships
+            .Include(i => i.Student)
+            .FirstOrDefaultAsync(i => !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
+    }
+}

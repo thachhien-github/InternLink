@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using InternLink.Application.Interfaces;
 using InternLink.Application.DTOs;
+using InternLink.API.Extensions;
 using InternLink.Shared.Responses;
 
 namespace InternLink.API.Controllers;
@@ -29,11 +30,9 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Logout()
     {
-        // get user id from claim
-        var userIdClaim = User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value;
-        if (userIdClaim == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
-        var userId = Guid.Parse(userIdClaim);
-        await _auth.LogoutAsync(userId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        await _auth.LogoutAsync(userId.Value);
         return Ok(ApiResponse<object>.Ok(null));
     }
 
@@ -41,10 +40,9 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Me()
     {
-        var userIdClaim = User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value;
-        if (userIdClaim == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
-        var userId = Guid.Parse(userIdClaim);
-        var user = await _auth.GetCurrentUserAsync(userId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        var user = await _auth.GetCurrentUserAsync(userId.Value);
         if (user == null) return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "User not found" }));
         return Ok(ApiResponse<CurrentUserResponse>.Ok(user));
     }
@@ -53,10 +51,9 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
-        var userIdClaim = User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value;
-        if (userIdClaim == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
-        var userId = Guid.Parse(userIdClaim);
-        await _auth.ChangePasswordAsync(userId, request);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        await _auth.ChangePasswordAsync(userId.Value, request);
         return Ok(ApiResponse<object>.Ok(null));
     }
 
@@ -64,7 +61,8 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> payload)
     {
-        if (!payload.TryGetValue("email", out var email)) return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Email required" }));
+        if (!payload.TryGetValue("email", out var email))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Email required" }));
         await _auth.ForgotPasswordAsync(email);
         return Ok(ApiResponse<object>.Ok(null));
     }

@@ -1,7 +1,203 @@
-{
-  "info": {
-    "name": "InternLink API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": []
+﻿{
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:7109"
+                     },
+                     {
+                         "key":  "token",
+                         "value":  ""
+                     }
+                 ],
+    "info":  {
+                 "name":  "InternLink API",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+                 {
+                     "name":  "Auth - Login",
+                     "request":  {
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Auth/login",
+                                                 "path":  [
+                                                              "api",
+                                                              "Auth",
+                                                              "login"
+                                                          ]
+                                             },
+                                     "method":  "POST",
+                                     "body":  {
+                                                  "raw":  "{\"username\":\"lecturer1\",\"password\":\"Password123!\"}",
+                                                  "mode":  "raw"
+                                              },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "Lecturer - Export End Of Term",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Lecturer/export/end-of-term",
+                                                 "path":  [
+                                                              "api",
+                                                              "Lecturer",
+                                                              "export",
+                                                              "end-of-term"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/Student",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Student",
+                                                 "path":  [
+                                                              "api",
+                                                              "Student"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/Company",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Company",
+                                                 "path":  [
+                                                              "api",
+                                                              "Company"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/Internship",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Internship",
+                                                 "path":  [
+                                                              "api",
+                                                              "Internship"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/Lecturer/internships",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Lecturer/internships",
+                                                 "path":  [
+                                                              "api",
+                                                              "Lecturer",
+                                                              "internships"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/LecturerProfile",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/LecturerProfile",
+                                                 "path":  [
+                                                              "api",
+                                                              "LecturerProfile"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 },
+                 {
+                     "name":  "GET /api/Notification/mine",
+                     "request":  {
+                                     "method":  "GET",
+                                     "url":  {
+                                                 "host":  [
+                                                              "localhost:7109"
+                                                          ],
+                                                 "raw":  "http://localhost:7109/api/Notification/mine",
+                                                 "path":  [
+                                                              "api",
+                                                              "Notification",
+                                                              "mine"
+                                                          ]
+                                             },
+                                     "header":  [
+                                                    {
+                                                        "key":  "Authorization",
+                                                        "value":  "Bearer {{token}}"
+                                                    }
+                                                ]
+                                 }
+                 }
+             ]
 }

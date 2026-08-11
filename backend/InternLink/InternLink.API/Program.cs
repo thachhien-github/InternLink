@@ -1,9 +1,9 @@
-using System.Reflection;
-// using Microsoft.OpenApi.Models; (disabled due to environment package resolution)
-using Serilog;
 using InternLink.API.Extensions;
+using InternLink.API.Filters;
 using InternLink.Application;
 using InternLink.Infrastructure;
+using Microsoft.OpenApi;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,24 +16,43 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services to the container.
 builder.Services.AddControllers();
 
-// Application & Infrastructure layers
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowAnyOrigin());
+});
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Basic Swagger registration. JWT security UI will be enabled once package resolution is confirmed.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.OperationFilter<FileUploadOperationFilter>();
+
+    c.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Paste JWT from /api/Auth/login. Example: eyJhbGciOi..."
+    });
+
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("bearer", document)] = []
+    });
+});
 
 var app = builder.Build();
 
-// Middleware
 app.UseApiExceptionHandler();
 app.UseSerilogRequestLogging();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Environment.IsEnvironment("Local"))
 {
     app.UseSwagger();
@@ -41,10 +60,12 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Enviro
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+await app.MigrateAndSeedDatabaseAsync();
 
 app.Run();

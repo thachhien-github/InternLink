@@ -14,8 +14,16 @@ export const Header = ({
   onSwitchPortal,
   onLogout,
   onShowToast,
-  selectedSemester = "H\u1ECDc k\u1EF3 I - 2025-2026",
+  selectedSemester = "Học kỳ I - 2025-2026",
   onSemesterChange
+}: {
+  activeTab: any;
+  onNavigate: any;
+  onSwitchPortal: any;
+  onLogout: any;
+  onShowToast: any;
+  selectedSemester?: string;
+  onSemesterChange?: any;
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);

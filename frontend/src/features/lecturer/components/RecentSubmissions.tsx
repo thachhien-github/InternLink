@@ -16,15 +16,18 @@ export const RecentSubmissions = ({
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   return (
-    <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/80 shadow-xs space-y-4">
+    <div className="il-bento-card p-5 md:p-6 space-y-4">
       {/* Table Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h3 className="font-extrabold text-slate-800 text-sm md:text-base">
-          Bài nộp mới nhất
-        </h3>
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 className="font-bold text-slate-900 text-sm md:text-base font-display">
+            Bài nộp mới nhất
+          </h3>
+          <p className="text-[11px] text-slate-500 font-medium">Danh sách sinh viên vừa gửi báo cáo</p>
+        </div>
         <button
           onClick={onViewAll}
-          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
         >
           <span>Tất cả</span>
           <ExternalLink className="w-3.5 h-3.5" />
@@ -35,12 +38,12 @@ export const RecentSubmissions = ({
       <div className="overflow-x-auto rounded-xl border border-slate-200/80">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
-              <th className="py-3 px-3.5">SINH VIÊN</th>
-              <th className="py-3 px-3.5">DOANH NGHIỆP</th>
-              <th className="py-3 px-3.5">LOẠI BÀI</th>
-              <th className="py-3 px-3.5">THỜI GIAN</th>
-              <th className="py-3 px-3.5 text-right">TRẠNG THÁI</th>
+            <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[10px] font-bold uppercase text-slate-500 tracking-wider font-display">
+              <th className="py-3 px-4">SINH VIÊN</th>
+              <th className="py-3 px-4">DOANH NGHIỆP</th>
+              <th className="py-3 px-4">LOẠI BÀI</th>
+              <th className="py-3 px-4">THỜI GIAN</th>
+              <th className="py-3 px-4 text-right">TRẠNG THÁI</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium bg-white">
@@ -48,18 +51,18 @@ export const RecentSubmissions = ({
               <tr
                 key={sub.id}
                 onClick={() => setSelectedSubmission(sub)}
-                className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
               >
                 {/* Student Info */}
-                <td className="py-3 px-3.5">
-                  <div className="flex items-center gap-2.5">
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-3">
                     <img
                       src={sub.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                       alt={sub.studentName}
-                      className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                      className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-xs"
                     />
                     <div>
-                      <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      <p className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                         {sub.studentName}
                       </p>
                       <p className="text-[10px] text-slate-400 font-mono">
@@ -70,34 +73,36 @@ export const RecentSubmissions = ({
                 </td>
 
                 {/* Company */}
-                <td className="py-3 px-3.5 text-slate-700 font-semibold">
+                <td className="py-3 px-4 text-slate-700 font-bold">
                   {sub.company}
                 </td>
 
                 {/* Report Type */}
-                <td className="py-3 px-3.5 text-slate-600">
-                  {sub.reportType}
+                <td className="py-3 px-4 text-slate-600">
+                  <span className="px-2 py-0.5 bg-slate-100 rounded-md text-[11px] font-medium text-slate-700">
+                    {sub.reportType}
+                  </span>
                 </td>
 
                 {/* Time */}
-                <td className="py-3 px-3.5 text-slate-500 text-[11px]">
-                  <div>{sub.time}</div>
+                <td className="py-3 px-4 text-slate-500 text-[11px]">
+                  <div className="font-bold text-slate-700 font-display">{sub.time}</div>
                   <div className="text-[10px] text-slate-400">{sub.date}</div>
                 </td>
 
                 {/* Status Badge */}
-                <td className="py-3 px-3.5 text-right">
+                <td className="py-3 px-4 text-right">
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${
                       sub.status === 'Đã duyệt'
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
                         : sub.status === 'Chờ duyệt'
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : 'bg-red-100 text-red-800 border border-red-200'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200/80'
                     }`}
                   >
-                    {sub.status === 'Đã duyệt' && <Check className="w-3 h-3" />}
-                    {sub.status === 'Chờ duyệt' && <Clock className="w-3 h-3" />}
+                    {sub.status === 'Đã duyệt' && <Check className="w-3 h-3 text-emerald-600" />}
+                    {sub.status === 'Chờ duyệt' && <Clock className="w-3 h-3 text-amber-600" />}
                     {sub.status}
                   </span>
                 </td>
@@ -109,30 +114,35 @@ export const RecentSubmissions = ({
 
       {/* Quick Modal Preview */}
       {selectedSubmission && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" />
-                <h4 className="font-bold text-slate-900 text-sm">Chi tiết bài nộp</h4>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm font-display">Chi tiết bài nộp</h4>
+                  <p className="text-[11px] text-slate-500">Xem và nhận xét báo cáo sinh viên</p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedSubmission(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-2 text-xs text-slate-700">
-              <p><strong>Sinh viên:</strong> {selectedSubmission.studentName} ({selectedSubmission.mssv})</p>
+            <div className="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p><strong>Sinh viên:</strong> <span className="font-bold text-slate-900">{selectedSubmission.studentName}</span> ({selectedSubmission.mssv})</p>
               <p><strong>Doanh nghiệp:</strong> {selectedSubmission.company}</p>
               <p><strong>Loại báo cáo:</strong> {selectedSubmission.reportType}</p>
-              <p><strong>Tóm tắt:</strong> {selectedSubmission.summary}</p>
+              <p className="pt-2 border-t border-slate-200/60 leading-relaxed text-slate-600"><strong>Tóm tắt nội dung:</strong> {selectedSubmission.summary}</p>
             </div>
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setSelectedSubmission(null)}
-                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
               >
                 Đóng
               </button>
@@ -141,7 +151,7 @@ export const RecentSubmissions = ({
                   if (onReviewSubmission) onReviewSubmission(selectedSubmission);
                   setSelectedSubmission(null);
                 }}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/30 transition-all"
               >
                 <span>Duyệt bài nộp</span>
                 <ChevronRight className="w-3.5 h-3.5" />

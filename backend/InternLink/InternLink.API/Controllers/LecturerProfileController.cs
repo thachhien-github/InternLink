@@ -1,0 +1,137 @@
+using InternLink.Application.DTOs;
+using InternLink.Application.Interfaces;
+using InternLink.Shared.Responses;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace InternLink.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "SuperAdmin,Lecturer")]
+public class LecturerProfileController : ControllerBase
+{
+    private readonly ILecturerProfileService _service;
+
+    public LecturerProfileController(ILecturerProfileService service)
+    {
+        _service = service;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    {
+        if (skip < 0 || take < 1 || take > 1000)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination" }));
+
+        var items = await _service.GetAllAsync(skip, take);
+        return Ok(ApiResponse<IEnumerable<LecturerDto>>.Ok(items));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var item = await _service.GetByIdAsync(id);
+        if (item == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer not found" }));
+
+        return Ok(ApiResponse<LecturerDto>.Ok(item));
+    }
+
+    [HttpGet("{id:guid}/overview")]
+    [Authorize(Policy = "RequireSuperAdmin")]
+    public async Task<IActionResult> GetOverview(Guid id)
+    {
+        var overview = await _service.GetOverviewAsync(id);
+        if (overview == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer not found" }));
+
+        return Ok(ApiResponse<LecturerOverviewDto>.Ok(overview));
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "RequireSuperAdmin")]
+    public async Task<IActionResult> Create([FromBody] CreateLecturerRequest request)
+    {
+        try
+        {
+            var created = await _service.CreateAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponse<LecturerDto>.Ok(created));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "RequireSuperAdmin")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateLecturerRequest request)
+    {
+        try
+        {
+            var updated = await _service.UpdateAsync(id, request);
+            if (updated == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer not found" }));
+
+            return Ok(ApiResponse<LecturerDto>.Ok(updated));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "RequireSuperAdmin")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var ok = await _service.DeleteAsync(id);
+            if (!ok)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer not found" }));
+
+            return Ok(ApiResponse<object>.Ok(null));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpGet("import/template")]
+    public IActionResult DownloadImportTemplate()
+    {
+        var bytes = _service.GetImportTemplate();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "lecturer-import-template.xlsx");
+    }
+
+    [HttpPost("import")]
+    [Authorize(Policy = "RequireSuperAdmin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> Import(IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Excel file is required" }));
+
+            if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Only .xlsx files are supported" }));
+
+            await using var stream = file.OpenReadStream();
+            var result = await _service.ImportFromExcelAsync(stream);
+            return Ok(ApiResponse<LecturerImportResultDto>.Ok(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+}

@@ -18,6 +18,8 @@ import {
   Star,
   GraduationCap
 } from 'lucide-react';
+import { PageHeader } from '../../../components/common/PageHeader';
+
 export const LecturerAnalytics = () => {
   const [selectedSemester, setSelectedSemester] = useState("HK I - 2026");
   const [selectedClass, setSelectedClass] = useState("T\u1EA5t c\u1EA3 l\u1EDBp");
@@ -41,57 +43,35 @@ export const LecturerAnalytics = () => {
   }
       <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
-      {
-    /* HEADER & EXPORT ACTION BAR */
-  }
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart2 className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              Thống kê &amp; Phân tích Chuyên sâu
-            </h1>
-            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 font-extrabold text-[10px] rounded-full border border-indigo-200">
-              Báo cáo Khoa CNTT
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Phân tích tiến độ 12 tuần, phổ điểm tiêu chí, hiệu suất hướng dẫn và chất lượng doanh nghiệp tiếp nhận.
-          </p>
-        </div>
-
-        {
-    /* Export Actions */
-  }
-        <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-          <button
-    onClick={handleExportExcel}
-    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-    title="Xuất dữ liệu Excel"
-  >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="hidden sm:inline">Xuất Excel</span>
-          </button>
-
-          <button
-    onClick={handleExportPDF}
-    className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-    title="Xuất file PDF"
-  >
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Xuất PDF</span>
-          </button>
-
-          <button
-    onClick={handlePrint}
-    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 transition-colors flex items-center gap-1.5"
-    title="In báo cáo"
-  >
-            <Printer className="w-4 h-4 text-slate-600" />
-            <span className="hidden sm:inline">In Báo cáo</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon={BarChart2}
+        title="Thống kê & Phân tích Chuyên sâu"
+        subtitle="Phân tích tiến độ 12 tuần, phổ điểm tiêu chí, hiệu suất hướng dẫn và chất lượng doanh nghiệp tiếp nhận."
+        badge="Báo cáo Khoa CNTT"
+        actions={[
+          {
+            label: "Xuất Excel",
+            icon: FileSpreadsheet,
+            variant: "secondary",
+            onClick: handleExportExcel,
+            ariaLabel: "Xuất dữ liệu thống kê ra file Excel"
+          },
+          {
+            label: "Xuất PDF",
+            icon: FileText,
+            variant: "primary",
+            onClick: handleExportPDF,
+            ariaLabel: "Xuất báo cáo thống kê định dạng PDF"
+          },
+          {
+            label: "In Báo cáo",
+            icon: Printer,
+            variant: "ghost",
+            onClick: handlePrint,
+            ariaLabel: "In báo cáo thống kê"
+          }
+        ]}
+      />
 
       {
     /* 4 SYNCHRONIZED TOP METRIC CARDS */

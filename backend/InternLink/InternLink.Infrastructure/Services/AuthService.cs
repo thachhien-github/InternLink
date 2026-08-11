@@ -53,7 +53,12 @@ public class AuthService : IAuthService
         var token = _jwt.CreateToken(user.Id.ToString(), new[] { user.Role.ToString() });
         _logger.LogInformation("User {Username} logged in successfully", request.Username);
         var expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes > 0 ? _jwtSettings.ExpiresInMinutes : 60);
-        return new LoginResponse { Token = token, ExpiresAt = expires };
+        return new LoginResponse
+        {
+            Token = token,
+            ExpiresAt = expires,
+            Role = user.Role.ToString()
+        };
     }
 
     public async Task LogoutAsync(Guid userId)
@@ -91,15 +96,13 @@ public class AuthService : IAuthService
 
     public async Task ForgotPasswordAsync(string email)
     {
-        // Placeholder: implement email token generation and send flow
         _logger.LogInformation("ForgotPassword requested for {Email}", email);
-        await Task.CompletedTask;
+        throw new InvalidOperationException("Password reset via email is not configured yet. Contact an administrator.");
     }
 
     public async Task ResetPasswordAsync(string token, string newPassword)
     {
-        // Placeholder: validate token and reset password
         _logger.LogInformation("ResetPassword requested");
-        await Task.CompletedTask;
+        throw new InvalidOperationException("Password reset via email is not configured yet. Contact an administrator.");
     }
 }

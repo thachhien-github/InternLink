@@ -9,6 +9,13 @@ dist/
 out/
 obj/
 
+# IDE / VS
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
 # Environment files
 .env
 .env.*
@@ -18,6 +25,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+backend/**/Logs/
+
+# TypeScript build info
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # OS files
 .DS_Store

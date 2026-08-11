@@ -2,9 +2,9 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 1.1
 
-**Status:** Draft
+**Status:** Active — aligned with EF Core / SQL Server implementation
 
 ---
 
@@ -13,6 +13,11 @@
 ERD mô tả cấu trúc dữ liệu của hệ thống InternLink.
 
 Các Entity được xây dựng dựa trên Domain Model và Use Case.
+
+**Quy ước triển khai:**
+- Bảng SQL: PascalCase **số nhiều** (`Students`, `Companies`, …)
+- PK cột DB: `{Entity}Id` (ví dụ `StudentId`, `LecturerId`)
+- C# entity: property `Id` (map qua Fluent API → `{Entity}Id`)
 
 ---
 
@@ -77,7 +82,7 @@ Các Entity được xây dựng dựa trên Domain Model và Use Case.
 
 ## WeeklyReport
 
-- ReportId
+- ReportId → WeeklyReportId
 - InternshipId
 - WeekNumber
 - Content
