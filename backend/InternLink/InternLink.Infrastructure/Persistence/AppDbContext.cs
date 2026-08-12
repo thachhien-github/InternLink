@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<Evaluation> Evaluations { get; set; } = null!;
     public DbSet<WeeklyReport> WeeklyReports { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,7 @@ public class AppDbContext : DbContext
             b.Property(x => x.Email).HasMaxLength(200);
             b.Property(x => x.FullName).HasMaxLength(200);
             b.Property(x => x.IsActive).HasDefaultValue(true);
+            b.Property(x => x.MustChangePassword).HasDefaultValue(false);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
         });
 
@@ -194,6 +196,18 @@ public class AppDbContext : DbContext
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(x => new { x.UserId, x.IsRead });
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(b =>
+        {
+            b.ToTable("PasswordResetTokens");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("PasswordResetTokenId");
+            b.Property(x => x.TokenHash).IsRequired().HasMaxLength(64);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => x.TokenHash).IsUnique();
+            b.HasIndex(x => new { x.UserId, x.UsedAt });
         });
     }
 }

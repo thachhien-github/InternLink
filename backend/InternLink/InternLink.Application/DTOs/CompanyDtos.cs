@@ -49,3 +49,23 @@ public class CompanyDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
+
+/// <summary>
+/// Result of importing companies from an Excel file.
+/// </summary>
+public class CompanyImportResultDto
+{
+    public int TotalRows { get; set; }
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public int SkippedDuplicateCount { get; set; }
+    public IReadOnlyList<CompanyDto> CreatedCompanies { get; set; } = Array.Empty<CompanyDto>();
+    public IReadOnlyList<CompanyImportErrorDto> Errors { get; set; } = Array.Empty<CompanyImportErrorDto>();
+}
+
+public class CompanyImportErrorDto
+{
+    public int RowNumber { get; set; }
+    public string? CompanyName { get; set; }
+    public string Message { get; set; } = null!;
+}

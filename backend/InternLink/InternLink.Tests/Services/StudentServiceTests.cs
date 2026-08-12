@@ -4,9 +4,13 @@ using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Application.Mappings;
 using InternLink.Domain.Entities;
+using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace InternLink.Tests.Services;
@@ -33,12 +37,21 @@ public class StudentServiceTests
         return new AppDbContext(options);
     }
 
+    private StudentService CreateService(AppDbContext db, IEmailService? email = null)
+    {
+        return new StudentService(
+            db,
+            _mapper,
+            new PasswordHasher<User>(),
+            email ?? Mock.Of<IEmailService>(),
+            NullLogger<StudentService>.Instance);
+    }
+
     [Fact]
     public async Task CreateStudentAsync_WithValidData_ShouldCreateStudent()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var request = new CreateStudentRequest
         {
             StudentCode = "SV001",
@@ -49,10 +62,8 @@ public class StudentServiceTests
             Phone = "0123456789"
         };
 
-        // Act
         var result = await service.CreateStudentAsync(request);
 
-        // Assert
         result.Should().NotBeNull();
         result.StudentCode.Should().Be("SV001");
         result.FullName.Should().Be("Nguyen Van A");
@@ -61,11 +72,38 @@ public class StudentServiceTests
     }
 
     [Fact]
+    public async Task CreateStudentAsync_WithUsernameAndEmail_ShouldCreateUserAndSendInvitation()
+    {
+        var db = GetInMemoryDbContext();
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SendEmailResult.Ok("sv@example.com"));
+
+        var service = CreateService(db, email.Object);
+        var result = await service.CreateStudentAsync(new CreateStudentRequest
+        {
+            StudentCode = "SV100",
+            FullName = "Student Account",
+            Email = "sv@example.com",
+            Username = "sv100"
+        });
+
+        result.UserId.Should().NotBeNull();
+        (await db.Users.CountAsync(u => u.Username == "sv100" && u.Role == Role.Student)).Should().Be(1);
+        email.Verify(e => e.SendInvitationAsync(
+            It.Is<InvitationEmailRequest>(r =>
+                r.ToEmail == "sv@example.com" &&
+                r.Username == "sv100" &&
+                r.Role == InvitationRole.Student &&
+                r.TemporaryPassword == SeedData.DefaultPassword),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateStudentAsync_WithDuplicateStudentCode_ShouldThrowException()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
         var request1 = new CreateStudentRequest
         {
@@ -79,11 +117,9 @@ public class StudentServiceTests
             FullName = "Student Two"
         };
 
-        // Act
         await service.CreateStudentAsync(request1);
         var act = async () => await service.CreateStudentAsync(request2);
 
-        // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*already exists*");
     }
@@ -91,9 +127,8 @@ public class StudentServiceTests
     [Fact]
     public async Task GetStudentByIdAsync_WithValidId_ShouldReturnStudent()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var student = new Student
         {
             Id = Guid.NewGuid(),
@@ -104,10 +139,8 @@ public class StudentServiceTests
         db.Students.Add(student);
         await db.SaveChangesAsync();
 
-        // Act
         var result = await service.GetStudentByIdAsync(student.Id);
 
-        // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(student.Id);
         result.StudentCode.Should().Be("SV001");
@@ -116,23 +149,19 @@ public class StudentServiceTests
     [Fact]
     public async Task GetStudentByIdAsync_WithInvalidId_ShouldReturnNull()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
-        // Act
         var result = await service.GetStudentByIdAsync(Guid.NewGuid());
 
-        // Assert
         result.Should().BeNull();
     }
 
     [Fact]
     public async Task GetStudentByCodeAsync_WithValidNumber_ShouldReturnStudent()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var student = new Student
         {
             Id = Guid.NewGuid(),
@@ -143,10 +172,8 @@ public class StudentServiceTests
         db.Students.Add(student);
         await db.SaveChangesAsync();
 
-        // Act
         var result = await service.GetStudentByCodeAsync("SV001");
 
-        // Assert
         result.Should().NotBeNull();
         result!.StudentCode.Should().Be("SV001");
     }
@@ -154,9 +181,8 @@ public class StudentServiceTests
     [Fact]
     public async Task UpdateStudentAsync_WithValidData_ShouldUpdateStudent()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var student = new Student
         {
             Id = Guid.NewGuid(),
@@ -174,10 +200,8 @@ public class StudentServiceTests
             Email = "new@example.com"
         };
 
-        // Act
         var result = await service.UpdateStudentAsync(student.Id, updateRequest);
 
-        // Assert
         result.Should().NotBeNull();
         result!.FullName.Should().Be("Updated Name");
         result.Email.Should().Be("new@example.com");
@@ -186,9 +210,8 @@ public class StudentServiceTests
     [Fact]
     public async Task DeleteStudentAsync_WithValidId_ShouldDeleteStudent()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var student = new Student
         {
             Id = Guid.NewGuid(),
@@ -199,10 +222,8 @@ public class StudentServiceTests
         db.Students.Add(student);
         await db.SaveChangesAsync();
 
-        // Act
         var result = await service.DeleteStudentAsync(student.Id);
 
-        // Assert
         result.Should().BeTrue();
         var deletedStudent = await db.Students.FindAsync(student.Id);
         deletedStudent.Should().NotBeNull();
@@ -212,23 +233,19 @@ public class StudentServiceTests
     [Fact]
     public async Task DeleteStudentAsync_WithNonExistentId_ShouldReturnFalse()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
-        // Act
         var result = await service.DeleteStudentAsync(Guid.NewGuid());
 
-        // Assert
         result.Should().BeFalse();
     }
 
     [Fact]
     public async Task StudentCodeExistsAsync_WithExistingNumber_ShouldReturnTrue()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         var student = new Student
         {
             Id = Guid.NewGuid(),
@@ -239,35 +256,28 @@ public class StudentServiceTests
         db.Students.Add(student);
         await db.SaveChangesAsync();
 
-        // Act
         var result = await service.StudentCodeExistsAsync("SV001");
 
-        // Assert
         result.Should().BeTrue();
     }
 
     [Fact]
     public async Task StudentCodeExistsAsync_WithNonExistentNumber_ShouldReturnFalse()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
-        // Act
         var result = await service.StudentCodeExistsAsync("SV999");
 
-        // Assert
         result.Should().BeFalse();
     }
 
     [Fact]
     public async Task GetAllStudentsAsync_ShouldReturnPaginatedResults()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
-        // Add multiple students
         for (int i = 1; i <= 5; i++)
         {
             db.Students.Add(new Student
@@ -280,19 +290,16 @@ public class StudentServiceTests
         }
         await db.SaveChangesAsync();
 
-        // Act
         var result = await service.GetAllStudentsAsync(skip: 0, take: 3);
 
-        // Assert
         result.Should().HaveCount(3);
     }
 
     [Fact]
     public async Task GetStudentsWithFilterAsync_ShouldFilterBySearchTerm()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
         db.Students.AddRange(new[]
         {
@@ -307,10 +314,8 @@ public class StudentServiceTests
             SearchTerm = "Nguyen"
         };
 
-        // Act
         var result = await service.GetStudentsWithFilterAsync(filter);
 
-        // Assert
         result.Items.Should().HaveCount(1);
         result.Items.First().FullName.Should().Contain("Nguyen");
     }
@@ -318,9 +323,8 @@ public class StudentServiceTests
     [Fact]
     public async Task GetStudentsWithFilterAsync_ShouldFilterByMajor()
     {
-        // Arrange
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
         db.Students.AddRange(new[]
         {
@@ -335,10 +339,8 @@ public class StudentServiceTests
             Major = "CS"
         };
 
-        // Act
         var result = await service.GetStudentsWithFilterAsync(filter);
 
-        // Assert
         result.Items.Should().HaveCount(2);
         result.Total.Should().Be(2);
     }
@@ -347,11 +349,11 @@ public class StudentServiceTests
     public async Task ImportStudentsFromExcelAsync_WithValidRows_ShouldCreateStudents()
     {
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
         using var stream = CreateStudentExcel(
-            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", "a@test.com", "0901111111"),
-            ("2421160053", "Tran Van B", "DH24TIN06", "CNTT", "b@test.com", "0902222222"));
+            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", "a@test.com", "0901111111", null),
+            ("2421160053", "Tran Van B", "DH24TIN06", "CNTT", "b@test.com", "0902222222", null));
 
         var result = await service.ImportStudentsFromExcelAsync(stream);
 
@@ -362,10 +364,53 @@ public class StudentServiceTests
     }
 
     [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithUsernameAndEmail_ShouldCreateUserAndSendEmail()
+    {
+        var db = GetInMemoryDbContext();
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InvitationEmailRequest r, CancellationToken _) => SendEmailResult.Ok(r.ToEmail));
+
+        var service = CreateService(db, email.Object);
+
+        using var stream = CreateStudentExcel(
+            ("2421160099", "Import User", "DH24TIN06", "CNTT", "import@test.com", "0903333333", "sv.import99"));
+
+        var result = await service.ImportStudentsFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.EmailSentCount.Should().Be(1);
+        result.EmailFailedCount.Should().Be(0);
+        result.DefaultPassword.Should().Be(SeedData.DefaultPassword);
+        (await db.Users.CountAsync(u => u.Username == "sv.import99" && u.Role == Role.Student)).Should().Be(1);
+        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithUsernameButNoEmail_ShouldWarnAndSkipEmail()
+    {
+        var db = GetInMemoryDbContext();
+        var email = new Mock<IEmailService>();
+        var service = CreateService(db, email.Object);
+
+        using var stream = CreateStudentExcel(
+            ("2421160088", "No Mail Student", "DH24TIN06", "CNTT", null, null, "sv.nomail"));
+
+        var result = await service.ImportStudentsFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.EmailSentCount.Should().Be(0);
+        result.EmailFailedCount.Should().Be(1);
+        result.EmailErrors.Should().ContainSingle(e => e.Message.Contains("no email", StringComparison.OrdinalIgnoreCase));
+        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        (await db.Users.CountAsync(u => u.Username == "sv.nomail")).Should().Be(1);
+    }
+
+    [Fact]
     public async Task ImportStudentsFromExcelAsync_WithDuplicateMssv_ShouldReportError()
     {
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
         db.Students.Add(new Student
         {
             Id = Guid.NewGuid(),
@@ -376,7 +421,7 @@ public class StudentServiceTests
         await db.SaveChangesAsync();
 
         using var stream = CreateStudentExcel(
-            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", null, null));
+            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", null, null, null));
 
         var result = await service.ImportStudentsFromExcelAsync(stream);
 
@@ -389,17 +434,17 @@ public class StudentServiceTests
     public void GetStudentImportTemplate_ShouldReturnXlsxBytes()
     {
         var db = GetInMemoryDbContext();
-        var service = new StudentService(db, _mapper);
+        var service = CreateService(db);
 
         var bytes = service.GetStudentImportTemplate();
 
         bytes.Should().NotBeEmpty();
-        // XLSX files start with PK zip signature
         bytes[0].Should().Be(0x50);
         bytes[1].Should().Be(0x4B);
     }
 
-    private static MemoryStream CreateStudentExcel(params (string Mssv, string Name, string? Class, string? Major, string? Email, string? Phone)[] rows)
+    private static MemoryStream CreateStudentExcel(
+        params (string Mssv, string Name, string? Class, string? Major, string? Email, string? Phone, string? Username)[] rows)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
         var sheet = workbook.Worksheets.Add("Students");
@@ -409,6 +454,7 @@ public class StudentServiceTests
         sheet.Cell(1, 4).Value = "Nganh";
         sheet.Cell(1, 5).Value = "Email";
         sheet.Cell(1, 6).Value = "SDT";
+        sheet.Cell(1, 7).Value = "Username";
 
         for (var i = 0; i < rows.Length; i++)
         {
@@ -420,6 +466,7 @@ public class StudentServiceTests
             if (row.Major != null) sheet.Cell(excelRow, 4).Value = row.Major;
             if (row.Email != null) sheet.Cell(excelRow, 5).Value = row.Email;
             if (row.Phone != null) sheet.Cell(excelRow, 6).Value = row.Phone;
+            if (row.Username != null) sheet.Cell(excelRow, 7).Value = row.Username;
         }
 
         var stream = new MemoryStream();

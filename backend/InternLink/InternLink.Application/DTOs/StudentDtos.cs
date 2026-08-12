@@ -9,6 +9,10 @@ public class CreateStudentRequest
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public Guid? UserId { get; set; }
+    /// <summary>
+    /// Optional login username. When set, creates a Student user account (default password).
+    /// </summary>
+    public string? Username { get; set; }
 }
 
 public class UpdateStudentRequest
@@ -44,13 +48,18 @@ public class StudentImportResultDto
     public int SuccessCount { get; set; }
     public int FailedCount { get; set; }
     public int SkippedDuplicateCount { get; set; }
+    public int EmailSentCount { get; set; }
+    public int EmailFailedCount { get; set; }
+    public string DefaultPassword { get; set; } = null!;
     public IReadOnlyList<StudentDto> CreatedStudents { get; set; } = Array.Empty<StudentDto>();
     public IReadOnlyList<StudentImportErrorDto> Errors { get; set; } = Array.Empty<StudentImportErrorDto>();
+    public IReadOnlyList<StudentImportErrorDto> EmailErrors { get; set; } = Array.Empty<StudentImportErrorDto>();
 }
 
 public class StudentImportErrorDto
 {
     public int RowNumber { get; set; }
     public string? StudentCode { get; set; }
+    public string? Username { get; set; }
     public string Message { get; set; } = null!;
 }

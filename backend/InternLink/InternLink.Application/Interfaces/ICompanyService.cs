@@ -51,4 +51,14 @@ public interface ICompanyService
     /// Get companies by industry
     /// </summary>
     Task<IEnumerable<CompanyDto>> GetCompaniesByIndustryAsync(string industry, int skip = 0, int take = 100);
+
+    /// <summary>
+    /// Import companies from an Excel (.xlsx) stream. Row 1 = headers.
+    /// </summary>
+    Task<CompanyImportResultDto> ImportCompaniesFromExcelAsync(Stream excelStream);
+
+    /// <summary>
+    /// Build a blank Excel template for company import.
+    /// </summary>
+    byte[] GetCompanyImportTemplate();
 }

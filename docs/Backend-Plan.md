@@ -14,7 +14,7 @@
 - `InternLink.Application`: DTO, services, validators, AutoMapper.
 - `InternLink.Domain`: Entities, enums, BaseEntity.
 - `InternLink.Infrastructure`: DbContext, migrations, seed, services.
-- `InternLink.Tests`: 44 unit tests.
+- `InternLink.Tests`: 75 unit tests.
 
 ## 3. Database (11 bảng — đã chuẩn hóa naming v1.1)
 - PK cột DB: `{Entity}Id` — C# vẫn dùng `BaseEntity.Id` (map Fluent API).
@@ -34,17 +34,22 @@
 | Documents | Upload file, Category |
 | Evaluations | 4 tiêu chí + FinalGrade |
 | Notifications | Content, mark-read |
+| PasswordResetTokens | Forgot-password flow |
 
-**Migrations:** InitialCreate → LecturerWorkflow → Document/Evaluation → StudentUser/WeeklyReport/Notification → AddLecturerEntity → StandardizeColumnNaming
+**Migrations:** InitialCreate → … → AddMustChangePasswordToUsers → AddPasswordResetTokens
 
 ## 4. API modules (73 paths)
 
 | Controller | Role | Trạng thái |
 |------------|------|------------|
-| AuthController | All | ✅ Login, me, change-password |
-| StudentController | Lecturer | ✅ CRUD, filter, import Excel |
-| CompanyController | Lecturer | ✅ CRUD, filter |
-| InternshipController | Lecturer | ✅ CRUD, filter, assign, status |
+| AuthController | All | ✅ Login, forgot/reset password, change-password |
+| StudentController | Lecturer | ✅ **Read-only** (GET/search) |
+| AdminStudentsController | SuperAdmin | ✅ CRUD, import Excel + tạo TK + email |
+| CompanyController | SuperAdmin, Lecturer | ✅ **Read-only** (GET/search) |
+| AdminCompaniesController | SuperAdmin | ✅ CRUD + import Excel |
+| AdminUsersController | SuperAdmin | ✅ CRUD, reset password, soft delete |
+| AdminAssignmentsController | SuperAdmin | ✅ Bulk assign SV→GV, unassign |
+| InternshipController | Lecturer | ✅ CRUD, filter, assign company (no LecturerId write) |
 | LecturerController | Lecturer | ✅ Workflow + **export Excel cuối kỳ** |
 | LecturerProfileController | SuperAdmin/Lecturer | ✅ CRUD, import, overview |
 | SubmissionController | Student/Lecturer | ✅ CRUD, feedback, resubmit |
@@ -59,8 +64,8 @@
 | # | Use case | Trạng thái |
 |---|----------|------------|
 | 1 | Login JWT | ✅ |
-| 2 | Manage Students | ✅ + import Excel |
-| 3 | Manage Companies | ✅ |
+| 2 | Manage Students | ✅ Admin: CRUD/import + TK + email; Lecturer: read-only |
+| 3 | Manage Companies | ✅ Admin: CRUD/import; Lecturer: read-only |
 | 4 | Assign Company | ✅ |
 | 5 | Review Submission | ✅ |
 | 6 | Send Feedback | ✅ |
@@ -74,14 +79,34 @@
 ## 6. Seed credentials
 - `superadmin` / `lecturer1` / `student1` — password: `Password123!`
 
-## 7. Chưa làm / để sau
+## 7. SuperAdmin Module (kế hoạch chi tiết)
+
+**Tài liệu:** [`docs/Admin-Implementation-Plan.md`](Admin-Implementation-Plan.md)
+
+SuperAdmin = quản trị hệ thống (import dữ liệu, cấp TK, email mời, phân công SV→GV).  
+**Không** gộp vào `RequireLecturer` — Lecturer giữ nghiệp vụ duyệt/chấm điểm.
+
+| Phase | Nội dung | Trạng thái |
+|-------|----------|------------|
+| 0 | Policy `RequireAdmin` + docs | ✅ |
+| 1 | Hạ tầng email (SMTP + template) | ✅ |
+| 2 | Email mời khi import/tạo GV | ✅ |
+| 3 | Admin quản lý SV + tạo TK + email | ✅ |
+| 4 | Admin quản lý DN + import Excel | ✅ |
+| 5 | User management (reset MK, khóa TK) | ✅ |
+| 6 | Phân công SV → GV (bulk) | ✅ |
+| 7 | Forgot password + swagger/postman | ✅ |
+
+**Smoke test:** [`docs/Admin-Smoke-Test-Checklist.md`](Admin-Smoke-Test-Checklist.md)  
+**Postman:** [`api/postman_collection.json`](../api/postman_collection.json)  
+**Swagger export:** [`api/swagger.json`](../api/swagger.json)
+
+## 8. Chưa làm / để sau (ngoài Admin module)
 - InternshipLog entity + API
-- Forgot/reset password (stub — cần email service)
-- SuperAdmin truy cập endpoint RequireLecturer *(cần xem xét)*
 - Upgrade AutoMapper (NU1903)
 - Frontend integration
 
-## 8. Kiểm tra
+## 9. Kiểm tra
 ```bash
 cd backend/InternLink
 dotnet build

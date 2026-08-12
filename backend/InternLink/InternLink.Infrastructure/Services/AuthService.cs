@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using InternLink.Infrastructure.Identity;
+using InternLink.Infrastructure.Email;
 using Microsoft.EntityFrameworkCore;
 
 namespace InternLink.Infrastructure.Services;
@@ -18,15 +19,27 @@ public class AuthService : IAuthService
     private readonly IJwtService _jwt;
     private readonly IMapper _mapper;
     private readonly PasswordHasher<User> _hasher;
+    private readonly IEmailService _emailService;
+    private readonly EmailSettings _emailSettings;
     private readonly ILogger<AuthService> _logger;
     private readonly JwtSettings _jwtSettings;
 
-    public AuthService(AppDbContext db, IJwtService jwt, IMapper mapper, PasswordHasher<User> hasher, ILogger<AuthService> logger, IOptions<JwtSettings> jwtOptions)
+    public AuthService(
+        AppDbContext db,
+        IJwtService jwt,
+        IMapper mapper,
+        PasswordHasher<User> hasher,
+        IEmailService emailService,
+        IOptions<EmailSettings> emailOptions,
+        ILogger<AuthService> logger,
+        IOptions<JwtSettings> jwtOptions)
     {
         _db = db;
         _jwt = jwt;
         _mapper = mapper;
         _hasher = hasher;
+        _emailService = emailService;
+        _emailSettings = emailOptions.Value;
         _logger = logger;
         _jwtSettings = jwtOptions.Value;
     }
@@ -57,13 +70,13 @@ public class AuthService : IAuthService
         {
             Token = token,
             ExpiresAt = expires,
-            Role = user.Role.ToString()
+            Role = user.Role.ToString(),
+            MustChangePassword = user.MustChangePassword
         };
     }
 
     public async Task LogoutAsync(Guid userId)
     {
-        // Stateless JWT - logout can be implemented by a token blacklist or client side disposal.
         _logger.LogInformation("User {UserId} logged out", userId);
         await Task.CompletedTask;
     }
@@ -88,6 +101,7 @@ public class AuthService : IAuthService
         }
 
         user.PasswordHash = _hasher.HashPassword(user, request.NewPassword);
+        user.MustChangePassword = false;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -96,13 +110,103 @@ public class AuthService : IAuthService
 
     public async Task ForgotPasswordAsync(string email)
     {
-        _logger.LogInformation("ForgotPassword requested for {Email}", email);
-        throw new InvalidOperationException("Password reset via email is not configured yet. Contact an administrator.");
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u =>
+            u.Email != null &&
+            u.Email.ToLower() == normalizedEmail &&
+            !u.IsDeleted &&
+            u.IsActive);
+
+        if (user == null)
+        {
+            _logger.LogInformation("ForgotPassword requested for unknown or inactive email {Email}", email);
+            return;
+        }
+
+        var rawToken = ResetTokenGenerator.GenerateToken();
+        var tokenHash = ResetTokenGenerator.HashToken(rawToken);
+        var expiresAt = DateTime.UtcNow.AddHours(_emailSettings.PasswordResetTokenExpiryHours);
+
+        var activeTokens = await _db.PasswordResetTokens
+            .Where(t => t.UserId == user.Id && t.UsedAt == null && !t.IsDeleted)
+            .ToListAsync();
+
+        foreach (var existing in activeTokens)
+        {
+            existing.IsDeleted = true;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.PasswordResetTokens.AddAsync(new PasswordResetToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TokenHash = tokenHash,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var resetLink = BuildResetLink(rawToken);
+        var emailResult = await _emailService.SendForgotPasswordAsync(new ForgotPasswordEmailRequest
+        {
+            ToEmail = user.Email!,
+            FullName = user.FullName ?? user.Username,
+            ResetLink = resetLink
+        });
+
+        if (!emailResult.Success)
+            _logger.LogWarning("ForgotPassword email failed for {Email}: {Message}", user.Email, emailResult.Message);
+        else
+            _logger.LogInformation("ForgotPassword email sent for user {UserId}", user.Id);
     }
 
     public async Task ResetPasswordAsync(string token, string newPassword)
     {
-        _logger.LogInformation("ResetPassword requested");
-        throw new InvalidOperationException("Password reset via email is not configured yet. Contact an administrator.");
+        if (string.IsNullOrWhiteSpace(token))
+            throw new UnauthorizedAccessException("Invalid or expired reset token");
+
+        var tokenHash = ResetTokenGenerator.HashToken(token);
+        var resetToken = await _db.PasswordResetTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t =>
+                t.TokenHash == tokenHash &&
+                !t.IsDeleted &&
+                t.UsedAt == null &&
+                t.ExpiresAt > DateTime.UtcNow);
+
+        if (resetToken?.User == null || resetToken.User.IsDeleted || !resetToken.User.IsActive)
+            throw new UnauthorizedAccessException("Invalid or expired reset token");
+
+        var user = resetToken.User;
+        user.PasswordHash = _hasher.HashPassword(user, newPassword);
+        user.MustChangePassword = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        resetToken.UsedAt = DateTime.UtcNow;
+        resetToken.UpdatedAt = DateTime.UtcNow;
+
+        var otherTokens = await _db.PasswordResetTokens
+            .Where(t => t.UserId == user.Id && t.Id != resetToken.Id && t.UsedAt == null && !t.IsDeleted)
+            .ToListAsync();
+
+        foreach (var other in otherTokens)
+        {
+            other.IsDeleted = true;
+            other.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("User {UserId} reset password via email token", user.Id);
+    }
+
+    private string BuildResetLink(string rawToken)
+    {
+        var baseUrl = _emailSettings.PortalUrl.TrimEnd('/');
+        var path = _emailSettings.PasswordResetPath.TrimStart('/');
+        return $"{baseUrl}/{path}?token={Uri.EscapeDataString(rawToken)}";
     }
 }

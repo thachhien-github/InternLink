@@ -230,13 +230,6 @@ public class InternshipService : IInternshipService
         if (company == null)
             throw new InvalidOperationException($"Company with ID {request.CompanyId} not found");
 
-        if (request.LecturerId.HasValue)
-        {
-            var lecturerExists = await _db.Lecturers.AnyAsync(l => l.Id == request.LecturerId.Value && !l.IsDeleted);
-            if (!lecturerExists)
-                throw new InvalidOperationException($"Lecturer with ID {request.LecturerId} not found");
-        }
-
         // Check if student already has an active internship
         var existingInternship = await _db.Internships
             .FirstOrDefaultAsync(i => i.StudentId == request.StudentId && !i.IsDeleted &&
@@ -250,7 +243,6 @@ public class InternshipService : IInternshipService
             Id = Guid.NewGuid(),
             StudentId = request.StudentId,
             CompanyId = request.CompanyId,
-            LecturerId = request.LecturerId,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             Status = InternshipStatus.NotStarted,
@@ -287,14 +279,6 @@ public class InternshipService : IInternshipService
                 throw new InvalidOperationException($"Company with ID {request.CompanyId} not found");
 
             internship.CompanyId = request.CompanyId.Value;
-        }
-
-        if (request.LecturerId.HasValue)
-        {
-            var lecturerExists = await _db.Lecturers.AnyAsync(l => l.Id == request.LecturerId.Value && !l.IsDeleted);
-            if (!lecturerExists)
-                throw new InvalidOperationException($"Lecturer with ID {request.LecturerId} not found");
-            internship.LecturerId = request.LecturerId;
         }
 
         if (request.StartDate.HasValue)

@@ -1,4 +1,8 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using AutoMapper;
+using ClosedXML.Excel;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
@@ -11,6 +15,18 @@ public class CompanyService : ICompanyService
 {
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
+
+    private static readonly string[] CompanyNameHeaders =
+        ["tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name"];
+    private static readonly string[] IndustryHeaders = ["nganh", "ngành", "industry", "linh vuc", "lĩnh vực"];
+    private static readonly string[] ContactPersonHeaders =
+        ["nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien"];
+    private static readonly string[] ContactEmailHeaders = ["email", "e-mail", "contactemail", "contact email"];
+    private static readonly string[] ContactPhoneHeaders =
+        ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "contactphone", "contact phone", "so dien thoai"];
+    private static readonly string[] AddressHeaders = ["diachi", "dia chi", "address"];
+    private static readonly string[] WebsiteHeaders = ["website", "web", "trang web"];
+    private static readonly string[] CapacityHeaders = ["succhua", "suc chua", "capacity", "so luong", "so luong sv"];
 
     public CompanyService(AppDbContext db, IMapper mapper)
     {
@@ -97,13 +113,13 @@ public class CompanyService : ICompanyService
         var company = new Company
         {
             Id = Guid.NewGuid(),
-            CompanyName = request.CompanyName,
-            Address = request.Address,
-            Website = request.Website,
-            Industry = request.Industry,
-            ContactPerson = request.ContactPerson,
-            ContactEmail = request.ContactEmail,
-            ContactPhone = request.ContactPhone,
+            CompanyName = request.CompanyName.Trim(),
+            Address = NullIfWhiteSpace(request.Address),
+            Website = NullIfWhiteSpace(request.Website),
+            Industry = NullIfWhiteSpace(request.Industry),
+            ContactPerson = NullIfWhiteSpace(request.ContactPerson),
+            ContactEmail = NullIfWhiteSpace(request.ContactEmail),
+            ContactPhone = NullIfWhiteSpace(request.ContactPhone),
             Capacity = request.Capacity,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -123,7 +139,7 @@ public class CompanyService : ICompanyService
         if (company == null)
             return null;
 
-        if (company.CompanyName != request.CompanyName)
+        if (!string.Equals(company.CompanyName, request.CompanyName, StringComparison.Ordinal))
         {
             var existingCompany = await _db.Companies
                 .FirstOrDefaultAsync(c => c.CompanyName == request.CompanyName && c.Id != id && !c.IsDeleted);
@@ -132,19 +148,18 @@ public class CompanyService : ICompanyService
                 throw new InvalidOperationException($"Company name '{request.CompanyName}' already exists");
         }
 
-        company.CompanyName = request.CompanyName;
-        company.Address = request.Address;
-        company.Website = request.Website;
-        company.Industry = request.Industry;
-        company.ContactPerson = request.ContactPerson;
-        company.ContactEmail = request.ContactEmail;
-        company.ContactPhone = request.ContactPhone;
+        company.CompanyName = request.CompanyName.Trim();
+        company.Address = NullIfWhiteSpace(request.Address);
+        company.Website = NullIfWhiteSpace(request.Website);
+        company.Industry = NullIfWhiteSpace(request.Industry);
+        company.ContactPerson = NullIfWhiteSpace(request.ContactPerson);
+        company.ContactEmail = NullIfWhiteSpace(request.ContactEmail);
+        company.ContactPhone = NullIfWhiteSpace(request.ContactPhone);
         company.Capacity = request.Capacity;
         if (request.IsActive.HasValue)
             company.IsActive = request.IsActive.Value;
         company.UpdatedAt = DateTime.UtcNow;
 
-        _db.Companies.Update(company);
         await _db.SaveChangesAsync();
 
         return _mapper.Map<CompanyDto>(company);
@@ -192,4 +207,284 @@ public class CompanyService : ICompanyService
 
         return _mapper.Map<List<CompanyDto>>(companies);
     }
+
+    public async Task<CompanyImportResultDto> ImportCompaniesFromExcelAsync(Stream excelStream)
+    {
+        if (excelStream == null || !excelStream.CanRead)
+            throw new ArgumentException("Excel file stream is required");
+
+        using var workbook = new XLWorkbook(excelStream);
+        var worksheet = workbook.Worksheets.FirstOrDefault()
+            ?? throw new InvalidOperationException("Excel file has no worksheet");
+
+        var usedRange = worksheet.RangeUsed();
+        if (usedRange == null)
+            throw new InvalidOperationException("Excel file is empty");
+
+        var columnMap = BuildColumnMap(usedRange.FirstRow());
+        if (!columnMap.ContainsKey(CompanyColumn.CompanyName))
+            throw new InvalidOperationException("Excel must include TenDN (CompanyName) column");
+
+        var errors = new List<CompanyImportErrorDto>();
+        var created = new List<Company>();
+        var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var totalRows = 0;
+        var skippedDuplicates = 0;
+
+        foreach (var row in usedRange.RowsUsed().Skip(1))
+        {
+            var rowNumber = row.RowNumber();
+            var companyName = GetCell(row, columnMap, CompanyColumn.CompanyName);
+            var industry = GetCell(row, columnMap, CompanyColumn.Industry);
+            var contactPerson = GetCell(row, columnMap, CompanyColumn.ContactPerson);
+            var contactEmail = GetCell(row, columnMap, CompanyColumn.ContactEmail);
+            var contactPhone = GetCell(row, columnMap, CompanyColumn.ContactPhone);
+            var address = GetCell(row, columnMap, CompanyColumn.Address);
+            var website = GetCell(row, columnMap, CompanyColumn.Website);
+            var capacityText = GetCell(row, columnMap, CompanyColumn.Capacity);
+
+            if (IsBlankRow(companyName, industry, contactPerson, contactEmail, contactPhone, address, website, capacityText))
+                continue;
+
+            totalRows++;
+
+            if (string.IsNullOrWhiteSpace(companyName))
+            {
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, Message = "Company name (TenDN) is required" });
+                continue;
+            }
+
+            companyName = companyName.Trim();
+
+            if (companyName.Length > 255)
+            {
+                errors.Add(new CompanyImportErrorDto
+                {
+                    RowNumber = rowNumber,
+                    CompanyName = companyName,
+                    Message = "Company name must not exceed 255 characters"
+                });
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
+            {
+                errors.Add(new CompanyImportErrorDto
+                {
+                    RowNumber = rowNumber,
+                    CompanyName = companyName,
+                    Message = "Invalid contact email format"
+                });
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(website) && !IsValidUrl(website))
+            {
+                errors.Add(new CompanyImportErrorDto
+                {
+                    RowNumber = rowNumber,
+                    CompanyName = companyName,
+                    Message = "Invalid website URL"
+                });
+                continue;
+            }
+
+            int? capacity = null;
+            if (!string.IsNullOrWhiteSpace(capacityText))
+            {
+                if (!int.TryParse(capacityText, out var parsed) || parsed <= 0)
+                {
+                    errors.Add(new CompanyImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        CompanyName = companyName,
+                        Message = "Capacity must be a positive integer"
+                    });
+                    continue;
+                }
+
+                capacity = parsed;
+            }
+
+            if (!seenInFile.Add(companyName))
+            {
+                errors.Add(new CompanyImportErrorDto
+                {
+                    RowNumber = rowNumber,
+                    CompanyName = companyName,
+                    Message = "Duplicate company name in file"
+                });
+                continue;
+            }
+
+            if (await CompanyNameExistsAsync(companyName))
+            {
+                skippedDuplicates++;
+                errors.Add(new CompanyImportErrorDto
+                {
+                    RowNumber = rowNumber,
+                    CompanyName = companyName,
+                    Message = "Company name already exists in system"
+                });
+                continue;
+            }
+
+            created.Add(new Company
+            {
+                Id = Guid.NewGuid(),
+                CompanyName = companyName,
+                Industry = NullIfWhiteSpace(industry),
+                ContactPerson = NullIfWhiteSpace(contactPerson),
+                ContactEmail = NullIfWhiteSpace(contactEmail),
+                ContactPhone = NullIfWhiteSpace(contactPhone),
+                Address = NullIfWhiteSpace(address),
+                Website = NullIfWhiteSpace(website),
+                Capacity = capacity,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        if (created.Count > 0)
+        {
+            await _db.Companies.AddRangeAsync(created);
+            await _db.SaveChangesAsync();
+        }
+
+        return new CompanyImportResultDto
+        {
+            TotalRows = totalRows,
+            SuccessCount = created.Count,
+            FailedCount = errors.Count,
+            SkippedDuplicateCount = skippedDuplicates,
+            CreatedCompanies = _mapper.Map<List<CompanyDto>>(created),
+            Errors = errors
+        };
+    }
+
+    public byte[] GetCompanyImportTemplate()
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Companies");
+
+        sheet.Cell(1, 1).Value = "TenDN";
+        sheet.Cell(1, 2).Value = "Nganh";
+        sheet.Cell(1, 3).Value = "NguoiLienHe";
+        sheet.Cell(1, 4).Value = "Email";
+        sheet.Cell(1, 5).Value = "SDT";
+        sheet.Cell(1, 6).Value = "DiaChi";
+        sheet.Cell(1, 7).Value = "Website";
+        sheet.Cell(1, 8).Value = "SucChua";
+
+        sheet.Cell(2, 1).Value = "FPT Software";
+        sheet.Cell(2, 2).Value = "Cong nghe thong tin";
+        sheet.Cell(2, 3).Value = "Ms. Linh Tran";
+        sheet.Cell(2, 4).Value = "linh.tran@fptsoftware.com";
+        sheet.Cell(2, 5).Value = "0909123456";
+        sheet.Cell(2, 6).Value = "Phu My Hung, Q7, TP.HCM";
+        sheet.Cell(2, 7).Value = "https://fptsoftware.com";
+        sheet.Cell(2, 8).Value = 10;
+
+        sheet.Row(1).Style.Font.Bold = true;
+        sheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private enum CompanyColumn
+    {
+        CompanyName,
+        Industry,
+        ContactPerson,
+        ContactEmail,
+        ContactPhone,
+        Address,
+        Website,
+        Capacity
+    }
+
+    private static Dictionary<CompanyColumn, int> BuildColumnMap(IXLRangeRow headerRow)
+    {
+        var map = new Dictionary<CompanyColumn, int>();
+
+        foreach (var cell in headerRow.CellsUsed())
+        {
+            var header = NormalizeHeader(cell.GetString());
+            if (string.IsNullOrEmpty(header))
+                continue;
+
+            if (!map.ContainsKey(CompanyColumn.CompanyName) && CompanyNameHeaders.Contains(header))
+                map[CompanyColumn.CompanyName] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.Industry) && IndustryHeaders.Contains(header))
+                map[CompanyColumn.Industry] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.ContactPerson) && ContactPersonHeaders.Contains(header))
+                map[CompanyColumn.ContactPerson] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.ContactEmail) && ContactEmailHeaders.Contains(header))
+                map[CompanyColumn.ContactEmail] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.ContactPhone) && ContactPhoneHeaders.Contains(header))
+                map[CompanyColumn.ContactPhone] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.Address) && AddressHeaders.Contains(header))
+                map[CompanyColumn.Address] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.Website) && WebsiteHeaders.Contains(header))
+                map[CompanyColumn.Website] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(CompanyColumn.Capacity) && CapacityHeaders.Contains(header))
+                map[CompanyColumn.Capacity] = cell.Address.ColumnNumber;
+        }
+
+        return map;
+    }
+
+    private static string NormalizeHeader(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = RemoveDiacritics(value.Trim().ToLowerInvariant());
+        normalized = Regex.Replace(normalized, @"\s+", " ");
+        return normalized;
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        var formD = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
+        foreach (var ch in formD)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                sb.Append(ch);
+        }
+
+        return sb.ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Replace('đ', 'd')
+            .Replace('Đ', 'D');
+    }
+
+    private static string? GetCell(IXLRangeRow row, Dictionary<CompanyColumn, int> map, CompanyColumn column)
+    {
+        if (!map.TryGetValue(column, out var colIndex))
+            return null;
+
+        var cell = row.Cell(colIndex);
+        if (cell.DataType == XLDataType.Number)
+            return cell.GetDouble().ToString("0");
+
+        var text = cell.GetString();
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    }
+
+    private static bool IsBlankRow(params string?[] values) =>
+        values.All(string.IsNullOrWhiteSpace);
+
+    private static string? NullIfWhiteSpace(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsValidEmail(string email) =>
+        Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+
+    private static bool IsValidUrl(string url) =>
+        Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uriResult) &&
+        (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
 }

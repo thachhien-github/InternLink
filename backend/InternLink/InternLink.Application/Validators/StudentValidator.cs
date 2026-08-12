@@ -30,6 +30,10 @@ public class CreateStudentRequestValidator : AbstractValidator<CreateStudentRequ
             .Matches(@"^[0-9\-\+\s\(\)]+$").WithMessage("Phone number format is invalid")
             .MaximumLength(20).WithMessage("Phone must not exceed 20 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.Phone));
+
+        RuleFor(x => x.Username)
+            .MaximumLength(100).WithMessage("Username must not exceed 100 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Username));
     }
 }
 

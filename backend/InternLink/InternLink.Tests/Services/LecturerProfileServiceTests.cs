@@ -1,5 +1,6 @@
 using FluentAssertions;
 using InternLink.Application.DTOs;
+using InternLink.Application.Interfaces;
 using InternLink.Application.Mappings;
 using InternLink.Domain.Entities;
 using InternLink.Domain.Enums;
@@ -7,7 +8,9 @@ using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using AutoMapper;
+using Moq;
 
 namespace InternLink.Tests.Services;
 
@@ -28,11 +31,21 @@ public class LecturerProfileServiceTests
         return new AppDbContext(options);
     }
 
+    private LecturerProfileService CreateService(AppDbContext db, IEmailService? email = null)
+    {
+        return new LecturerProfileService(
+            db,
+            _mapper,
+            new PasswordHasher<User>(),
+            email ?? Mock.Of<IEmailService>(),
+            NullLogger<LecturerProfileService>.Instance);
+    }
+
     [Fact]
     public async Task CreateAsync_ShouldCreateLecturerProfile()
     {
         var db = GetDb();
-        var service = new LecturerProfileService(db, _mapper, new PasswordHasher<User>());
+        var service = CreateService(db);
 
         var result = await service.CreateAsync(new CreateLecturerRequest
         {
@@ -47,19 +60,88 @@ public class LecturerProfileServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithUsernameAndEmail_ShouldSendInvitation()
+    {
+        var db = GetDb();
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SendEmailResult.Ok("c@uni.edu.vn"));
+
+        var service = CreateService(db, email.Object);
+        await service.CreateAsync(new CreateLecturerRequest
+        {
+            StaffCode = "GV010",
+            FullName = "Le Van C",
+            Email = "c@uni.edu.vn",
+            Username = "gv.levanc"
+        });
+
+        email.Verify(e => e.SendInvitationAsync(
+            It.Is<InvitationEmailRequest>(r =>
+                r.ToEmail == "c@uni.edu.vn" &&
+                r.Username == "gv.levanc" &&
+                r.Role == InvitationRole.Lecturer &&
+                r.TemporaryPassword == SeedData.DefaultPassword),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithUsernameButNoEmail_ShouldNotSendInvitation()
+    {
+        var db = GetDb();
+        var email = new Mock<IEmailService>();
+        var service = CreateService(db, email.Object);
+
+        await service.CreateAsync(new CreateLecturerRequest
+        {
+            StaffCode = "GV011",
+            FullName = "No Email",
+            Username = "gv.noemail"
+        });
+
+        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        (await db.Users.CountAsync(u => u.Username == "gv.noemail")).Should().Be(1);
+    }
+
+    [Fact]
     public async Task ImportFromExcelAsync_WithUsername_ShouldCreateLecturerAndUser()
     {
         var db = GetDb();
-        var service = new LecturerProfileService(db, _mapper, new PasswordHasher<User>());
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InvitationEmailRequest r, CancellationToken _) => SendEmailResult.Ok(r.ToEmail));
+
+        var service = CreateService(db, email.Object);
 
         using var stream = CreateExcel(("GV002", "Tran Van B", "b@uni.edu.vn", "0901", "CNTT", "gv.tranvanb"));
         var result = await service.ImportFromExcelAsync(stream);
 
         result.SuccessCount.Should().Be(1);
+        result.EmailSentCount.Should().Be(1);
+        result.EmailFailedCount.Should().Be(0);
         result.DefaultPassword.Should().Be(SeedData.DefaultPassword);
         var lecturer = await db.Lecturers.FirstAsync();
         lecturer.UserId.Should().NotBeNull();
         (await db.Users.CountAsync(u => u.Role == Role.Lecturer)).Should().Be(1);
+        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_WithUsernameButNoEmail_ShouldWarnAndSkipEmail()
+    {
+        var db = GetDb();
+        var email = new Mock<IEmailService>();
+        var service = CreateService(db, email.Object);
+
+        using var stream = CreateExcel(("GV020", "No Mail Lecturer", "", "0901", "CNTT", "gv.nomail"));
+        var result = await service.ImportFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.EmailSentCount.Should().Be(0);
+        result.EmailFailedCount.Should().Be(1);
+        result.EmailErrors.Should().ContainSingle(e => e.Message.Contains("no email", StringComparison.OrdinalIgnoreCase));
+        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        (await db.Users.CountAsync(u => u.Username == "gv.nomail")).Should().Be(1);
     }
 
     [Fact]
@@ -101,7 +183,7 @@ public class LecturerProfileServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new LecturerProfileService(db, _mapper, new PasswordHasher<User>());
+        var service = CreateService(db);
         var overview = await service.GetOverviewAsync(lecturer.Id);
 
         overview.Should().NotBeNull();
@@ -146,7 +228,7 @@ public class LecturerProfileServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new LecturerProfileService(db, _mapper, new PasswordHasher<User>());
+        var service = CreateService(db);
         var act = async () => await service.DeleteAsync(lecturer.Id);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

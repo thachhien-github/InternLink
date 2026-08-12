@@ -39,9 +39,12 @@ public class LecturerImportResultDto
     public int SuccessCount { get; set; }
     public int FailedCount { get; set; }
     public int SkippedDuplicateCount { get; set; }
+    public int EmailSentCount { get; set; }
+    public int EmailFailedCount { get; set; }
     public string DefaultPassword { get; set; } = null!;
     public IReadOnlyList<LecturerDto> CreatedLecturers { get; set; } = Array.Empty<LecturerDto>();
     public IReadOnlyList<LecturerImportErrorDto> Errors { get; set; } = Array.Empty<LecturerImportErrorDto>();
+    public IReadOnlyList<LecturerImportErrorDto> EmailErrors { get; set; } = Array.Empty<LecturerImportErrorDto>();
 }
 
 public class LecturerImportErrorDto

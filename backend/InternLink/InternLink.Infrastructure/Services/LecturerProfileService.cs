@@ -10,6 +10,7 @@ using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace InternLink.Infrastructure.Services;
 
@@ -20,6 +21,8 @@ public class LecturerProfileService : ILecturerProfileService
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
     private readonly PasswordHasher<User> _hasher;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<LecturerProfileService> _logger;
 
     private static readonly string[] StaffCodeHeaders = ["magv", "ma gv", "staffcode", "staff code", "code"];
     private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "fullname", "full name", "tengiangvien", "ten giang vien"];
@@ -28,11 +31,18 @@ public class LecturerProfileService : ILecturerProfileService
     private static readonly string[] DepartmentHeaders = ["bomon", "bo mon", "department", "khoa"];
     private static readonly string[] UsernameHeaders = ["username", "tendangnhap", "ten dang nhap"];
 
-    public LecturerProfileService(AppDbContext db, IMapper mapper, PasswordHasher<User> hasher)
+    public LecturerProfileService(
+        AppDbContext db,
+        IMapper mapper,
+        PasswordHasher<User> hasher,
+        IEmailService emailService,
+        ILogger<LecturerProfileService> logger)
     {
         _db = db;
         _mapper = mapper;
         _hasher = hasher;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<LecturerDto>> GetAllAsync(int skip = 0, int take = 100)
@@ -65,9 +75,15 @@ public class LecturerProfileService : ILecturerProfileService
             throw new InvalidOperationException($"Staff code '{request.StaffCode}' already exists");
 
         Guid? userId = request.UserId;
+        var createdNewUser = false;
+        string? createdUsername = null;
+
         if (!string.IsNullOrWhiteSpace(request.Username))
         {
-            userId = await EnsureLecturerUserAsync(request.Username.Trim(), request.FullName, request.Email);
+            createdUsername = request.Username.Trim();
+            var ensure = await EnsureLecturerUserAsync(createdUsername, request.FullName, request.Email);
+            userId = ensure.UserId;
+            createdNewUser = ensure.CreatedNew;
         }
         else if (userId.HasValue)
         {
@@ -90,6 +106,17 @@ public class LecturerProfileService : ILecturerProfileService
 
         await _db.Lecturers.AddAsync(lecturer);
         await _db.SaveChangesAsync();
+
+        if (createdNewUser && createdUsername != null)
+        {
+            await TrySendInvitationAsync(
+                lecturer.Email,
+                lecturer.FullName,
+                createdUsername,
+                staffCode: lecturer.StaffCode,
+                rowNumber: null);
+        }
+
         return _mapper.Map<LecturerDto>(lecturer);
     }
 
@@ -193,11 +220,15 @@ public class LecturerProfileService : ILecturerProfileService
             throw new InvalidOperationException("Excel must include MaGV (StaffCode) and HoTen (FullName) columns");
 
         var errors = new List<LecturerImportErrorDto>();
+        var emailErrors = new List<LecturerImportErrorDto>();
         var created = new List<Lecturer>();
+        var pendingInvitations = new List<PendingInvitation>();
         var seenCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var totalRows = 0;
         var skippedDuplicates = 0;
+        var emailSentCount = 0;
+        var emailFailedCount = 0;
 
         foreach (var row in usedRange.RowsUsed().Skip(1))
         {
@@ -257,7 +288,12 @@ public class LecturerProfileService : ILecturerProfileService
 
                 try
                 {
-                    userId = await EnsureLecturerUserAsync(username, fullName, email);
+                    var ensure = await EnsureLecturerUserAsync(username, fullName, email);
+                    userId = ensure.UserId;
+                    if (ensure.CreatedNew)
+                    {
+                        pendingInvitations.Add(new PendingInvitation(rowNumber, staffCode, username, fullName, NullIfWhiteSpace(email)));
+                    }
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -285,15 +321,41 @@ public class LecturerProfileService : ILecturerProfileService
             await _db.SaveChangesAsync();
         }
 
+        foreach (var invite in pendingInvitations)
+        {
+            var send = await TrySendInvitationAsync(
+                invite.Email,
+                invite.FullName,
+                invite.Username,
+                invite.StaffCode,
+                invite.RowNumber);
+
+            if (send.Status == InvitationSendStatus.Sent)
+                emailSentCount++;
+            else if (send.Status == InvitationSendStatus.Failed)
+            {
+                emailFailedCount++;
+                emailErrors.Add(send.Error!);
+            }
+            else if (send.Status == InvitationSendStatus.SkippedNoEmail)
+            {
+                emailFailedCount++;
+                emailErrors.Add(send.Error!);
+            }
+        }
+
         return new LecturerImportResultDto
         {
             TotalRows = totalRows,
             SuccessCount = created.Count,
             FailedCount = errors.Count,
             SkippedDuplicateCount = skippedDuplicates,
+            EmailSentCount = emailSentCount,
+            EmailFailedCount = emailFailedCount,
             DefaultPassword = DefaultPassword,
             CreatedLecturers = _mapper.Map<List<LecturerDto>>(created),
-            Errors = errors
+            Errors = errors,
+            EmailErrors = emailErrors
         };
     }
 
@@ -317,7 +379,9 @@ public class LecturerProfileService : ILecturerProfileService
         sheet.Cell(2, 6).Value = "gv.nguyenvana";
 
         sheet.Cell(4, 1).Value = "Ghi chu:";
-        sheet.Cell(4, 2).Value = $"Neu co Username thi tao tai khoan login, mat khau mac dinh: {DefaultPassword}";
+        sheet.Cell(4, 2).Value =
+            $"Neu co Username thi tao tai khoan login (mat khau mac dinh: {DefaultPassword}). " +
+            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau).";
 
         sheet.Row(1).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
@@ -327,7 +391,7 @@ public class LecturerProfileService : ILecturerProfileService
         return stream.ToArray();
     }
 
-    private async Task<Guid> EnsureLecturerUserAsync(string username, string fullName, string? email)
+    private async Task<(Guid UserId, bool CreatedNew)> EnsureLecturerUserAsync(string username, string fullName, string? email)
     {
         var existing = await _db.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
         if (existing != null)
@@ -339,7 +403,7 @@ public class LecturerProfileService : ILecturerProfileService
             if (linked)
                 throw new InvalidOperationException($"Username '{username}' is already linked to a lecturer profile");
 
-            return existing.Id;
+            return (existing.Id, CreatedNew: false);
         }
 
         if (!string.IsNullOrWhiteSpace(email))
@@ -362,10 +426,100 @@ public class LecturerProfileService : ILecturerProfileService
         user.PasswordHash = _hasher.HashPassword(user, DefaultPassword);
         await _db.Users.AddAsync(user);
         await _db.SaveChangesAsync();
-        return user.Id;
+        return (user.Id, CreatedNew: true);
+    }
+
+    private async Task<InvitationSendOutcome> TrySendInvitationAsync(
+        string? email,
+        string fullName,
+        string username,
+        string? staffCode,
+        int? rowNumber)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            _logger.LogWarning(
+                "Skipped invitation email for lecturer {StaffCode} (username={Username}): no email address",
+                staffCode,
+                username);
+
+            return InvitationSendOutcome.Skipped(
+                new LecturerImportErrorDto
+                {
+                    RowNumber = rowNumber ?? 0,
+                    StaffCode = staffCode,
+                    Username = username,
+                    Message = "Account created but invitation email skipped: no email address"
+                });
+        }
+
+        try
+        {
+            var result = await _emailService.SendInvitationAsync(new InvitationEmailRequest
+            {
+                ToEmail = email.Trim(),
+                FullName = fullName,
+                Role = InvitationRole.Lecturer,
+                Username = username,
+                TemporaryPassword = DefaultPassword
+            });
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to send invitation email to lecturer {StaffCode} (username={Username}): {Message}",
+                    staffCode,
+                    username,
+                    result.Message);
+
+                return InvitationSendOutcome.Failed(
+                    new LecturerImportErrorDto
+                    {
+                        RowNumber = rowNumber ?? 0,
+                        StaffCode = staffCode,
+                        Username = username,
+                        Message = result.Message ?? "Failed to send invitation email"
+                    });
+            }
+
+            _logger.LogInformation(
+                "Invitation email sent for lecturer {StaffCode} (username={Username}) to {Email}",
+                staffCode,
+                username,
+                email);
+
+            return InvitationSendOutcome.Sent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Exception while sending invitation email for lecturer {StaffCode} (username={Username})",
+                staffCode,
+                username);
+
+            return InvitationSendOutcome.Failed(
+                new LecturerImportErrorDto
+                {
+                    RowNumber = rowNumber ?? 0,
+                    StaffCode = staffCode,
+                    Username = username,
+                    Message = $"Failed to send invitation email: {ex.Message}"
+                });
+        }
     }
 
     private enum Col { StaffCode, FullName, Email, Phone, Department, Username }
+
+    private enum InvitationSendStatus { Sent, Failed, SkippedNoEmail }
+
+    private sealed record PendingInvitation(int RowNumber, string StaffCode, string Username, string FullName, string? Email);
+
+    private sealed record InvitationSendOutcome(InvitationSendStatus Status, LecturerImportErrorDto? Error)
+    {
+        public static InvitationSendOutcome Sent() => new(InvitationSendStatus.Sent, null);
+        public static InvitationSendOutcome Failed(LecturerImportErrorDto error) => new(InvitationSendStatus.Failed, error);
+        public static InvitationSendOutcome Skipped(LecturerImportErrorDto error) => new(InvitationSendStatus.SkippedNoEmail, error);
+    }
 
     private static Dictionary<Col, int> BuildColumnMap(IXLRangeRow headerRow)
     {

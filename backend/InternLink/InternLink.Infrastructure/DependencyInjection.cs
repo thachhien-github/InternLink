@@ -1,4 +1,6 @@
 using System.Text;
+using InternLink.Application.Interfaces;
+using InternLink.Infrastructure.Email;
 using InternLink.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -84,10 +86,28 @@ public static class DependencyInjection
         // Notification service
         services.AddScoped<InternLink.Application.Interfaces.INotificationService, InternLink.Infrastructure.Services.NotificationService>();
 
+        // User management (Admin)
+        services.AddScoped<IUserManagementService, InternLink.Infrastructure.Services.UserManagementService>();
+
+        // Student–lecturer assignment (Admin)
+        services.AddScoped<IAssignmentService, InternLink.Infrastructure.Services.AssignmentService>();
+
+        // Email (invitation / notifications)
+        var emailSection = configuration.GetSection(EmailSettings.SectionName);
+        services.Configure<EmailSettings>(emailSection);
+        var emailSettings = emailSection.Get<EmailSettings>() ?? new EmailSettings();
+        if (emailSettings.Enabled)
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        else
+            services.AddScoped<IEmailService, LoggingEmailService>();
+
         // Authorization policies for roles
+        // RequireAdmin and RequireSuperAdmin are equivalent (SuperAdmin only).
+        // RequireAdmin is the preferred name for new Admin module endpoints.
         services.AddAuthorization(options =>
         {
             options.AddPolicy("RequireSuperAdmin", p => p.RequireRole("SuperAdmin"));
+            options.AddPolicy("RequireAdmin", p => p.RequireRole("SuperAdmin"));
             options.AddPolicy("RequireLecturer", p => p.RequireRole("Lecturer"));
             options.AddPolicy("RequireStudent", p => p.RequireRole("Student"));
         });

@@ -1,18 +1,28 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using AutoMapper;
 using ClosedXML.Excel;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
+using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace InternLink.Infrastructure.Services;
 
 public class StudentService : IStudentService
 {
+    public const string DefaultPassword = SeedData.DefaultPassword;
+
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
+    private readonly PasswordHasher<User> _hasher;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<StudentService> _logger;
 
     private static readonly string[] StudentCodeHeaders = ["mssv", "studentCode", "student number", "studentcode", "ma sv", "masv"];
     private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "fullname", "full name", "student name", "ten sinh vien"];
@@ -20,11 +30,20 @@ public class StudentService : IStudentService
     private static readonly string[] MajorHeaders = ["nganh", "ngành", "chuyen nganh", "chuyên ngành", "major"];
     private static readonly string[] EmailHeaders = ["email", "e-mail"];
     private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại"];
+    private static readonly string[] UsernameHeaders = ["username", "tendangnhap", "ten dang nhap"];
 
-    public StudentService(AppDbContext db, IMapper mapper)
+    public StudentService(
+        AppDbContext db,
+        IMapper mapper,
+        PasswordHasher<User> hasher,
+        IEmailService emailService,
+        ILogger<StudentService> logger)
     {
         _db = db;
         _mapper = mapper;
+        _hasher = hasher;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100)
@@ -107,9 +126,20 @@ public class StudentService : IStudentService
         if (existingStudent != null)
             throw new InvalidOperationException($"Student number '{request.StudentCode}' already exists");
 
-        if (request.UserId.HasValue)
+        Guid? userId = request.UserId;
+        var createdNewUser = false;
+        string? createdUsername = null;
+
+        if (!string.IsNullOrWhiteSpace(request.Username))
         {
-            var userTaken = await _db.Students.AnyAsync(s => s.UserId == request.UserId && !s.IsDeleted);
+            createdUsername = request.Username.Trim();
+            var ensure = await EnsureStudentUserAsync(createdUsername, request.FullName, request.Email);
+            userId = ensure.UserId;
+            createdNewUser = ensure.CreatedNew;
+        }
+        else if (userId.HasValue)
+        {
+            var userTaken = await _db.Students.AnyAsync(s => s.UserId == userId && !s.IsDeleted);
             if (userTaken)
                 throw new InvalidOperationException("User is already linked to another student profile");
         }
@@ -117,18 +147,28 @@ public class StudentService : IStudentService
         var student = new Student
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
-            StudentCode = request.StudentCode,
-            FullName = request.FullName,
-            Class = request.Class,
-            Major = request.Major,
-            Email = request.Email,
-            Phone = request.Phone,
+            UserId = userId,
+            StudentCode = request.StudentCode.Trim(),
+            FullName = request.FullName.Trim(),
+            Class = NullIfWhiteSpace(request.Class),
+            Major = NullIfWhiteSpace(request.Major),
+            Email = NullIfWhiteSpace(request.Email),
+            Phone = NullIfWhiteSpace(request.Phone),
             CreatedAt = DateTime.UtcNow
         };
 
         await _db.Students.AddAsync(student);
         await _db.SaveChangesAsync();
+
+        if (createdNewUser && createdUsername != null)
+        {
+            await TrySendInvitationAsync(
+                student.Email,
+                student.FullName,
+                createdUsername,
+                student.StudentCode,
+                rowNumber: null);
+        }
 
         return _mapper.Map<StudentDto>(student);
     }
@@ -149,14 +189,13 @@ public class StudentService : IStudentService
             student.UserId = request.UserId;
         }
 
-        student.FullName = request.FullName;
-        student.Class = request.Class;
-        student.Major = request.Major;
-        student.Email = request.Email;
-        student.Phone = request.Phone;
+        student.FullName = request.FullName.Trim();
+        student.Class = NullIfWhiteSpace(request.Class);
+        student.Major = NullIfWhiteSpace(request.Major);
+        student.Email = NullIfWhiteSpace(request.Email);
+        student.Phone = NullIfWhiteSpace(request.Phone);
         student.UpdatedAt = DateTime.UtcNow;
 
-        _db.Students.Update(student);
         await _db.SaveChangesAsync();
 
         return _mapper.Map<StudentDto>(student);
@@ -213,10 +252,15 @@ public class StudentService : IStudentService
             throw new InvalidOperationException("Excel must include MSSV and HoTen (or studentCode and FullName) columns");
 
         var errors = new List<StudentImportErrorDto>();
+        var emailErrors = new List<StudentImportErrorDto>();
         var created = new List<Student>();
+        var pendingInvitations = new List<PendingInvitation>();
         var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var totalRows = 0;
         var skippedDuplicates = 0;
+        var emailSentCount = 0;
+        var emailFailedCount = 0;
 
         foreach (var row in usedRange.RowsUsed().Skip(1))
         {
@@ -227,8 +271,9 @@ public class StudentService : IStudentService
             var major = GetCell(row, columnMap, StudentColumn.Major);
             var email = GetCell(row, columnMap, StudentColumn.Email);
             var phone = GetCell(row, columnMap, StudentColumn.Phone);
+            var username = GetCell(row, columnMap, StudentColumn.Username);
 
-            if (IsBlankRow(studentCode, fullName, className, major, email, phone))
+            if (IsBlankRow(studentCode, fullName, className, major, email, phone, username))
                 continue;
 
             totalRows++;
@@ -263,6 +308,9 @@ public class StudentService : IStudentService
                 continue;
             }
 
+            studentCode = studentCode.Trim();
+            fullName = fullName.Trim();
+
             if (!seenInFile.Add(studentCode))
             {
                 errors.Add(new StudentImportErrorDto { RowNumber = rowNumber, StudentCode = studentCode, Message = "Duplicate MSSV in file" });
@@ -276,11 +324,54 @@ public class StudentService : IStudentService
                 continue;
             }
 
+            if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(email) && email.Contains('@'))
+                username = email.Split('@')[0];
+
+            Guid? userId = null;
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                username = username.Trim();
+                if (!seenUsernames.Add(username))
+                {
+                    errors.Add(new StudentImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        StudentCode = studentCode,
+                        Username = username,
+                        Message = "Duplicate username in file"
+                    });
+                    continue;
+                }
+
+                try
+                {
+                    var ensure = await EnsureStudentUserAsync(username, fullName, email);
+                    userId = ensure.UserId;
+                    if (ensure.CreatedNew)
+                    {
+                        pendingInvitations.Add(new PendingInvitation(
+                            rowNumber, studentCode, username, fullName, NullIfWhiteSpace(email)));
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    errors.Add(new StudentImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        StudentCode = studentCode,
+                        Username = username,
+                        Message = ex.Message
+                    });
+                    continue;
+                }
+            }
+
             created.Add(new Student
             {
                 Id = Guid.NewGuid(),
-                StudentCode = studentCode.Trim(),
-                FullName = fullName.Trim(),
+                UserId = userId,
+                StudentCode = studentCode,
+                FullName = fullName,
                 Class = NullIfWhiteSpace(className),
                 Major = NullIfWhiteSpace(major),
                 Email = NullIfWhiteSpace(email),
@@ -295,14 +386,36 @@ public class StudentService : IStudentService
             await _db.SaveChangesAsync();
         }
 
+        foreach (var invite in pendingInvitations)
+        {
+            var send = await TrySendInvitationAsync(
+                invite.Email,
+                invite.FullName,
+                invite.Username,
+                invite.StudentCode,
+                invite.RowNumber);
+
+            if (send.Status == InvitationSendStatus.Sent)
+                emailSentCount++;
+            else
+            {
+                emailFailedCount++;
+                emailErrors.Add(send.Error!);
+            }
+        }
+
         return new StudentImportResultDto
         {
             TotalRows = totalRows,
             SuccessCount = created.Count,
             FailedCount = errors.Count,
             SkippedDuplicateCount = skippedDuplicates,
+            EmailSentCount = emailSentCount,
+            EmailFailedCount = emailFailedCount,
+            DefaultPassword = DefaultPassword,
             CreatedStudents = _mapper.Map<List<StudentDto>>(created),
-            Errors = errors
+            Errors = errors,
+            EmailErrors = emailErrors
         };
     }
 
@@ -317,6 +430,7 @@ public class StudentService : IStudentService
         sheet.Cell(1, 4).Value = "Nganh";
         sheet.Cell(1, 5).Value = "Email";
         sheet.Cell(1, 6).Value = "SDT";
+        sheet.Cell(1, 7).Value = "Username";
 
         sheet.Cell(2, 1).Value = "2421160052";
         sheet.Cell(2, 2).Value = "Nguyen Van A";
@@ -324,6 +438,12 @@ public class StudentService : IStudentService
         sheet.Cell(2, 4).Value = "Cong nghe thong tin";
         sheet.Cell(2, 5).Value = "vana@student.edu.vn";
         sheet.Cell(2, 6).Value = "0901234567";
+        sheet.Cell(2, 7).Value = "2421160052";
+
+        sheet.Cell(4, 1).Value = "Ghi chu:";
+        sheet.Cell(4, 2).Value =
+            $"Neu co Username thi tao tai khoan login (mat khau mac dinh: {DefaultPassword}). " +
+            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau).";
 
         sheet.Row(1).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
@@ -333,6 +453,123 @@ public class StudentService : IStudentService
         return stream.ToArray();
     }
 
+    private async Task<(Guid UserId, bool CreatedNew)> EnsureStudentUserAsync(string username, string fullName, string? email)
+    {
+        var existing = await _db.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
+        if (existing != null)
+        {
+            if (existing.Role != Role.Student)
+                throw new InvalidOperationException($"Username '{username}' exists but is not a Student account");
+
+            var linked = await _db.Students.AnyAsync(s => s.UserId == existing.Id && !s.IsDeleted);
+            if (linked)
+                throw new InvalidOperationException($"Username '{username}' is already linked to a student profile");
+
+            return (existing.Id, CreatedNew: false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var emailTaken = await _db.Users.AnyAsync(u => u.Email == email && !u.IsDeleted);
+            if (emailTaken)
+                throw new InvalidOperationException($"Email '{email}' already exists in system");
+        }
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            FullName = fullName,
+            Email = NullIfWhiteSpace(email),
+            Role = Role.Student,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        user.PasswordHash = _hasher.HashPassword(user, DefaultPassword);
+        await _db.Users.AddAsync(user);
+        await _db.SaveChangesAsync();
+        return (user.Id, CreatedNew: true);
+    }
+
+    private async Task<InvitationSendOutcome> TrySendInvitationAsync(
+        string? email,
+        string fullName,
+        string username,
+        string? studentCode,
+        int? rowNumber)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            _logger.LogWarning(
+                "Skipped invitation email for student {StudentCode} (username={Username}): no email address",
+                studentCode,
+                username);
+
+            return InvitationSendOutcome.Skipped(
+                new StudentImportErrorDto
+                {
+                    RowNumber = rowNumber ?? 0,
+                    StudentCode = studentCode,
+                    Username = username,
+                    Message = "Account created but invitation email skipped: no email address"
+                });
+        }
+
+        try
+        {
+            var result = await _emailService.SendInvitationAsync(new InvitationEmailRequest
+            {
+                ToEmail = email.Trim(),
+                FullName = fullName,
+                Role = InvitationRole.Student,
+                Username = username,
+                TemporaryPassword = DefaultPassword
+            });
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to send invitation email to student {StudentCode} (username={Username}): {Message}",
+                    studentCode,
+                    username,
+                    result.Message);
+
+                return InvitationSendOutcome.Failed(
+                    new StudentImportErrorDto
+                    {
+                        RowNumber = rowNumber ?? 0,
+                        StudentCode = studentCode,
+                        Username = username,
+                        Message = result.Message ?? "Failed to send invitation email"
+                    });
+            }
+
+            _logger.LogInformation(
+                "Invitation email sent for student {StudentCode} (username={Username}) to {Email}",
+                studentCode,
+                username,
+                email);
+
+            return InvitationSendOutcome.Sent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Exception while sending invitation email for student {StudentCode} (username={Username})",
+                studentCode,
+                username);
+
+            return InvitationSendOutcome.Failed(
+                new StudentImportErrorDto
+                {
+                    RowNumber = rowNumber ?? 0,
+                    StudentCode = studentCode,
+                    Username = username,
+                    Message = $"Failed to send invitation email: {ex.Message}"
+                });
+        }
+    }
+
     private enum StudentColumn
     {
         StudentCode,
@@ -340,7 +577,19 @@ public class StudentService : IStudentService
         Class,
         Major,
         Email,
-        Phone
+        Phone,
+        Username
+    }
+
+    private enum InvitationSendStatus { Sent, Failed, SkippedNoEmail }
+
+    private sealed record PendingInvitation(int RowNumber, string StudentCode, string Username, string FullName, string? Email);
+
+    private sealed record InvitationSendOutcome(InvitationSendStatus Status, StudentImportErrorDto? Error)
+    {
+        public static InvitationSendOutcome Sent() => new(InvitationSendStatus.Sent, null);
+        public static InvitationSendOutcome Failed(StudentImportErrorDto error) => new(InvitationSendStatus.Failed, error);
+        public static InvitationSendOutcome Skipped(StudentImportErrorDto error) => new(InvitationSendStatus.SkippedNoEmail, error);
     }
 
     private static Dictionary<StudentColumn, int> BuildColumnMap(IXLRangeRow headerRow)
@@ -365,6 +614,8 @@ public class StudentService : IStudentService
                 map[StudentColumn.Email] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(StudentColumn.Phone) && PhoneHeaders.Contains(header))
                 map[StudentColumn.Phone] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(StudentColumn.Username) && UsernameHeaders.Contains(header))
+                map[StudentColumn.Username] = cell.Address.ColumnNumber;
         }
 
         return map;
@@ -383,17 +634,17 @@ public class StudentService : IStudentService
 
     private static string RemoveDiacritics(string text)
     {
-        var formD = text.Normalize(System.Text.NormalizationForm.FormD);
-        var sb = new System.Text.StringBuilder(formD.Length);
+        var formD = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
         foreach (var ch in formD)
         {
-            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (category != System.Globalization.UnicodeCategory.NonSpacingMark)
+            var category = CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (category != UnicodeCategory.NonSpacingMark)
                 sb.Append(ch);
         }
 
         return sb.ToString()
-            .Normalize(System.Text.NormalizationForm.FormC)
+            .Normalize(NormalizationForm.FormC)
             .Replace('đ', 'd')
             .Replace('Đ', 'D');
     }

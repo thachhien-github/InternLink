@@ -59,21 +59,23 @@ public class AuthController : ControllerBase
 
     [HttpPost("forgot-password")]
     [AllowAnonymous]
-    public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> payload)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
-        if (!payload.TryGetValue("email", out var email))
-            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Email required" }));
-        await _auth.ForgotPasswordAsync(email);
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid input" }));
+
+        await _auth.ForgotPasswordAsync(request.Email);
         return Ok(ApiResponse<object>.Ok(null));
     }
 
     [HttpPost("reset-password")]
     [AllowAnonymous]
-    public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> payload)
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        if (!payload.TryGetValue("token", out var token) || !payload.TryGetValue("newPassword", out var newPassword))
-            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "token and newPassword required" }));
-        await _auth.ResetPasswordAsync(token, newPassword);
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid input" }));
+
+        await _auth.ResetPasswordAsync(request.Token, request.NewPassword);
         return Ok(ApiResponse<object>.Ok(null));
     }
 }

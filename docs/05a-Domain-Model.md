@@ -2,9 +2,9 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.1
+**Version:** 1.2
 
-**Status:** Active — aligned with implementation
+**Status:** Active — aligned with implementation (Admin module Phase 0)
 
 ---
 
@@ -26,11 +26,32 @@ Khác với ERD, Domain Model tập trung vào nghiệp vụ thay vì thiết k�
 
 Vai trò:
 
-- SuperAdmin — quản trị hệ thống, LecturerProfile
-- Lecturer — hướng dẫn thực tập
-- Student — sinh viên thực tập
+- **SuperAdmin** — quản trị hệ thống (phòng/khoa); không thay thế Giảng viên trong nghiệp vụ hàng ngày
+- **Lecturer** — hướng dẫn thực tập cho sinh viên được phân công
+- **Student** — sinh viên thực tập
 
-Quan hệ: 1 User có thể link 0..1 Lecturer hoặc 0..1 Student (qua `UserId`).
+Quan hệ: 1 User có thể link 0..1 Lecturer hoặc 0..1 Student (qua `UserId`). SuperAdmin thường **không** link profile Lecturer/Student.
+
+### SuperAdmin — trách nhiệm nghiệp vụ
+
+- Import danh sách sinh viên, giảng viên, doanh nghiệp
+- Cấp và quản lý tài khoản (SV, GV): tạo, khóa/mở, reset mật khẩu
+- Gửi email mời tham gia hệ thống (link + username + password)
+- Phân công sinh viên cho giảng viên hướng dẫn
+- Quản lý profile giảng viên (`LecturerProfile`)
+
+**Không thuộc SuperAdmin:** duyệt báo cáo, gửi feedback, chấm điểm, export cuối kỳ — thuộc Lecturer.
+
+### Authorization policies (triển khai)
+
+| Policy | Role | Dùng cho |
+|--------|------|----------|
+| `RequireAdmin` | SuperAdmin | Module Admin mới (`/api/Admin/*`) |
+| `RequireSuperAdmin` | SuperAdmin | Alias — endpoint hiện có (vd. `LecturerProfile` write) |
+| `RequireLecturer` | Lecturer | Workflow GV — **không** gộp SuperAdmin |
+| `RequireStudent` | Student | Nộp báo cáo, xem phản hồi |
+
+Chi tiết triển khai: `docs/Admin-Implementation-Plan.md`.
 
 ---
 
@@ -42,10 +63,10 @@ Thuộc tính nghiệp vụ: `StaffCode`, `FullName`, `Email`, `Department`.
 
 Responsibilities:
 
-- Quản lý sinh viên và doanh nghiệp được phân công
-- Theo dõi tiến độ, nhận xét, chấm điểm
+- Theo dõi sinh viên **được phân công** (qua `Internship.LecturerId`)
+- Nhận xét, duyệt báo cáo, chấm điểm
+- Gán doanh nghiệp cho hồ sơ thực tập (trong phạm vi SV được giao)
 - Export báo cáo tổng kết cuối kỳ (Excel)
-- Import danh sách GV (Excel)
 
 ---
 

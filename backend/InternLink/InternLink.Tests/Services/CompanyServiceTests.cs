@@ -329,4 +329,93 @@ public class CompanyServiceTests
         result.Should().HaveCount(2);
         result.Should().AllSatisfy(c => c.Industry.Should().Be("Software"));
     }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithValidRows_ShouldCreateCompanies()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper);
+
+        using var stream = CreateCompanyExcel(
+            ("FPT Software", "CNTT", "Ms. Linh", "linh@fpt.com", "0901111111", "Q7 HCMC", "https://fpt.com", "10"),
+            ("Viettel Digital", "Vien thong", "Mr. Hoang", "hoang@viettel.vn", "0902222222", "Tan Binh", null, "8"));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(2);
+        result.FailedCount.Should().Be(0);
+        result.CreatedCompanies.Should().Contain(c => c.CompanyName == "FPT Software");
+        (await db.Companies.CountAsync(c => !c.IsDeleted)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithDuplicateName_ShouldReportError()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper);
+        db.Companies.Add(new Company
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "FPT Software",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        using var stream = CreateCompanyExcel(
+            ("FPT Software", "CNTT", null, null, null, null, null, null));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(0);
+        result.SkippedDuplicateCount.Should().Be(1);
+        result.Errors.Should().Contain(e => e.CompanyName == "FPT Software");
+    }
+
+    [Fact]
+    public void GetCompanyImportTemplate_ShouldReturnXlsxBytes()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper);
+
+        var bytes = service.GetCompanyImportTemplate();
+
+        bytes.Should().NotBeEmpty();
+        bytes[0].Should().Be(0x50);
+        bytes[1].Should().Be(0x4B);
+    }
+
+    private static MemoryStream CreateCompanyExcel(
+        params (string Name, string? Industry, string? Contact, string? Email, string? Phone, string? Address, string? Website, string? Capacity)[] rows)
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Companies");
+        sheet.Cell(1, 1).Value = "TenDN";
+        sheet.Cell(1, 2).Value = "Nganh";
+        sheet.Cell(1, 3).Value = "NguoiLienHe";
+        sheet.Cell(1, 4).Value = "Email";
+        sheet.Cell(1, 5).Value = "SDT";
+        sheet.Cell(1, 6).Value = "DiaChi";
+        sheet.Cell(1, 7).Value = "Website";
+        sheet.Cell(1, 8).Value = "SucChua";
+
+        for (var i = 0; i < rows.Length; i++)
+        {
+            var row = rows[i];
+            var excelRow = i + 2;
+            sheet.Cell(excelRow, 1).Value = row.Name;
+            if (row.Industry != null) sheet.Cell(excelRow, 2).Value = row.Industry;
+            if (row.Contact != null) sheet.Cell(excelRow, 3).Value = row.Contact;
+            if (row.Email != null) sheet.Cell(excelRow, 4).Value = row.Email;
+            if (row.Phone != null) sheet.Cell(excelRow, 5).Value = row.Phone;
+            if (row.Address != null) sheet.Cell(excelRow, 6).Value = row.Address;
+            if (row.Website != null) sheet.Cell(excelRow, 7).Value = row.Website;
+            if (row.Capacity != null) sheet.Cell(excelRow, 8).Value = row.Capacity;
+        }
+
+        var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+        return stream;
+    }
 }

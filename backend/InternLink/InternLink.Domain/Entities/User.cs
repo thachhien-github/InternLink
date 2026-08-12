@@ -10,5 +10,6 @@ public class User : BaseEntity
     public string? Email { get; set; }
     public Role Role { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool MustChangePassword { get; set; }
     public DateTime? LastLoginAt { get; set; }
 }
