@@ -2,33 +2,35 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — aligned with MVP + SuperAdmin module
+
+**Diagrams:** [`images/information-architecture/`](images/information-architecture/)
 
 ---
 
 # 1. Overview
 
-Information Architecture (IA) mô tả cách tổ chức thông tin, điều hướng và luồng di chuyển của người dùng trong hệ thống InternLink.
+IA mô tả tổ chức thông tin, điều hướng và luồng di chuyển theo **ba portal**:
 
-Mục tiêu:
-
-- Dễ tìm kiếm thông tin.
-- Giảm số lần thao tác.
-- Điều hướng trực quan.
-- Phân tách rõ quyền của Giảng viên và Sinh viên.
-
----
-
-# 2. User Roles
-
-Hệ thống có hai nhóm người dùng chính:
-
+- SuperAdmin
 - Lecturer
 - Student
 
-Mỗi nhóm chỉ nhìn thấy những chức năng phù hợp với vai trò của mình.
+Mục tiêu: tìm nhanh, ít thao tác, phân quyền rõ (Admin ≠ Lecturer).
+
+---
+
+# 2. User Roles & Portal Visibility
+
+| Role | Portal | Ghi chú |
+|------|--------|---------|
+| SuperAdmin | `/admin/*` | Master data, users, assignments |
+| Lecturer | `/lecturer/*` | Workflow SV được giao |
+| Student | `/student/*` | Nộp bài, feedback |
+
+Sau login, route theo `Role` (+ redirect đổi MK nếu `MustChangePassword`).
 
 ---
 
@@ -37,7 +39,25 @@ Mỗi nhóm chỉ nhìn thấy những chức năng phù hợp với vai trò c�
 ## Public
 
 ```text
-Login
+/login
+/forgot-password
+/reset-password?token=...
+```
+
+---
+
+## SuperAdmin
+
+```text
+/admin
+├── Dashboard (ops overview)
+├── Students          ← CRUD + import + tạo TK
+├── Lecturers         ← CRUD + import + tạo TK
+├── Companies         ← CRUD + import
+├── Users             ← list / create / deactivate / reset password
+├── Assignments       ← bulk assign SV→GV, list by lecturer
+├── Email test        ← (dev/ops)
+└── Account
 ```
 
 ---
@@ -45,359 +65,116 @@ Login
 ## Lecturer
 
 ```text
-Giảng viên
-│
-├── Tổng quan
-│
-├── Sinh viên
-│   ├── Danh sách sinh viên
-│   ├── Hồ sơ sinh viên
-│   ├── Tiến độ thực tập
-│   └── Lịch sử nộp bài
-│
-├── Thực tập
-│   ├── Đợt thực tập
-│   ├── Kế hoạch
-│   ├── Báo cáo tuần
-│   ├── Phản hồi
-│   └── Tiến độ
-│
-├── Doanh nghiệp
-│   ├── Danh sách doanh nghiệp
-│   ├── Hồ sơ doanh nghiệp
-│   └── Tiếp nhận sinh viên
-│
-├── Biểu mẫu
-│   ├── Upload
-│   └── Download
-│
-├── Đánh giá & Chấm điểm
-│   ├── Danh sách cần chấm
-│   ├── Rubric
-│   ├── Phiếu đánh giá
-│   ├── Chấm điểm
-│   ├── AI gợi ý
-│   └── Xuất bảng điểm
-│
-├── Thống kê & Báo cáo
-│   ├── KPI
-│   ├── Dashboard
-│   ├── Biểu đồ
-│   ├── Báo cáo doanh nghiệp
-│   ├── Báo cáo sinh viên
-│   ├── Phân bố điểm
-│   └── Export Excel/PDF
-│
-├── Thông báo
-│
-└── Tài khoản
-```
-
----
-
-## Student
-
-```text
-Dashboard
-│
-├── Internship
-│      ├── Progress
-│      ├── Weekly Reports
-│      ├── Internship Logs
-│      ├── Submissions
-│      └── Feedback
-│
+/lecturer
+├── Dashboard
+├── Internships       ← SV được phân công
+│   ├── Detail
+│   ├── Assign company
+│   ├── Weekly reports (review)
+│   ├── Submissions (review + feedback)
+│   └── Evaluation
+├── Students          ← read-only browse (master)
+├── Companies         ← read-only browse (master)
 ├── Documents
-│
+├── Export end-of-term
 ├── Notifications
-│
-└── Profile
+└── Account
 ```
 
----
-
-# 4. Navigation Structure
-
-## Lecturer Navigation
-
-Dashboard
-
-↓
-
-Internship Students
-
-↓
-
-Student Detail
-
-↓
-
-Submission
-
-↓
-
-Feedback
-
-↓
-
-Evaluation
-
----
-
-Dashboard
-
-↓
-
-Companies
-
-↓
-
-Company Detail
-
-↓
-
-Internship History
-
----
-
-Dashboard
-
-↓
-
-Documents
-
-↓
-
-Upload
-
----
-
-## Student Navigation
-
-Dashboard
-
-↓
-
-Internship
-
-↓
-
-Weekly Report
-
-↓
-
-Submit
-
----
-
-Dashboard
-
-↓
-
-Feedback
-
-↓
-
-Revision
-
-↓
-
-Resubmit
-
----
-
-Dashboard
-
-↓
-
-Documents
-
-↓
-
-Download
-
----
-
-# 5. User Flow
-
-## Lecturer
-
-Login
-
-↓
-
-Dashboard
-
-↓
-
-Select Student
-
-↓
-
-View Progress
-
-↓
-
-Review Submission
-
-↓
-
-Send Feedback
-
-↓
-
-Evaluate
+**Không còn:** Lecturer CRUD Students/Companies như quyền chính (đã chuyển Admin).
 
 ---
 
 ## Student
 
-Login
-
-↓
-
-Dashboard
-
-↓
-
-View Deadline
-
-↓
-
-Upload Report
-
-↓
-
-Receive Feedback
-
-↓
-
-Resubmit
-
-↓
-
-Completed
-
----
-
-# 6. Screen Hierarchy
-
-## Lecturer
-
-Dashboard
-
-├── Student List
-
-│      └── Student Detail
-
-│              ├── Weekly Report
-
-│              ├── Submission
-
-│              ├── Feedback
-
-│              └── Evaluation
-
-├── Company
-
-├── Documents
-
-├── Notification
-
-└── Profile
-
----
-
-## Student
-
-Dashboard
-
+```text
+/student
+├── Dashboard
 ├── Internship
-
-│      ├── Weekly Report
-
-│      ├── Internship Log
-
-│      ├── Submission
-
-│      └── Feedback
-
+│   ├── Progress / status
+│   ├── Weekly reports
+│   ├── Submissions
+│   └── Feedback
 ├── Documents
+├── Notifications
+└── Account (change password)
+```
 
-├── Notification
-
-└── Profile
-
----
-
-# 7. Information Organization
-
-## Dashboard
-
-Hiển thị:
-
-- Tổng số sinh viên
-- Sinh viên chậm tiến độ
-- Deadline sắp tới
-- Thông báo mới
+Canonical tree: [`images/information-architecture/sitemap.md`](images/information-architecture/sitemap.md)
 
 ---
 
-## Student Detail
+# 4. Navigation Principles
 
-Hiển thị:
-
-- Thông tin sinh viên
-- Doanh nghiệp
-- Tiến độ
-- Báo cáo
-- Sản phẩm
-- Lịch sử phản hồi
-- Điểm
+1. **Role-based shell** — mỗi portal một layout/nav riêng.
+2. **Primary nav ≤ 7 mục** — tránh overload.
+3. **Admin = data & access**; Lecturer = coaching workflow.
+4. Deep links từ Notification → đúng entity (submission, report…).
+5. Empty states rõ (vd. chưa được assign).
 
 ---
 
-## Company
+# 5. Screen Permission Matrix (MVP UI)
 
-Hiển thị:
-
-- Thông tin doanh nghiệp
-- Người liên hệ
-- Vị trí tuyển
-- Lịch sử thực tập
-- Đánh giá
-
----
-
-## Documents
-
-Hiển thị:
-
-- Biểu mẫu
-- Quy định
-- Báo cáo mẫu
-- Hướng dẫn
+| Screen / Area | SuperAdmin | Lecturer | Student |
+|---------------|:----------:|:--------:|:-------:|
+| Admin Students/Companies/Users | ✅ | — | — |
+| Admin Assignments | ✅ | — | — |
+| Lecturer Internships workflow | — | ✅ | — |
+| Assign company | — | ✅ | — |
+| Review / Feedback / Grade | — | ✅ | — |
+| Export Excel | — | ✅ | — |
+| Student master (read) | ✅ | ✅ | — |
+| Company master (read) | ✅ | ✅ | — |
+| Submit weekly / product | — | — | ✅ |
+| View own feedback | — | — | ✅ |
+| Forgot / reset password | ✅ | ✅ | ✅ |
 
 ---
 
-# 8. Design Principles
+# 6. Key User Flows (IA level)
 
-Information Architecture được xây dựng theo các nguyên tắc:
+| Flow | Entry | Docs |
+|------|-------|------|
+| Admin import + invite | Admin → Students | [`application-flow/admin-import-invite.md`](images/application-flow/admin-import-invite.md) |
+| Admin bulk assign | Admin → Assignments | [`application-flow/admin-bulk-assign.md`](images/application-flow/admin-bulk-assign.md) |
+| Forgot password | Public | [`application-flow/forgot-password.md`](images/application-flow/forgot-password.md) |
+| Lecturer review | Lecturer → Internships | existing `lecturer-review-*.md` |
+| Student submit | Student → Weekly/Submission | existing `student-*.md` |
 
-- Navigation nhất quán.
-- Tối đa 3 lần nhấp để đến chức năng chính.
-- Thông tin quan trọng hiển thị trên Dashboard.
-- Hạn chế màn hình dư thừa.
-- Ưu tiên quy trình hướng dẫn thực tập.
+Sequence (API-level): [`images/sequence/`](images/sequence/)
+
+---
+
+# 7. Content Priority
+
+### SuperAdmin first viewport after login
+
+1. Assignments / Students cần xử lý  
+2. Shortcut Import  
+3. Users gần đây  
+
+### Lecturer
+
+1. Internships cần review / chậm tiến độ  
+2. Deadlines  
+
+### Student
+
+1. Trạng thái thực tập  
+2. Báo cáo tuần tới hạn  
+3. Feedback chưa đọc  
+
+---
+
+# 8. Out of IA Scope (MVP UI)
+
+- Advanced Analytics / Rubric builder screens
+- Internship Log daily UI (entity Planned)
+- Multi-faculty switcher
 
 ---
 
 # 9. Summary
 
-Information Architecture của InternLink tập trung vào ba nhóm chức năng chính:
-
-- Quản lý tiến độ thực tập.
-- Quản lý doanh nghiệp.
-- Quản lý tài liệu và phản hồi.
-
-Kiến trúc thông tin này là cơ sở để thiết kế Wireframe, UI và điều hướng trong các bước tiếp theo.
+IA v2 tách **ba portal** rõ ràng; Lecturer không còn là “super lecturer” quản trị master data. Frontend có thể wireframe theo sitemap trên + permission matrix.

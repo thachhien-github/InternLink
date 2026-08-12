@@ -2,232 +2,199 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — aligned with MVP + SuperAdmin module
+
+**Diagrams:** [`images/workflow/`](images/workflow/) · Sequences: [`images/sequence/`](images/sequence/)
 
 ---
 
 # 1. Overview
 
-Business Workflow mô tả quy trình hướng dẫn thực tập hiện tại và quy trình sau khi áp dụng InternLink.
-
-Mục tiêu là xác định những điểm nghẽn trong quy trình thủ công và cách hệ thống hỗ trợ cải thiện.
+Mô tả quy trình hướng dẫn thực tập **AS-IS** (thủ công) và **TO-BE** (với InternLink), gồm vai trò **SuperAdmin**, **Lecturer**, **Student**.
 
 ---
 
 # 2. AS-IS Workflow (Current Process)
 
-Hiện nay quá trình hướng dẫn thực tập được thực hiện bằng nhiều công cụ khác nhau như Excel, Zalo, Google Drive, Email và Microsoft Word.
+Công cụ: Excel, Zalo, Google Drive, Email, Word.
 
-## Bước 1. Chuẩn bị thực tập
+## Bước 1. Chuẩn bị
 
-- Giảng viên nhận danh sách sinh viên.
-- Giảng viên nhận CV của sinh viên.
-- Xem xét sinh viên phù hợp với doanh nghiệp.
-- Trao đổi yêu cầu thực tập.
-- Gửi biểu mẫu qua Zalo hoặc Google Drive.
+- Khoa/GV nhận danh sách SV (Excel).
+- Cấp tài khoản / gửi mật khẩu thủ công (nếu có portal khác).
+- Phân công GV hướng dẫn bằng Excel/email.
+- Gửi biểu mẫu qua Zalo / Drive.
 
----
+## Bước 2. Doanh nghiệp
 
-## Bước 2. Đăng ký doanh nghiệp
+- SV đăng ký DN; GV ghi nhận Excel.
+- Thông tin DN không tập trung.
 
-- Sinh viên đăng ký doanh nghiệp.
-- Giảng viên kiểm tra tính phù hợp.
-- Ghi nhận thông tin bằng Excel.
+## Bước 3. Thực hiện
 
----
+- SV gửi nhật ký / báo cáo / sản phẩm qua Zalo, Drive, Email.
+- GV phản hồi Word/Zalo; nhiều phiên bản khó kiểm soát.
 
-## Bước 3. Thực hiện thực tập
+## Bước 4. Kết thúc
 
-Trong quá trình thực tập:
-
-- Sinh viên gửi nhật ký.
-- Sinh viên gửi báo cáo tiến độ.
-- Sinh viên gửi sản phẩm.
-- Giảng viên phản hồi qua Zalo hoặc Word.
-- Sinh viên chỉnh sửa và gửi lại.
-
-Thông tin bị phân tán trên nhiều nền tảng.
-
----
-
-## Bước 4. Kết thúc thực tập
-
-Sinh viên nộp:
-
-- Báo cáo thực tập
-- Nhật ký
-- Phiếu nhận xét doanh nghiệp
-- Sản phẩm
-
-Giảng viên:
-
-- Kiểm tra
-- Chấm điểm
-- Tổng hợp Excel
-- Nhập điểm lên hệ thống nhà trường
+- Nộp hồ sơ cuối kỳ rải rác.
+- GV chấm và tổng hợp Excel thủ công → nhập điểm hệ thống trường.
 
 ---
 
 # 3. Existing Problems
 
-Qua khảo sát thực tế, quy trình hiện tại tồn tại các vấn đề sau.
-
-## P1
-
-Thông tin phân tán.
-
----
-
-## P2
-
-Khó theo dõi tiến độ của từng sinh viên.
-
----
-
-## P3
-
-Khó xác định phiên bản báo cáo mới nhất.
-
----
-
-## P4
-
-Khó quản lý lịch sử doanh nghiệp.
-
----
-
-## P5
-
-Mất nhiều thời gian tổng hợp cuối kỳ.
+| ID | Problem |
+|----|---------|
+| P1 | Thông tin phân tán |
+| P2 | Khó theo dõi tiến độ từng SV |
+| P3 | Khó xác định phiên bản báo cáo mới nhất |
+| P4 | Khó quản lý / kế thừa DN |
+| P5 | Tốn thời gian tổng hợp cuối kỳ |
+| P6 | Cấp TK + phân công GV thủ công, dễ sai |
 
 ---
 
 # 4. TO-BE Workflow (With InternLink)
 
-Sau khi triển khai InternLink, toàn bộ quy trình được thực hiện trên một nền tảng duy nhất.
+## Swimlane tổng quan
+
+```mermaid
+flowchart TD
+  subgraph Admin["SuperAdmin"]
+    A1[Import SV / GV / DN]
+    A2[Tạo TK + Invitation email]
+    A3[Bulk assign SV → GV]
+  end
+
+  subgraph Lect["Lecturer"]
+    L1[Xem SV được phân công]
+    L2[Gán doanh nghiệp]
+    L3[Duyệt báo cáo / Feedback]
+    L4[Chấm điểm + Export Excel]
+  end
+
+  subgraph Stud["Student"]
+    S1[Login / đổi MK nếu bắt buộc]
+    S2[Nộp weekly report / sản phẩm]
+    S3[Xem feedback / nộp lại]
+  end
+
+  A1 --> A2 --> A3
+  A3 --> L1 --> L2
+  S1 --> S2
+  L2 --> S2
+  S2 --> L3
+  L3 -->|RevisionRequested| S3
+  S3 --> L3
+  L3 -->|OK| L4
+```
 
 ---
 
-## Bước 1. Khởi tạo đợt thực tập
+## Bước 0. Vận hành Admin (mới so với v1)
 
-Giảng viên:
+| Ai | Việc |
+|----|------|
+| SuperAdmin | Import / CRUD Students, Lecturers, Companies |
+| SuperAdmin | Tạo User + gửi invitation (username + MK tạm) |
+| SuperAdmin | `POST /api/Admin/assignments` — gán SV → GV |
+| Hệ thống | Tạo Internship stub nếu chưa có; DN placeholder nếu chưa gán DN |
 
-- Tạo đợt thực tập.
-- Phân công sinh viên.
-- Công bố tài liệu và biểu mẫu.
+**Ranh giới:** chỉ SuperAdmin đổi `LecturerId`. Lecturer **không** gọi `/api/Admin/*`.
 
-Sinh viên:
-
-- Đăng nhập.
-- Xem tài liệu.
-- Theo dõi kế hoạch.
-
----
-
-## Bước 2. Quản lý doanh nghiệp
-
-Giảng viên:
-
-- Quản lý danh sách doanh nghiệp.
-- Cập nhật vị trí thực tập.
-- Theo dõi lịch sử hợp tác.
-- Gán doanh nghiệp cho sinh viên.
+Sequence: [`bulk-assign.md`](images/sequence/bulk-assign.md) · [`invitation-email.md`](images/sequence/invitation-email.md)
 
 ---
 
-## Bước 3. Theo dõi tiến độ
+## Bước 1. Sinh viên / Giảng viên vào hệ thống
 
-Sinh viên:
+- Login JWT; nếu `MustChangePassword` → đổi MK.
+- Quên MK: email link reset (self-service).
 
-- Cập nhật nhật ký.
-- Nộp báo cáo tiến độ.
-- Upload sản phẩm.
-
-Giảng viên:
-
-- Theo dõi Dashboard.
-- Kiểm tra trạng thái.
-- Nhận xét.
-- Yêu cầu chỉnh sửa.
-
-Hệ thống:
-
-- Lưu lịch sử nộp.
-- Theo dõi deadline.
-- Cập nhật trạng thái.
+Sequence: [`forgot-password.md`](images/sequence/forgot-password.md)
 
 ---
 
-## Bước 4. Hoàn thành thực tập
+## Bước 2. Gán doanh nghiệp (Lecturer)
 
-Sinh viên:
-
-- Nộp báo cáo cuối kỳ.
-- Nộp phiếu doanh nghiệp.
-- Nộp sản phẩm.
-
-Giảng viên:
-
-- Đánh giá.
-- Chấm điểm.
-- Lưu nhận xét.
-- Tổng hợp kết quả.
+- Lecturer xem DN (read-only master data).
+- `PUT /api/Internship/{id}/company` trên internship mình phụ trách.
+- Upload / công bố tài liệu biểu mẫu.
 
 ---
 
-# 5. Workflow Comparison
+## Bước 3. Theo dõi tiến độ & nộp bài
 
-| Current Process | InternLink |
-|-----------------|------------|
-| Excel | Dashboard |
-| Zalo | Notification |
-| Google Drive | Document Library |
-| Email | Submission Management |
-| Word Comment | Feedback System |
-| Excel Tracking | Progress Tracking |
-| Excel Company List | Company Management |
+| Student | Lecturer | Hệ thống |
+|---------|----------|----------|
+| Nộp Weekly Report | Review + comment | Status workflow |
+| Nộp Submission / sản phẩm | Feedback, yêu cầu sửa | Version history |
+| Resubmit | Duyệt lại | Notifications |
 
 ---
 
-# 6. Business Value
+## Bước 4. Kết thúc đợt
 
-## Lecturer
-
-- Theo dõi tiến độ tập trung.
-- Quản lý doanh nghiệp hiệu quả.
-- Dễ phản hồi.
-- Giảm thời gian tổng hợp.
+- Student nộp báo cáo / sản phẩm cuối (nếu yêu cầu).
+- Lecturer Evaluation (4 tiêu chí) → Finalize.
+- Export Excel cuối kỳ (`GET /api/Lecturer/export/end-of-term`).
 
 ---
 
-## Student
+# 5. Responsibility Matrix (RACI rút gọn)
 
-- Biết rõ deadline.
-- Nộp báo cáo tập trung.
-- Theo dõi phản hồi.
-- Dễ truy cập tài liệu.
+| Hoạt động | SuperAdmin | Lecturer | Student |
+|-----------|------------|----------|---------|
+| Import master data | **R** | — | — |
+| Cấp TK + email mời | **R** | — | — |
+| Phân công SV→GV | **R** | C (nhận SV) | — |
+| Gán DN cho internship | — | **R** | C |
+| Nộp báo cáo | — | A (duyệt) | **R** |
+| Feedback / chấm điểm | — | **R** | I |
+| Export cuối kỳ | — | **R** | — |
+| Forgot password | — | **R** (self) | **R** (self) |
+
+R = Responsible, A = Accountable (duyệt), C = Consulted, I = Informed
 
 ---
 
-## Faculty
+# 6. Workflow Comparison
 
-- Chuẩn hóa quy trình.
-- Xây dựng cơ sở dữ liệu doanh nghiệp.
-- Dễ thống kê kết quả thực tập.
-- Kế thừa dữ liệu qua nhiều năm.
+| AS-IS | TO-BE (InternLink) |
+|-------|---------------------|
+| Excel danh sách SV/GV | Admin import + DB |
+| Gửi MK qua Zalo/email lẻ | Invitation / reset email chuẩn |
+| Phân công GV bằng Excel | Bulk assign API |
+| DN trong Excel | Company master + assign company |
+| Báo cáo Zalo/Drive | Submission + WeeklyReport |
+| Comment Word | Feedback + version |
+| Tổng hợp Excel tay | Evaluation + Export Excel |
+
+Diagram so sánh: [`images/workflow/workflow-comparison.md`](images/workflow/workflow-comparison.md)
 
 ---
 
-# 7. Workflow Summary
+# 7. Business Value
 
-InternLink chuyển đổi quy trình hướng dẫn thực tập từ mô hình quản lý thủ công bằng nhiều công cụ rời rạc sang một nền tảng quản lý tập trung.
+| Stakeholder | Giá trị |
+|-------------|---------|
+| SuperAdmin | Vận hành tập trung: data, TK, phân công |
+| Lecturer | Chỉ làm nghiệp vụ hướng dẫn trên SV được giao |
+| Student | Một cổng nộp bài + feedback + tự reset MK |
+| Khoa | Company DB + dữ liệu kế thừa |
 
-Ba quy trình cốt lõi được ưu tiên trong phiên bản MVP gồm:
+---
 
-- Quản lý tiến độ thực tập.
-- Quản lý nộp bài và phản hồi.
-- Quản lý doanh nghiệp.
+# 8. Summary
 
-Đây là nền tảng để mở rộng các chức năng nâng cao trong các phiên bản tiếp theo.
+TO-BE MVP gồm **bốn** khối quy trình:
+
+1. **Admin ops** — import, TK, email, assign  
+2. **Company assign** — Lecturer gán DN  
+3. **Progress & feedback** — nộp / duyệt / sửa  
+4. **Evaluation & export** — chấm + Excel  
+
+Chi tiết UC: [`04-Use-Case-Specification.md`](04-Use-Case-Specification.md)

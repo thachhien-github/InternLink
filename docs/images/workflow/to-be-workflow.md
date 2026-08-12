@@ -1,45 +1,28 @@
 # TO-BE Business Workflow
 
+**Version:** 2.0 — includes SuperAdmin ops
+
 ```mermaid
 flowchart TD
 
-A[Giảng viên tạo đợt thực tập] --> B[Upload biểu mẫu]
+  A0[SuperAdmin: Import SV / GV / DN] --> A1[Tạo TK + Invitation email]
+  A1 --> A2[Bulk assign SV → GV]
+  A2 --> B[Lecturer: xem SV được giao]
+  B --> C[Lecturer: gán doanh nghiệp]
+  C --> D[Student: login / đổi MK nếu cần]
 
-B --> C[Sinh viên đăng nhập InternLink]
-
-C --> D[Xem tài liệu]
-
-D --> E[Đăng ký doanh nghiệp]
-
-E --> F[Giảng viên xác nhận]
-
-F --> G[Bắt đầu thực tập]
-
-G --> H[Cập nhật nhật ký]
-
-G --> I[Nộp báo cáo tiến độ]
-
-G --> J[Upload sản phẩm]
-
-H --> K[InternLink]
-
-I --> K
-
-J --> K
-
-K --> L[Giảng viên theo dõi Dashboard]
-
-L --> M[Nhận xét]
-
-M --> N{Đạt yêu cầu?}
-
-N -- Chưa --> O[Sinh viên chỉnh sửa]
-
-O --> I
-
-N -- Đạt --> P[Nộp báo cáo cuối kỳ]
-
-P --> Q[Chấm điểm]
-
-Q --> R[Hoàn thành]
+  D --> E[Nộp weekly report / submission]
+  E --> F[Lecturer: review + feedback]
+  F --> G{Đạt yêu cầu?}
+  G -- Chưa --> H[Student: chỉnh sửa / resubmit]
+  H --> E
+  G -- Đạt --> I[Nộp báo cáo / sản phẩm cuối]
+  I --> J[Lecturer: chấm điểm + finalize]
+  J --> K[Export Excel cuối kỳ]
+  K --> L[Hoàn thành]
 ```
+
+## Notes
+
+- Phân công GV = SuperAdmin; gán DN = Lecturer.
+- Sequence chi tiết: `docs/images/sequence/`.

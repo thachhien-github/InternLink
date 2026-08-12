@@ -1,8 +1,8 @@
 # InternLink - Vision & Scope
 
-**Version:** 1.0  
-**Date:** July 2026  
-**Status:** Approved (Requirement Discovery Completed)
+**Version:** 2.0  
+**Date:** August 2026  
+**Status:** Active — aligned with MVP + SuperAdmin module
 
 ---
 
@@ -16,271 +16,169 @@
 
 ## 1.2 Project Overview
 
-InternLink là nền tảng web hỗ trợ giảng viên quản lý, theo dõi và tương tác với sinh viên trong suốt quá trình hướng dẫn thực tập.
+InternLink là nền tảng web hỗ trợ **quản trị khoa/phòng**, **giảng viên hướng dẫn** và **sinh viên** trong suốt quá trình thực tập.
 
-Hệ thống được xây dựng nhằm số hóa quy trình hướng dẫn thực tập đang được thực hiện bằng nhiều công cụ rời rạc như Microsoft Excel, Zalo, Google Drive và Email, giúp tập trung toàn bộ dữ liệu, tài liệu và tiến độ trên một nền tảng thống nhất.
+Hệ thống số hóa quy trình đang phân tán trên Excel, Zalo, Google Drive và Email: tập trung master data, tài khoản, phân công hướng dẫn, tiến độ, nộp bài, phản hồi và đánh giá cuối kỳ trên một nền tảng thống nhất.
 
 ---
 
 # 2. Background
 
-Qua khảo sát thực tế với giảng viên hướng dẫn thực tập, quy trình hiện nay chủ yếu được thực hiện bằng nhiều công cụ khác nhau.
+Qua khảo sát thực tế với giảng viên hướng dẫn thực tập, quy trình hiện nay chủ yếu dùng nhiều công cụ rời rạc:
 
-Các công cụ đang được sử dụng gồm:
+- Microsoft Excel, Zalo, Google Drive, Email, Microsoft Word
 
-- Microsoft Excel
-- Zalo
-- Google Drive
-- Email
-- Microsoft Word
+Hệ quả:
 
-Việc sử dụng nhiều nền tảng dẫn đến:
-
-- Thông tin bị phân tán
-- Khó theo dõi tiến độ sinh viên
-- Khó quản lý nhiều phiên bản báo cáo
-- Mất nhiều thời gian tổng hợp dữ liệu cuối kỳ
-- Chưa có cơ sở dữ liệu doanh nghiệp tập trung
+- Thông tin phân tán; khó theo dõi tiến độ
+- Khó quản lý phiên bản báo cáo
+- Tốn thời gian tổng hợp cuối kỳ
+- Chưa có DB doanh nghiệp và quy trình cấp tài khoản / phân công GV tập trung
 
 ---
 
 # 3. Problem Statement
 
-InternLink được xây dựng nhằm giải quyết các vấn đề sau.
-
 ## P1. Fragmented Information
 
-Thông tin sinh viên, doanh nghiệp, báo cáo và phản hồi đang nằm trên nhiều nền tảng khác nhau.
-
----
+Thông tin SV, DN, báo cáo, phản hồi nằm trên nhiều nền tảng.
 
 ## P2. Internship Progress Tracking
 
-Giảng viên chưa có công cụ theo dõi tiến độ của từng sinh viên theo thời gian thực.
-
-Khó biết:
-
-- Sinh viên đang ở giai đoạn nào
-- Đã nộp những gì
-- Còn thiếu những gì
-- Có bị trễ hạn hay không
-
----
+Giảng viên thiếu công cụ theo dõi trạng thái / hạn nộp theo thời gian thực.
 
 ## P3. Submission Management
 
-Sinh viên thường gửi nhiều phiên bản báo cáo.
-
-Giảng viên khó xác định phiên bản mới nhất và lịch sử chỉnh sửa.
-
----
+Nhiều phiên bản báo cáo; khó xác định bản mới nhất và lịch sử.
 
 ## P4. Company Management
 
-Thông tin doanh nghiệp được lưu rải rác trong Excel, Zalo và Email.
-
-Khó tìm kiếm.
-
-Khó đánh giá.
-
-Khó kế thừa cho các đợt thực tập sau.
-
----
+Thông tin DN rải rác; khó tìm kiếm và kế thừa giữa các đợt.
 
 ## P5. Final Evaluation
 
-Việc tổng hợp:
+Tổng hợp nhật ký, báo cáo, điểm, nhận xét thủ công.
 
-- Nhật ký
-- Báo cáo
-- Phiếu doanh nghiệp
-- Điểm
-- Nhận xét
+## P6. Account & Assignment Operations *(MVP mở rộng)*
 
-được thực hiện thủ công.
+Cấp tài khoản SV/GV, gửi thông tin đăng nhập, phân công SV→GV còn thủ công qua Excel/email — dễ sai và khó kiểm soát.
 
 ---
 
 # 4. Objectives
 
-InternLink hướng đến ba mục tiêu chính.
-
-## Objective 1
-
-Tập trung toàn bộ quy trình hướng dẫn thực tập trên một nền tảng duy nhất.
-
----
-
-## Objective 2
-
-Giúp giảng viên quản lý và theo dõi tiến độ sinh viên hiệu quả hơn.
-
----
-
-## Objective 3
-
-Xây dựng cơ sở dữ liệu doanh nghiệp phục vụ lâu dài cho khoa.
+1. Tập trung quy trình hướng dẫn thực tập trên một nền tảng.
+2. Giúp giảng viên theo dõi và phản hồi SV được phân công hiệu quả hơn.
+3. Xây dựng cơ sở dữ liệu doanh nghiệp phục vụ lâu dài.
+4. Chuẩn hóa vận hành Admin: import dữ liệu, cấp TK, email mời, phân công hướng dẫn.
 
 ---
 
 # 5. Target Users
 
+## SuperAdmin (Ban quản lý / khoa)
+
+- Import / quản lý master data SV, GV, DN
+- Cấp và quản lý tài khoản; gửi email mời; reset mật khẩu
+- Phân công sinh viên cho giảng viên hướng dẫn
+
 ## Lecturer
 
-Giảng viên hướng dẫn thực tập.
-
-Chức năng:
-
-- Quản lý sinh viên
-- Theo dõi tiến độ
-- Phản hồi
-- Chấm điểm
-- Quản lý doanh nghiệp
-- Quản lý tài liệu
-
----
+- Xem SV được phân công; gán doanh nghiệp cho hồ sơ thực tập
+- Duyệt submission / weekly report; gửi feedback; chấm điểm; export cuối kỳ
+- Upload tài liệu biểu mẫu
 
 ## Student
 
-Sinh viên thực tập.
-
-Chức năng:
-
-- Theo dõi tiến độ
-- Nộp báo cáo
-- Xem phản hồi
-- Cập nhật nhật ký
-- Tải biểu mẫu
+- Nộp báo cáo tuần / sản phẩm; xem phản hồi; nộp lại
+- Tải tài liệu; xem thông báo
+- Đổi mật khẩu / quên mật khẩu (self-service)
 
 ---
 
-## Faculty (Future)
+# 6. MVP Scope (implemented)
 
-- Theo dõi thống kê
-- Quản lý doanh nghiệp
-- Quản lý đợt thực tập
+## Module A — Admin & Accounts
 
----
+- CRUD / import Students, Lecturers, Companies
+- User management (create, deactivate, admin reset password)
+- Invitation email + forgot/reset password
+- Bulk assign Students → Lecturer
 
-# 6. MVP Scope
+## Module B — Internship Progress
 
-Phiên bản đầu tiên tập trung giải quyết ba bài toán chính.
-
----
-
-## Module 1
-
-### Internship Progress
-
-- Timeline
-- Deadline
+- Internship status workflow
 - Weekly Report
-- Internship Log
-- Progress Status
-- Reminder
+- Notifications (in-app)
+
+## Module C — Submission & Feedback
+
+- Submission upload + versioning
+- Lecturer feedback; student resubmit
+
+## Module D — Company (master + assign)
+
+- Company master data (Admin write; Lecturer read)
+- Lecturer assigns company to internship
+
+## Module E — Evaluation & Export
+
+- 4-criteria evaluation + finalize
+- End-of-term Excel export
+
+## Supporting
+
+- JWT Authentication & role policies (`RequireAdmin` / `RequireLecturer` / `RequireStudent`)
+- Document library
+- Soft delete + audit fields
+
+Chi tiết UC: [`04-Use-Case-Specification.md`](04-Use-Case-Specification.md)  
+Backend: [`Backend-Plan.md`](Backend-Plan.md)
 
 ---
 
-## Module 2
+# 7. Out of Scope (MVP)
 
-### Submission & Feedback
+| Item | Ghi chú |
+|------|---------|
+| InternshipLog entity + API | Planned |
+| Configurable Rubric UI | Deferred |
+| Advanced Analytics Dashboard | Deferred |
+| AI matching / AI report review | Future |
+| Mobile app, realtime chat | Future |
+| Zalo / LMS integration | Future |
+| Hangfire / background mail queue | Future (bulk mail hiện sync) |
 
-- Report Upload
-- Product Upload
-- Version History
-- Lecturer Feedback
-- Student Response
-
----
-
-## Module 3
-
-### Company Management
-
-- Company Profile
-- Contact Person
-- Internship Positions
-- Cooperation History
-- Company Review
-- Previous Interns
-
----
-
-## Supporting Modules
-
-- Dashboard
-- Authentication
-- Document Library
-- Notification
-- User Management
-
----
-
-# 7. Out of Scope
-
-Các chức năng sau sẽ không nằm trong phiên bản MVP.
-
-- AI Assistant
-- Mobile Application
-- Real-time Chat
-- Email Integration
-- Zalo Integration
-- LMS Integration
-- Advanced Analytics
-- AI Company Recommendation
+**Đã đưa vào MVP (khác Vision v1.0):** Email invitation / password reset (SMTP hoặc logging stub).
 
 ---
 
 # 8. Expected Benefits
 
-## Lecturer
-
-- Theo dõi tiến độ tập trung
-- Giảm thời gian quản lý
-- Dễ phản hồi
-- Dễ tổng hợp cuối kỳ
-
----
-
-## Student
-
-- Theo dõi deadline
-- Nộp báo cáo tập trung
-- Nhận phản hồi nhanh
-- Dễ truy cập tài liệu
-
----
-
-## Faculty
-
-- Hình thành Company Database
-- Chuẩn hóa quy trình
-- Thống kê thực tập
-- Kế thừa dữ liệu qua nhiều năm
+| Stakeholder | Lợi ích |
+|-------------|---------|
+| SuperAdmin | Import tập trung, cấp TK + email, phân công GV rõ ràng |
+| Lecturer | Workflow SV được giao; phản hồi / chấm / export nhanh |
+| Student | Nộp bài một nơi; nhận feedback; tự reset MK |
+| Faculty | Company DB + dữ liệu kế thừa qua các đợt |
 
 ---
 
 # 9. Future Vision
 
-Sau khi hoàn thành MVP, InternLink có thể mở rộng theo các hướng sau.
-
-- AI Company Matching
-- AI Progress Analysis
-- AI Report Review
-- Analytics Dashboard
-- Multi-Faculty Management
-- School Management System Integration
+- AI company matching / progress analysis
+- Multi-faculty / batch management
+- School SMS integration
+- Rich analytics
 
 ---
 
 # 10. Conclusion
 
-InternLink không chỉ là hệ thống quản lý thực tập mà còn là nền tảng hỗ trợ cộng tác giữa giảng viên, sinh viên và doanh nghiệp.
+InternLink MVP giải quyết:
 
-Phiên bản MVP tập trung giải quyết ba bài toán cốt lõi:
+1. Vận hành Admin (dữ liệu + tài khoản + phân công)
+2. Tiến độ & nộp bài / phản hồi
+3. Doanh nghiệp & đánh giá cuối kỳ
 
-- Quản lý tiến độ thực tập
-- Quản lý nộp bài và phản hồi
-- Quản lý doanh nghiệp
-
-Đây sẽ là nền tảng để mở rộng thành hệ thống quản lý thực tập toàn diện trong tương lai.
+Nền tảng sẵn sàng tích hợp frontend và mở rộng các module Planned.

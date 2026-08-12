@@ -2,152 +2,126 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — reflects MVP backend + Admin complete
 
 ---
 
 # 1. Overview
 
-Roadmap mô tả kế hoạch phát triển InternLink theo từng giai đoạn, từ phân tích yêu cầu đến triển khai phiên bản MVP và mở rộng UX cho cả Lecturer và Student Portal.
+Roadmap theo hướng **MVP-first**: backend + Admin module xong → frontend portals → soft enhancements.
 
 ---
 
-# 2. Roadmap Phases
+# 2. Status at a glance
 
-1. Phase 1 Dashboard
-2. Phase 2 Student
-3. Phase 3 Internship
-4. Phase 4 Company
-5. Phase 5 Documents
-6. Phase 6 Evaluation & Grading
-7. Phase 7 Analytics & Reporting
-8. Phase 8 Notification
-9. Phase 9 Account/Profile
-10. Phase 10 Student Portal
-
----
-
-# 3. Official Architecture
-
-## InternLink (Lecturer)
-
-01 Dashboard
-
-02 Student
-
-03 Internship
-
-04 Company
-
-05 Documents
-
-06 Evaluation & Grading
-
-07 Analytics & Reporting
-
-08 Notification
-
-09 Account
+| Workstream | Status |
+|------------|--------|
+| Analysis & design docs | ✅ D0–D5 complete |
+| Database (12 tables) | ✅ |
+| Backend MVP (Lecturer + Student APIs) | ✅ |
+| SuperAdmin module (Phases 0–7) | ✅ |
+| OpenAPI / Postman | ✅ |
+| Frontend Admin / Lecturer / Student | 🚧 Next |
+| Integration & UAT | ⏳ |
+| Future (AI, InternshipLog, Hangfire) | Backlog |
 
 ---
 
-## Student Portal
+# 3. Completed — Backend & Admin
 
-01 Dashboard
+1. Auth JWT + change / forgot / reset password  
+2. Admin: students, companies, users, assignments, email  
+3. Lecturer workflow: review, feedback, evaluation, export Excel  
+4. Student: weekly report, submission, feedback loop  
+5. Documents + notifications  
+6. Docs: Domain/DB/UC/Workflow/Architecture/IA  
 
-02 Internship
-
-03 Weekly Report
-
-04 Submission
-
-05 Feedback
-
-06 Documents
-
-07 Profile
-
-- Thu thập phản hồi.
-- Điều chỉnh hệ thống.
+Chi tiết: [`Backend-Plan.md`](Backend-Plan.md) · [`Admin-Implementation-Plan.md`](Admin-Implementation-Plan.md)
 
 ---
 
-# 8. Phase 6 - Future Enhancements
+# 4. Official product structure (target UI)
 
-Các chức năng dự kiến phát triển sau MVP:
+## SuperAdmin portal
 
-- AI hỗ trợ đánh giá tiến độ thực tập.
-- AI gợi ý doanh nghiệp phù hợp với sinh viên.
-- AI phân tích báo cáo thực tập.
-- Dashboard thống kê nâng cao.
-- Email Notification.
-- Export PDF/Excel.
-- Dark Mode.
-- Mobile Responsive tối ưu.
-- Docker Deployment.
-- Cloud Deployment.
+01 Dashboard · 02 Students · 03 Lecturers · 04 Companies · 05 Users · 06 Assignments · 07 Account
 
----
+## Lecturer portal
 
-# 9. Milestones
+01 Dashboard · 02 Internships · 03 Documents · 04 Evaluation · 05 Export · 06 Notifications · 07 Account  
+(+ read-only Students/Companies)
 
-| Milestone | Deliverable |
-|------------|-------------|
-| M1 | Analysis Complete |
-| M2 | Database Complete |
-| M3 | Backend API Ready |
-| M4 | Frontend Ready |
-| M5 | Integration Complete |
-| M6 | MVP Demo |
-| M7 | Final Release |
+## Student portal
+
+01 Dashboard · 02 Internship · 03 Weekly Report · 04 Submission · 05 Feedback · 06 Documents · 07 Profile
+
+IA: [`07a-Information-Architecture.md`](07a-Information-Architecture.md)
 
 ---
 
-# 10. Success Criteria
+# 5. Next milestones
 
-Dự án được xem là hoàn thành khi:
-
-- Hoàn thành toàn bộ chức năng MVP.
-- Giảng viên có thể quản lý sinh viên thực tập trên hệ thống.
-- Sinh viên có thể nộp báo cáo và nhận phản hồi.
-- Hệ thống hoạt động ổn định.
-- Có thể triển khai thử nghiệm trong môi trường thực tế.
-
----
-
-# 11. Project Timeline
-
-| Phase | Duration |
-|--------|----------|
-| Analysis & Design | Completed |
-| Backend Development | 3 tuần |
-| Frontend Development | 3 tuần |
-| Integration & Testing | 1 tuần |
-| MVP Demo | 1 tuần |
-
-Tổng thời gian dự kiến:
-
-```
-8 tuần
-```
+| ID | Milestone | Deliverable | Status |
+|----|-----------|-------------|--------|
+| M1 | Analysis complete | Vision, SRS, UC | ✅ |
+| M2 | Database complete | EF migrations + docs | ✅ |
+| M3 | Backend API ready | Swagger + Admin | ✅ |
+| M4 | Docs polish | Docs plan D0–D5 | ✅ |
+| M5 | Frontend ready | 3 portals | ⏳ |
+| M6 | Integration & UAT | Smoke + real SMTP | ⏳ |
+| M7 | MVP demo | Stakeholder demo | ⏳ |
 
 ---
 
-# 12. Risks
+# 6. Frontend sprint suggestion
+
+1. Auth shell (login, must-change-password, forgot/reset)  
+2. Admin: students + assignments  
+3. Lecturer: internships + feedback  
+4. Student: weekly report + feedback view  
+5. Polish notifications + documents  
+
+---
+
+# 7. Backlog (post-MVP)
+
+| Item | Priority |
+|------|----------|
+| InternshipLog entity + API | Medium |
+| Hangfire / queued email for bulk import | Medium |
+| Advanced analytics dashboard | Low |
+| Configurable rubric UI | Low |
+| AI matching / report assist | Future |
+| Docker / cloud deploy | Future |
+| AutoMapper upgrade (NU1903) | Tech debt |
+
+**Already done (was “future” in v1):** Email notification, Excel export.
+
+---
+
+# 8. Success criteria (MVP)
+
+- [x] SuperAdmin import + cấp TK + phân công SV→GV  
+- [x] Lecturer quản lý workflow SV được giao + chấm + export  
+- [x] Student nộp báo cáo / xem feedback  
+- [ ] Frontend 3 portals usable in demo  
+- [ ] Ổn định trên môi trường thử nghiệm khoa  
+
+---
+
+# 9. Risks
 
 | Risk | Mitigation |
 |------|------------|
-| Thay đổi yêu cầu | Thiết kế module linh hoạt |
-| Thiếu thời gian | Ưu tiên hoàn thành MVP |
-| Lỗi tích hợp API | Kiểm thử từng Sprint |
-| Dữ liệu mẫu chưa đầy đủ | Xây dựng dữ liệu giả lập |
+| Frontend drift vs API | Bind to swagger.json |
+| SMTP chưa sẵn | LoggingEmailService + checklist |
+| Scope creep (AI) | Giữ backlog; không chặn M5 |
 
 ---
 
-# 13. Summary
+# 10. Summary
 
-InternLink được phát triển theo hướng MVP-first, ưu tiên giải quyết các khó khăn thực tế trong quá trình hướng dẫn thực tập.
-
-Sau khi MVP hoàn thành và được kiểm thử với giảng viên, hệ thống sẽ tiếp tục được mở rộng với các tính năng AI và thống kê nâng cao trong các phiên bản tiếp theo.
+**Backend MVP + Admin = Done.**  
+Bước tiếp theo chính: **Frontend portals** theo IA v2, rồi UAT/demo.

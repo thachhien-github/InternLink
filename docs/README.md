@@ -45,31 +45,27 @@ InternLink aims to:
 
 ## Core Features
 
+### SuperAdmin
+
+- Import / CRUD Students, Lecturers, Companies
+- User accounts + invitation email
+- Bulk assign Students → Lecturers
+- Admin password reset
+
 ### Lecturer
 
-- Dashboard
-- Student Management
-- Internship Progress Tracking
-- Weekly Reports
-- Internship Logs
-- Submission Review
-- Feedback Management
-- Evaluation
-- Company Management
-- Public Documents
-- Notifications
-
----
+- Assigned internship workflow
+- Assign company to internship
+- Weekly report / submission review & feedback
+- Evaluation + end-of-term Excel export
+- Documents & notifications
 
 ### Student
 
-- Internship Dashboard
-- Weekly Reports
-- Internship Logs
-- Report Submission
-- Feedback
-- Documents
-- Notifications
+- Weekly reports & submissions
+- View feedback / resubmit
+- Documents & notifications
+- Change / forgot password
 
 ---
 
@@ -127,32 +123,24 @@ InternLink/
 
 ```text
 docs/
-├── 01-Vision-Scope.md
-├── 02-Software-Requirements-Specification.md
-├── 04-Use-Case-Specification.md      ← actors + UC list (v2, SuperAdmin)
-├── 05a-Domain-Model.md
-├── 05b-Entity-Relationship-Diagram.md
-├── 05c-Data-Dictionary.md
-├── 05d-Database-Design.md
-├── 06-System-Architecture.md
-├── Backend-Plan.md
-├── Admin-Implementation-Plan.md
-├── Admin-Smoke-Test-Checklist.md
-├── 10-Roadmap.md
-└── images/
-    ├── usecase/usecase-diagram.md
-    ├── sequence/                     ← invitation, bulk-assign, forgot-password
-    ├── architecture/
-    ├── application-flow/
-    ├── information-architecture/
-    └── workflow/
-
-database/
-├── README.md
-├── MIGRATIONS.md
-├── diagrams/erd.md
-└── scripts/verify-schema.sql
+├── Docs-Completion-Plan.md           ← D0–D5 DONE
+├── ONBOARDING.md                     ← 15 phút chạy API
+├── 01-Vision-Scope.md                ✅ Active v2
+├── 02-Software-Requirements-Specification.md  ✅ Active v2
+├── 03-Business-Workflow.md           ✅ Active v2
+├── 04-Use-Case-Specification.md      ✅ Active v2
+├── 05a–05d (Domain / ERD / Dictionary / DB Design) ✅
+├── 06-System-Architecture.md         ✅ Active v2
+├── 07a / 07b (IA / App Flow)         ✅ Active v2
+├── 08-API-Specification.md           ✅ Active v2
+├── 10-Roadmap.md                     ✅ Active v2
+├── Backend-Plan.md / Admin-*         ✅
+└── images/ (usecase, sequence, …)
 ```
+
+**Status matrix:** [`DOCS-STATUS.md`](DOCS-STATUS.md)  
+**Completion plan:** [`Docs-Completion-Plan.md`](Docs-Completion-Plan.md) *(D0–D5 complete)*  
+**Quick start:** [`ONBOARDING.md`](ONBOARDING.md)
 
 ### Key diagrams (ưu tiên đọc)
 
@@ -170,12 +158,12 @@ database/
 
 | Module | Status |
 |----------|--------|
-| Requirements Analysis | ✅ |
+| Requirements Analysis | ✅ Vision + SRS v2 |
 | Database Design | ✅ |
-| System Architecture | ✅ |
-| Information Architecture | ✅ |
-| API Design | ✅ |
-| UI/UX Guidelines | ✅ |
+| Use Cases / Sequences | ✅ |
+| System Architecture | ✅ v2 |
+| Information Architecture | ✅ v2 |
+| API Design (markdown) | ✅ v2 (Swagger canonical) |
 | Backend Development | ✅ MVP + Admin module |
 | Frontend Development | 🚧 |
 | Integration Testing | ⏳ |

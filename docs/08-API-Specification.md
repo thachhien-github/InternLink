@@ -2,596 +2,185 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — overview synced with implementation
+
+> **Canonical OpenAPI:** [`api/swagger.json`](../api/swagger.json)  
+> **Postman:** [`api/postman_collection.json`](../api/postman_collection.json)  
+> **Live Swagger UI:** `http://localhost:7109/swagger`
+
+Tài liệu này là **overview + policy map**. Chi tiết request/response schema lấy từ Swagger.
 
 ---
 
 # 1. Overview
 
-Tài liệu này mô tả các RESTful API của hệ thống InternLink.
-
-API được xây dựng bằng **ASP.NET Core Web API** và trả dữ liệu dưới định dạng **JSON**.
-
-Authentication sử dụng **JWT Bearer Token**.
-
-Base URL:
-
-```
-https://localhost:5001/api
-```
+| Item | Value |
+|------|--------|
+| Style | REST + JSON |
+| Backend | ASP.NET Core Web API |
+| Auth | JWT Bearer |
+| Wrapper | `ApiResponse<T>` `{ success, data, error }` |
+| Dev Base URL | `http://localhost:7109/api` |
 
 ---
 
-# 2. API Conventions
+# 2. Conventions
 
-## HTTP Methods
+| Method | Use |
+|--------|-----|
+| GET | Read |
+| POST | Create / search / actions |
+| PUT | Update / assign |
+| PATCH | Partial (e.g. status) |
+| DELETE | Soft delete / unassign |
 
-| Method | Purpose |
-|---------|----------|
-| GET | Lấy dữ liệu |
-| POST | Tạo mới |
-| PUT | Cập nhật toàn bộ |
-| PATCH | Cập nhật một phần |
-| DELETE | Xóa |
+**Auth header:** `Authorization: Bearer {token}`
 
 ---
 
-## Response Format
+# 3. Authorization Policies
+
+| Policy | Role | Typical routes |
+|--------|------|----------------|
+| Anonymous | — | `/api/Auth/login`, `forgot-password`, `reset-password` |
+| `RequireAdmin` | SuperAdmin | `/api/Admin/*` |
+| `RequireLecturer` | Lecturer only | `/api/Lecturer/*`, Internship write, Evaluation, … |
+| `RequireStudent` | Student | WeeklyReport / Submission (student ops) |
+| Authenticated | Any logged-in | `/api/Auth/me`, Notifications, Documents (scoped) |
+
+Lecturer **không** gọi được `/api/Admin/*` (403).
+
+---
+
+# 4. Auth API
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/api/Auth/login` | — | Returns `token`, `role`, `mustChangePassword`, `expiresAt` |
+| POST | `/api/Auth/logout` | JWT | Stateless |
+| GET | `/api/Auth/me` | JWT | Current user |
+| POST | `/api/Auth/change-password` | JWT | Clears `MustChangePassword` |
+| POST | `/api/Auth/forgot-password` | — | Body `{ email }` — always 200 |
+| POST | `/api/Auth/reset-password` | — | Body `{ token, newPassword }` |
+
+---
+
+# 5. Admin API (`RequireAdmin`)
+
+## Students — `/api/Admin/students`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/` | List paginated |
+| POST | `/search` | Filter |
+| GET | `/{id}` | Detail |
+| POST | `/` | Create (+ optional user/email) |
+| PUT | `/{id}` | Update |
+| DELETE | `/{id}` | Soft delete |
+| POST | `/import` | Excel |
+| GET | `/import/template` | Template file |
+
+## Companies — `/api/Admin/companies`
+
+CRUD + search + import (same pattern as students).
+
+## Users — `/api/Admin/users`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/` | Filter role/active/search |
+| GET | `/{id}` | Detail |
+| POST | `/` | Create Student/Lecturer + invitation |
+| PUT | `/{id}` | FullName, Email, IsActive |
+| DELETE | `/{id}` | Soft delete |
+| POST | `/{id}/reset-password` | Temp password emailed; **not** in JSON |
+
+## Assignments — `/api/Admin/assignments`
+
+| Method | Path | Body / notes |
+|--------|------|----------------|
+| POST | `/` | `{ lecturerId, studentIds[] }` bulk assign |
+| GET | `/by-lecturer/{lecturerId}` | List assignments |
+| DELETE | `/` | `{ lecturerId, studentId }` unassign |
+
+## Email
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/api/Admin/email/test` | Send test invitation |
+
+## Lecturers (profile write)
+
+| Method | Path | Notes |
+|--------|------|-------|
+| * | `/api/LecturerProfile` | SuperAdmin write / import; Lecturer may read overview |
+
+---
+
+# 6. Lecturer / shared (selected)
+
+| Area | Base | Policy | Notes |
+|------|------|--------|-------|
+| Workflow | `/api/Lecturer/internships` | Lecturer | Assigned only |
+| Feedback | `/api/Lecturer/submissions/{id}/feedback` | Lecturer | |
+| Export | `/api/Lecturer/export/end-of-term` | Lecturer | Excel |
+| Internship | `/api/Internship` | Lecturer | **No LecturerId write** — use Admin assign |
+| Assign DN | `PUT /api/Internship/{id}/company` | Lecturer | |
+| Evaluation | `/api/Evaluation` | Lecturer | + `/{id}/finalize` |
+| Students read | `/api/Student` | Lecturer | Read-only |
+| Companies read | `/api/Company` | SuperAdmin, Lecturer | Read-only on CompanyController |
+
+---
+
+# 7. Student / progress (selected)
+
+| Area | Base | Notes |
+|------|------|-------|
+| WeeklyReport | `/api/WeeklyReport` | Student submit; Lecturer review |
+| Submission | `/api/Submission` | Versioning / resubmit |
+| Feedback | `/api/Feedback/{id}` | |
+| Documents | `/api/Document` | Upload/download scoped |
+| Notifications | `/api/Notification/mine` | mark-read |
+
+---
+
+# 8. Error model
 
 ```json
 {
-    "success": true,
-    "message": "Success",
-    "data": {}
+  "success": false,
+  "data": null,
+  "error": { "title": "…", "detail": "…" }
 }
 ```
 
----
-
-## Error Response
-
-```json
-{
-    "success": false,
-    "message": "Student not found."
-}
-```
+Typical codes: `400` validation, `401` auth, `403` policy, `404` not found, `409` conflict.
 
 ---
 
-# 3. Authentication API
+# 9. Seed credentials (dev)
 
-## Login
-
-POST
-
-```
-/api/auth/login
-```
-
-Request
-
-```json
-{
-    "username": "lecturer01",
-    "password": "******"
-}
-```
-
-Response
-
-```json
-{
-    "token": "...",
-    "expiredAt": "...",
-    "role": "Lecturer"
-}
-```
+| User | Password | Role |
+|------|----------|------|
+| `superadmin` | `Password123!` | SuperAdmin |
+| `lecturer1` | `Password123!` | Lecturer |
+| `student1` | `Password123!` | Student |
 
 ---
 
-## Current User
+# 10. How to refresh this doc
 
-GET
-
-```
-/api/auth/me
-```
+1. Run API → download `/swagger/v1/swagger.json` → `api/swagger.json`
+2. Update this overview only when routes/policies change
+3. Prefer Swagger for field-level schemas
 
 ---
 
-# 4. Student API
-
-## Get All Students
-
-GET
-
-```
-/api/students
-```
-
----
-
-## Get Student By Id
-
-GET
-
-```
-/api/students/{id}
-```
-
----
-
-## Create Student
-
-POST
-
-```
-/api/students
-```
-
----
-
-## Update Student
-
-PUT
-
-```
-/api/students/{id}
-```
-
----
-
-## Delete Student
-
-DELETE
-
-```
-/api/students/{id}
-```
-
----
-
-# 5. Company API
-
-## Get Companies
-
-GET
-
-```
-/api/companies
-```
-
----
-
-## Company Detail
-
-GET
-
-```
-/api/companies/{id}
-```
-
----
-
-## Create Company
-
-POST
-
-```
-/api/companies
-```
-
----
-
-## Update Company
-
-PUT
-
-```
-/api/companies/{id}
-```
-
----
-
-## Delete Company
-
-DELETE
-
-```
-/api/companies/{id}
-```
-
----
-
-# 6. Internship API
-
-## Get Internship
-
-GET
-
-```
-/api/internships
-```
-
----
-
-## Internship Detail
-
-GET
-
-```
-/api/internships/{id}
-```
-
----
-
-## Assign Company
-
-PUT
-
-```
-/api/internships/{id}/company
-```
-
----
-
-## Update Status
-
-PATCH
-
-```
-/api/internships/{id}/status
-```
-
----
-
-# 7. Weekly Report API
-
-## Get Reports
-
-GET
-
-```
-/api/weekly-reports
-```
-
----
-
-## Create Report
-
-POST
-
-```
-/api/weekly-reports
-```
-
----
-
-## Update Report
-
-PUT
-
-```
-/api/weekly-reports/{id}
-```
-
----
-
-## Delete Report
-
-DELETE
-
-```
-/api/weekly-reports/{id}
-```
-
----
-
-# 8. Internship Log API
-
-## Get Logs
-
-GET
-
-```
-/api/internship-logs
-```
-
----
-
-## Create Log
-
-POST
-
-```
-/api/internship-logs
-```
-
----
-
-## Update Log
-
-PUT
-
-```
-/api/internship-logs/{id}
-```
-
----
-
-## Delete Log
-
-DELETE
-
-```
-/api/internship-logs/{id}
-```
-
----
-
-# 9. Submission API
-
-## Get Submissions
-
-GET
-
-```
-/api/submissions
-```
-
----
-
-## Upload Submission
-
-POST
-
-```
-/api/submissions
-```
-
-Request
-
-multipart/form-data
-
-```
-file
-title
-internshipId
-```
-
----
-
-## Submission Detail
-
-GET
-
-```
-/api/submissions/{id}
-```
-
----
-
-## Delete Submission
-
-DELETE
-
-```
-/api/submissions/{id}
-```
-
----
-
-# 10. Feedback API
-
-## Get Feedback
-
-GET
-
-```
-/api/feedbacks
-```
-
----
-
-## Add Feedback
-
-POST
-
-```
-/api/feedbacks
-```
-
----
-
-## Update Feedback
-
-PUT
-
-```
-/api/feedbacks/{id}
-```
-
----
-
-# 11. Evaluation API
-
-## Get Evaluation
-
-GET
-
-```
-/api/evaluations/{internshipId}
-```
-
----
-
-## Save Evaluation
-
-POST
-
-```
-/api/evaluations
-```
-
----
-
-## Update Evaluation
-
-PUT
-
-```
-/api/evaluations/{id}
-```
-
----
-
-# 12. Document API
-
-## Public Documents
-
-GET
-
-```
-/api/documents
-```
-
----
-
-## Upload Document
-
-POST
-
-```
-/api/documents
-```
-
----
-
-## Download Document
-
-GET
-
-```
-/api/documents/{id}/download
-```
-
----
-
-## Delete Document
-
-DELETE
-
-```
-/api/documents/{id}
-```
-
----
-
-# 13. Notification API
-
-## Get Notifications
-
-GET
-
-```
-/api/notifications
-```
-
----
-
-## Mark As Read
-
-PATCH
-
-```
-/api/notifications/{id}/read
-```
-
----
-
-# 14. HTTP Status Codes
-
-| Code | Meaning |
-|------|----------|
-| 200 | OK |
-| 201 | Created |
-| 204 | No Content |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 500 | Internal Server Error |
-
----
-
-# 15. Authorization
-
-| Role | Permissions |
-|------|-------------|
-| Lecturer | Full Access |
-| Student | Own Internship Data |
-
----
-
-# 16. API Naming Convention
-
-Resource-based REST API.
-
-Examples:
-
-```
-GET     /students
-GET     /students/{id}
-POST    /students
-PUT     /students/{id}
-DELETE  /students/{id}
-```
-
-Nested Resources
-
-```
-GET /students/{id}/internship
-
-GET /companies/{id}/internships
-
-GET /internships/{id}/submissions
-
-GET /submissions/{id}/feedbacks
-```
-
----
-
-# 17. Swagger
-
-Tất cả API sẽ được tự động tài liệu hóa bằng Swagger/OpenAPI.
-
-Development URL:
-
-```
-https://localhost:5001/swagger
-```
-
----
-
-# 18. Summary
-
-InternLink cung cấp RESTful API theo mô hình Resource-Oriented.
-
-Các nhóm API chính gồm:
-
-- Authentication
-- Students
-- Companies
-- Internships
-- Weekly Reports
-- Internship Logs
-- Submissions
-- Feedbacks
-- Evaluations
-- Documents
-- Notifications
-
-Tất cả API sử dụng JSON, JWT Authentication và được triển khai bằng ASP.NET Core Web API.
+# 11. Revision
+
+| Ver | Date | Notes |
+|-----|------|-------|
+| 1.0 | 2026-07 | Draft, incomplete paths |
+| 2.0 | 2026-08-12 | Admin + Auth reset; points to swagger.json |

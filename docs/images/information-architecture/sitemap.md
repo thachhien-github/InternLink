@@ -1,22 +1,46 @@
-# Sitemap
+# Sitemap — InternLink (MVP UI)
 
-This document captures the high-level site structure for InternLink.
+**Version:** 2.0
 
-## Lecturer
+## Public
+
+```text
+/login
+/forgot-password
+/reset-password
+```
+
+## SuperAdmin — `/admin`
 
 ```text
 Dashboard
-├── Student Management
-├── Internship Management
-├── Company Management
-├── Documents
-├── Evaluation
-├── Report Analytics
-├── Notifications
-└── Account Management
+├── Students
+├── Lecturers
+├── Companies
+├── Users
+├── Assignments
+├── Email test
+└── Account
 ```
 
-## Student
+## Lecturer — `/lecturer`
+
+```text
+Dashboard
+├── Internships (assigned)
+│   ├── Detail / Assign company
+│   ├── Weekly reports
+│   ├── Submissions & feedback
+│   └── Evaluation
+├── Students (read-only)
+├── Companies (read-only)
+├── Documents
+├── Export end-of-term
+├── Notifications
+└── Account
+```
+
+## Student — `/student`
 
 ```text
 Dashboard
@@ -26,5 +50,5 @@ Dashboard
 ├── Feedback
 ├── Documents
 ├── Notifications
-└── Profile
+└── Profile / Account
 ```

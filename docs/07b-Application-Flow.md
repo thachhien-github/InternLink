@@ -2,154 +2,112 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — aligned with MVP + SuperAdmin module
+
+**Detail flows:** [`images/application-flow/`](images/application-flow/) · **Sequences:** [`images/sequence/`](images/sequence/)
 
 ---
 
 # 1. Overview
 
-Application Flow mô tả luồng thao tác của người dùng khi sử dụng hệ thống InternLink.
+Application Flow mô tả thao tác trên UI — cơ sở wireframe và gắn API.
 
-Tài liệu này giúp:
-
-- Hiểu rõ quy trình nghiệp vụ trên giao diện.
-- Xác định các màn hình cần thiết.
-- Làm cơ sở thiết kế Wireframe/UI.
-- Hỗ trợ thiết kế API theo từng chức năng.
+Ba nhóm: **SuperAdmin**, **Lecturer**, **Student**.
 
 ---
 
-# 2. User Roles
-
-Hệ thống có hai nhóm người dùng chính:
-
-- Lecturer
-- Student
-
----
-
-# 3. Lecturer Workflow
+# 2. Global Auth Flow
 
 ```text
-Dashboard
-
-↓
-
-Quản lý sinh viên
-
-↓
-
-Theo dõi thực tập
-
-↓
-
-Quản lý doanh nghiệp
-
-↓
-
-Biểu mẫu
-
-↓
-
-Đánh giá & Chấm điểm
-
-↓
-
-Thống kê & Báo cáo
-
-↓
-
-Thông báo
-
-↓
-
-Tài khoản
+Login
+  ├─ success + MustChangePassword=true → Change Password → Home by role
+  ├─ success → Home by role (Admin | Lecturer | Student)
+  └─ Forgot password → email link → Reset password → Login
 ```
 
 ---
 
-# 4. Student Workflow
+# 3. SuperAdmin Flows
 
 ```text
-Dashboard
-
-↓
-
-Internship
-
-↓
-
-Weekly Report
-
-↓
-
-Submission
-
-↓
-
-Feedback
-
-↓
-
-Documents
-
-↓
-
-Profile
+Admin Dashboard
+  ├── Students (list → create/import → invitation)
+  ├── Lecturers (list → create/import → invitation)
+  ├── Companies (list → create/import)
+  ├── Users (list → create / deactivate / reset password)
+  └── Assignments (select GV → chọn SV → bulk assign → xem by lecturer)
 ```
+
+| Flow file | Mô tả |
+|-----------|--------|
+| [`admin-import-invite.md`](images/application-flow/admin-import-invite.md) | Import/tạo SV + email mời |
+| [`admin-bulk-assign.md`](images/application-flow/admin-bulk-assign.md) | Gán SV → GV |
+| [`forgot-password.md`](images/application-flow/forgot-password.md) | Quên MK (mọi role) |
+
+API sequences: `invitation-email.md`, `bulk-assign.md`, `forgot-password.md` trong `images/sequence/`.
 
 ---
 
-# 5. Shared Flow
-
-## Notifications
+# 4. Lecturer Flows
 
 ```text
-Notification
-    ↓
-Open
-    ↓
-Mark as Read
+Lecturer Dashboard
+  → Internships (assigned)
+      → Detail
+          → Assign / change company
+          → Review weekly reports
+          → Review submissions → Feedback
+          → Evaluation → Finalize
+  → Students / Companies (read-only browse)
+  → Documents
+  → Export end-of-term
+  → Notifications / Account
 ```
+
+Existing detail diagrams (vẫn dùng được):
+
+- `lecturer-review-submission.md`, `lecturer-review-report.md`
+- `lecturer-evaluation.md`, `lecturer-upload-document.md`
+- `lecturer-login.md`
+
+**Deprecated UI intent:** `lecturer-manage-students.md` / `lecturer-manage-company.md` — nếu giữ, chỉ còn **view**; write nằm ở Admin.
 
 ---
 
-## Profile
+# 5. Student Flows
 
 ```text
-Profile
-    ↓
-Update Information
-    ↓
-Save
+Student Dashboard
+  → Internship status
+  → Weekly Report (draft → submit)
+  → Submission / Product upload
+  → Feedback → Resubmit if needed
+  → Documents / Notifications / Account
 ```
 
----
-
-# 6. Application Flow Summary
-
-## Lecturer
-
-- Dashboard
-- Student Management
-- Internship Tracking
-- Company Management
-- Documents
-- Evaluation & Grading
-- Analytics & Reporting
-- Notifications
-- Account Management
+Existing: `student-weekly-report.md`, `student-submission.md`, `student-feedback.md`, `student-resubmission.md`, …
 
 ---
 
-## Student
+# 6. Cross-cutting
 
-- Dashboard
-- Internship
-- Weekly Report
-- Submission
-- Feedback
-- Documents
-- Profile
+| Event | UI reaction |
+|-------|-------------|
+| Notification click | Deep-link entity |
+| 401 JWT expired | Redirect login |
+| 403 Admin API as Lecturer | Show forbidden |
+| Email disabled (dev) | Ops check server logs for invitation/reset |
+
+---
+
+# 7. Summary
+
+| Portal | Primary path |
+|--------|----------------|
+| SuperAdmin | Data → Accounts → Assign |
+| Lecturer | Assigned internships → Review → Grade → Export |
+| Student | Submit → Feedback loop |
+
+Wireframe frontend nên bám sitemap `07a` + 3 flow Admin mới ở trên.

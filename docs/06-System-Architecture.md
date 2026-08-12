@@ -2,53 +2,71 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — aligned with MVP + SuperAdmin + Email
+
+**Diagrams:** [`images/architecture/`](images/architecture/)
 
 ---
 
 # 1. Overview
 
-InternLink được thiết kế theo mô hình Client–Server nhằm hỗ trợ giảng viên và sinh viên quản lý quá trình thực tập trên một nền tảng tập trung.
+InternLink dùng kiến trúc **Client–Server** + backend **4-layer**.
 
-Hệ thống bao gồm ba thành phần chính:
+Thành phần chính:
 
-- Frontend
-- Backend
-- Database
-
-Kiến trúc này giúp dễ bảo trì, dễ mở rộng và phù hợp với các ứng dụng Web hiện đại.
+- Frontend (React)
+- Backend (ASP.NET Core Web API)
+- Database (SQL Server)
+- Email (SMTP hoặc Logging stub)
 
 ---
 
 # 2. High-Level Architecture
 
-```text
-+-----------------------------------------------------+
-|                     Client Layer                    |
-|-----------------------------------------------------|
-| ReactJS + TypeScript + TailwindCSS + Vite           |
-+-------------------------▲---------------------------+
-                          │ HTTPS + JSON
-                          ▼
-+-----------------------------------------------------+
-|                  ASP.NET Core Web API              |
-|-----------------------------------------------------|
-| Authentication (JWT)                               |
-| Controllers                                        |
-| Services                                           |
-| Repositories                                       |
-| Entity Framework Core                              |
-+-------------------------▲---------------------------+
-                          │
-                          ▼
-+-----------------------------------------------------+
-|                  Microsoft SQL Server              |
-|-----------------------------------------------------|
-| Internship Database                                |
-+-----------------------------------------------------+
+```mermaid
+flowchart LR
+  SA[SuperAdmin]
+  L[Lecturer]
+  S[Student]
+
+  SA --> FE
+  L --> FE
+  S --> FE
+
+  subgraph Client
+    FE[React + TypeScript + Vite]
+  end
+
+  subgraph API["ASP.NET Core Web API"]
+    CTRL[Controllers<br/>Auth / Admin / Lecturer / Student…]
+    APP[Application<br/>DTOs · Services · Validators]
+    DOM[Domain<br/>Entities · Enums]
+    INF[Infrastructure<br/>EF Core · Email · JWT]
+  end
+
+  subgraph Data
+    DB[(SQL Server)]
+    FS[File storage]
+  end
+
+  subgraph Mail
+    SMTP[SmtpEmailService]
+    LOG[LoggingEmailService]
+  end
+
+  FE -->|HTTPS JSON + JWT| CTRL
+  CTRL --> APP
+  APP --> DOM
+  APP --> INF
+  INF --> DB
+  INF --> FS
+  INF -->|Email:Enabled| SMTP
+  INF -->|Email:Enabled=false| LOG
 ```
+
+Canonical Mermaid: [`images/architecture/overall-architecture.md`](images/architecture/overall-architecture.md)
 
 ---
 
@@ -56,303 +74,183 @@ Kiến trúc này giúp dễ bảo trì, dễ mở rộng và phù hợp với c
 
 | Layer | Technology |
 |--------|------------|
-| Frontend | ReactJS |
-| Build Tool | Vite |
-| Language | TypeScript |
-| UI | Tailwind CSS |
-| Backend | ASP.NET Core Web API (.NET 9) |
+| Frontend | React, TypeScript, Vite, Tailwind |
+| Backend | ASP.NET Core Web API (.NET 10) |
 | ORM | Entity Framework Core |
-| Database | SQL Server |
-| Authentication | JWT |
-| API Documentation | Swagger |
-| Testing | Postman |
+| Database | SQL Server / LocalDB |
+| Auth | JWT Bearer |
+| Email | MailKit (SMTP) / LoggingEmailService |
+| Docs API | Swagger / OpenAPI |
+| Tests | xUnit + Moq + FluentAssertions |
 
 ---
 
 # 4. Frontend Architecture
 
-Frontend được tổ chức theo Page-Based Architecture.
+Page-based (planned / in progress):
 
 ```text
 src/
-│
-├── assets/
-├── components/
-├── contexts/
-├── hooks/
+├── pages/          # Admin | Lecturer | Student portals
 ├── layouts/
-├── pages/
-├── routes/
-├── services/
-├── types/
-├── utils/
-├── App.tsx
-└── main.tsx
+├── services/       # Axios + JWT
+├── routes/         # role guards
+└── …
 ```
 
-### Responsibilities
-
-- Hiển thị giao diện.
-- Gửi HTTP Request.
-- Xử lý trạng thái giao diện.
-- Quản lý Authentication.
-- Hiển thị Dashboard.
+Client lưu JWT; gửi `Authorization: Bearer`. Nếu `MustChangePassword` → redirect đổi MK.
 
 ---
 
-# 5. Backend Architecture
-
-Backend áp dụng mô hình 4-Layer Architecture.
+# 5. Backend Architecture (4 layers)
 
 ```text
-InternLink.API
+InternLink.API            Controllers, middleware, Swagger
         │
-        ▼
-InternLink.Application
+InternLink.Application    DTOs, interfaces, validators, mappings
         │
-        ▼
-InternLink.Domain
+InternLink.Domain         Entities, enums (no framework deps)
         │
-        ▼
-InternLink.Infrastructure
+InternLink.Infrastructure EF Core, Email, JWT, Seed, Services impl
 ```
 
----
+### API surface (groups)
 
-## API Layer
+| Group | Route prefix | Policy |
+|-------|--------------|--------|
+| Auth | `/api/Auth` | Anonymous / Authorize |
+| Admin | `/api/Admin/*` | `RequireAdmin` (SuperAdmin) |
+| Lecturer workflow | `/api/Lecturer`, … | `RequireLecturer` |
+| Student / shared | `/api/WeeklyReport`, … | Role-specific |
+| Master read | `/api/Student`, `/api/Company` | Lecturer (read-only) |
 
-Chịu trách nhiệm:
-
-- Routing
-- Authentication
-- Authorization
-- Validation
-- HTTP Response
-
----
-
-## Application Layer
-
-Chứa:
-
-- DTO
-- Services
-- Interfaces
-- Business Logic
-
----
-
-## Domain Layer
-
-Chứa:
-
-- Entities
-- Enums
-- Domain Models
-
-Không phụ thuộc Framework.
-
----
-
-## Infrastructure Layer
-
-Chứa:
-
-- DbContext
-- Repository
-- EF Core Configuration
-- Database Access
+Chi tiết: [`Backend-Plan.md`](Backend-Plan.md)
 
 ---
 
 # 6. Database Architecture
 
-SQL Server lưu toàn bộ dữ liệu nghiệp vụ.
+- 12 bảng nghiệp vụ (+ `__EFMigrationsHistory`)
+- Soft delete + audit trên `BaseEntity`
+- Migrations code-first
 
-Entity Framework Core chịu trách nhiệm:
-
-- Migration
-- CRUD
-- LINQ
-- Mapping
+Xem: [`database/README.md`](../database/README.md) · [`05d-Database-Design.md`](05d-Database-Design.md)
 
 ---
 
-# 7. Authentication Architecture
+# 7. Authentication & Authorization
 
-InternLink sử dụng JWT Authentication.
+1. `POST /api/Auth/login` → JWT + `Role` + `MustChangePassword`
+2. Client gắn Bearer token
+3. Policies:
 
-Quy trình:
+| Policy | Role |
+|--------|------|
+| `RequireAdmin` / `RequireSuperAdmin` | SuperAdmin |
+| `RequireLecturer` | Lecturer only |
+| `RequireStudent` | Student only |
 
-1. User Login
-2. API xác thực
-3. Tạo JWT Token
-4. Client lưu Token
-5. Client gửi Token trong Authorization Header
-6. API xác thực Token
-7. Trả dữ liệu
+Password: ASP.NET Identity hasher.  
+Reset token: SHA-256 hash trong `PasswordResetTokens`.
 
 ---
 
-# 8. Request Flow
+# 8. Email Architecture
+
+| Setting | Behavior |
+|---------|----------|
+| `Email:Enabled=true` | `SmtpEmailService` (MailKit) |
+| `Email:Enabled=false` | `LoggingEmailService` → Serilog (dev) |
+
+Templates:
+
+- Invitation (username + temp password)
+- Admin password reset notification
+- Forgot-password **link only**
+
+Config: `PortalUrl`, `PasswordResetPath`, `InstitutionName`, SMTP credentials (secrets).
+
+---
+
+# 9. Request Flow
 
 ```text
-React Page
-
-↓
-
-API Service
-
-↓
-
-Controller
-
-↓
-
-Application Service
-
-↓
-
-Repository
-
-↓
-
-DbContext
-
-↓
-
-SQL Server
+React → Controller → Application Service → Infrastructure (EF / Email)
+                         ↓
+                    Domain entities
+                         ↓
+                    SQL Server / SMTP
 ```
 
-Response
+Sequence chi tiết: [`images/architecture/request-lifecycle.md`](images/architecture/request-lifecycle.md)
+
+---
+
+# 10. Security
+
+- JWT + role policies
+- Password hashing; reset token hashing + expiry + one-time
+- Không trả mật khẩu tạm trong JSON
+- Soft delete; SuperAdmin protected trên Admin Users API
+- Input validation (FluentValidation)
+- HTTPS (production)
+
+---
+
+# 11. File Storage
+
+DB chỉ metadata (`FileName`, `FilePath`/`FileUrl`, `MimeType`, `FileSize`).  
+Binary trên filesystem (hoặc object storage sau này).
+
+---
+
+# 12. Deployment
+
+### Development
 
 ```text
-SQL Server
-
-↓
-
-DbContext
-
-↓
-
-Repository
-
-↓
-
-Application Service
-
-↓
-
-Controller
-
-↓
-
-React UI
+React (Vite)  →  http://localhost:5173
+API           →  http://localhost:7109  (+ Swagger)
+SQL Server    →  LocalDB InternLink
+Email         →  LoggingEmailService
 ```
 
----
-
-# 9. Security
-
-Hệ thống áp dụng:
-
-- JWT Authentication
-- Role-based Authorization
-- Password Hashing
-- HTTPS
-- Input Validation
-
----
-
-# 10. File Storage
-
-InternLink không lưu file trực tiếp trong SQL Server.
-
-Database chỉ lưu:
-
-- FileName
-- FileUrl
-- FileSize
-- ContentType
-
-Các tệp được lưu trong thư mục lưu trữ của hệ thống.
-
----
-
-# 11. Deployment Architecture
-
-Development
+### Production (target)
 
 ```text
-React Dev Server
-
-↓
-
-ASP.NET Web API
-
-↓
-
-SQL Server Local
+Browser → Static React → ASP.NET Core → SQL Server
+                              ↓
+                         SMTP (Email:Enabled=true)
 ```
 
-Production
+Secrets qua environment / user secrets — không commit.
 
-```text
-Browser
-
-↓
-
-React Build
-
-↓
-
-ASP.NET Core
-
-↓
-
-SQL Server
-```
+Deployment notes: [`images/architecture/deployment-architecture.md`](images/architecture/deployment-architecture.md)
 
 ---
 
-# 12. Future Architecture
+# 13. Future Architecture
 
-Trong các phiên bản tiếp theo có thể mở rộng:
-
-- AI Recommendation Service
-- AI Report Analysis
-- Email Service
-- Notification Service
-- Docker Deployment
-- Cloud Storage
-- Logging & Monitoring
-
-Kiến trúc hiện tại được thiết kế để hỗ trợ việc bổ sung các dịch vụ trên mà không cần thay đổi lớn.
+| Item | Status |
+|------|--------|
+| Email Service | ✅ Implemented |
+| Notification (in-app) | ✅ Implemented |
+| Hangfire / mail queue | Planned |
+| AI services | Future |
+| Docker / cloud storage | Future |
 
 ---
 
-# 13. Architecture Principles
+# 14. Architecture Principles
 
-InternLink được xây dựng dựa trên các nguyên tắc:
-
-- Separation of Concerns
-- Single Responsibility Principle
-- Layered Architecture
-- RESTful API
-- Reusability
-- Scalability
-- Maintainability
+- Separation of Concerns / SRP
+- Layered + RESTful
+- Policy-based authorization (Admin ≠ Lecturer)
+- Config-driven email
+- Migrations as schema source of truth
 
 ---
 
-# 14. Summary
+# 15. Summary
 
-InternLink áp dụng kiến trúc Client–Server kết hợp với mô hình 4-Layer cho Backend.
-
-Kiến trúc này đảm bảo:
-
-- Dễ phát triển.
-- Dễ bảo trì.
-- Dễ mở rộng.
-- Phù hợp với quy mô MVP.
-- Sẵn sàng tích hợp AI trong các phiên bản tiếp theo.
+Kiến trúc MVP hỗ trợ đủ 3 portal (Admin / Lecturer / Student), JWT, email invitation & reset, và EF Core SQL Server — sẵn sàng gắn frontend.
