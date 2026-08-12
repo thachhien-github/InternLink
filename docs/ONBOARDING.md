@@ -42,3 +42,5 @@ Checklist đầy đủ: [`Admin-Smoke-Test-Checklist.md`](Admin-Smoke-Test-Check
 ## 5. Email ở Dev
 
 `Email:Enabled=false` → nội dung mail ghi vào Serilog (`InternLink.API/Logs/`).
+
+Bật Gmail thật: [`Email-Setup-Gmail.md`](Email-Setup-Gmail.md) (`internlink.cntt@gmail.com` + App Password + user-secrets).

@@ -23,6 +23,7 @@
 | `Admin-Smoke-Test-Checklist.md` | 1.0 | ✅ Active | High | Synced |
 | `Docs-Completion-Plan.md` | 1.0 | ✅ Active | — | D0–D5 complete |
 | `ONBOARDING.md` | 1.0 | ✅ Active | — | D5 — 15-min start |
+| `Email-Setup-Gmail.md` | 1.0 | ✅ Active | — | Gmail SMTP + App Password |
 | `database/README.md` | 1.2 | ✅ Active | High | Synced |
 | `api/swagger.json` | — | ✅ Active | High | OpenAPI export |
 | `api/postman_collection.json` | — | ✅ Active | High | Auth + Admin |
