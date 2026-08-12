@@ -2,37 +2,55 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Draft
+**Status:** Active — aligned with Admin module (Phases 0–7)
+
+**Diagrams:**
+- Use Case: [`docs/images/usecase/usecase-diagram.md`](images/usecase/usecase-diagram.md)
+- Sequence: [`docs/images/sequence/`](images/sequence/)
 
 ---
 
 # 1. Overview
 
-Tài liệu này mô tả các chức năng mà người dùng có thể thực hiện trên hệ thống InternLink.
+Tài liệu mô tả chức năng người dùng trên InternLink theo **ba tác nhân**:
 
-Phiên bản MVP có hai tác nhân chính:
-
-- Lecturer (Giảng viên hướng dẫn)
-- Student (Sinh viên)
+| Actor | Vai trò |
+|-------|---------|
+| **SuperAdmin** | Quản trị hệ thống (phòng/khoa): import dữ liệu, cấp TK, email mời, phân công SV→GV |
+| **Lecturer** | Hướng dẫn thực tập: theo dõi SV được giao, gán DN, duyệt/chấm, export |
+| **Student** | Sinh viên thực tập: nộp báo cáo, xem phản hồi |
 
 ---
 
 # 2. Actors
 
-## Lecturer
+## SuperAdmin
 
-Giảng viên hướng dẫn thực tập.
+Quản trị viên hệ thống — **không** thay thế Giảng viên trong nghiệp vụ hàng ngày.
 
 Responsibilities:
 
-- Quản lý sinh viên
-- Quản lý doanh nghiệp
-- Theo dõi tiến độ
-- Quản lý biểu mẫu
-- Phản hồi
-- Chấm điểm
+- Import / CRUD sinh viên, giảng viên, doanh nghiệp
+- Cấp và quản lý tài khoản (tạo, khóa, reset mật khẩu)
+- Gửi email mời tham gia (invitation)
+- Phân công sinh viên cho giảng viên (bulk assign)
+- Kiểm tra email (test SMTP)
+
+---
+
+## Lecturer
+
+Giảng viên hướng dẫn thực tập (chỉ SV được phân công).
+
+Responsibilities:
+
+- Xem danh sách SV / DN (read-only master data)
+- Gán doanh nghiệp cho hồ sơ thực tập
+- Theo dõi tiến độ, duyệt submission / weekly report
+- Gửi feedback, chấm điểm, finalize evaluation
+- Upload tài liệu, export Excel cuối kỳ
 
 ---
 
@@ -42,75 +60,271 @@ Sinh viên thực tập.
 
 Responsibilities:
 
-- Xem biểu mẫu
-- Cập nhật tiến độ
-- Nộp báo cáo
-- Nộp sản phẩm
-- Xem phản hồi
+- Đăng nhập / đổi mật khẩu / quên mật khẩu
+- Nộp báo cáo tuần, sản phẩm / báo cáo cuối
+- Xem phản hồi, nộp lại khi được yêu cầu
+- Tải tài liệu, xem thông báo
 
 ---
 
 # 3. Use Case List
 
-| ID | Use Case | Actor |
-|-----|----------|--------|
-| UC-01 | Login | Lecturer, Student |
-| UC-02 | View Dashboard | Lecturer |
-| UC-03 | Manage Students | Lecturer |
-| UC-04 | View Student Profile | Lecturer |
-| UC-05 | Manage Companies | Lecturer |
-| UC-06 | Assign Company | Lecturer |
-| UC-07 | Publish Documents | Lecturer |
-| UC-08 | Download Documents | Student |
-| UC-09 | Submit Weekly Report | Student |
-| UC-10 | Submit Internship Log | Student |
-| UC-11 | Upload Final Report | Student |
-| UC-12 | Upload Product | Student |
-| UC-13 | Review Submission | Lecturer |
-| UC-14 | Send Feedback | Lecturer |
-| UC-15 | View Feedback | Student |
-| UC-16 | Resubmit Report | Student |
-| UC-17 | Đánh giá sinh viên | Lecturer |
-| UC-18 | Chấm điểm | Lecturer |
-| UC-19 | Quản lý Rubric | Lecturer |
-| UC-20 | Xuất bảng điểm | Lecturer |
-| UC-21 | Xem Dashboard thống kê | Lecturer, Student |
-| UC-22 | Xuất báo cáo | Lecturer |
-| UC-23 | Phân tích dữ liệu | Lecturer |
+## 3.1 Auth (chung)
+
+| ID | Use Case | Actor | Status |
+|----|----------|--------|--------|
+| UC-01 | Login | SuperAdmin, Lecturer, Student | ✅ |
+| UC-02 | Change Password | SuperAdmin, Lecturer, Student | ✅ |
+| UC-03 | Forgot Password | SuperAdmin, Lecturer, Student | ✅ |
+| UC-04 | Reset Password | SuperAdmin, Lecturer, Student | ✅ |
+| UC-05 | View Current User (Me) | SuperAdmin, Lecturer, Student | ✅ |
+
+## 3.2 SuperAdmin
+
+| ID | Use Case | Actor | Status |
+|----|----------|--------|--------|
+| UC-A01 | Manage Students (CRUD / Import) | SuperAdmin | ✅ |
+| UC-A02 | Create Student Account + Invitation Email | SuperAdmin | ✅ |
+| UC-A03 | Manage Lecturers (CRUD / Import) | SuperAdmin | ✅ |
+| UC-A04 | Create Lecturer Account + Invitation Email | SuperAdmin | ✅ |
+| UC-A05 | Manage Companies (CRUD / Import) | SuperAdmin | ✅ |
+| UC-A06 | Manage Users (CRUD / Deactivate) | SuperAdmin | ✅ |
+| UC-A07 | Admin Reset User Password | SuperAdmin | ✅ |
+| UC-A08 | Bulk Assign Students → Lecturer | SuperAdmin | ✅ |
+| UC-A09 | Unassign Student from Lecturer | SuperAdmin | ✅ |
+| UC-A10 | View Assignments by Lecturer | SuperAdmin | ✅ |
+| UC-A11 | Test Invitation Email | SuperAdmin | ✅ |
+
+## 3.3 Lecturer
+
+| ID | Use Case | Actor | Status |
+|----|----------|--------|--------|
+| UC-L01 | View Assigned Internships | Lecturer | ✅ |
+| UC-L02 | View Students (read-only) | Lecturer | ✅ |
+| UC-L03 | View Companies (read-only) | Lecturer | ✅ |
+| UC-L04 | Assign / Change Company for Internship | Lecturer | ✅ |
+| UC-L05 | Review Submission | Lecturer | ✅ |
+| UC-L06 | Send Feedback | Lecturer | ✅ |
+| UC-L07 | Review Weekly Report | Lecturer | ✅ |
+| UC-L08 | Evaluate / Grade Internship | Lecturer | ✅ |
+| UC-L09 | Finalize Evaluation | Lecturer | ✅ |
+| UC-L10 | Upload / Manage Documents | Lecturer | ✅ |
+| UC-L11 | Export End-of-Term Excel | Lecturer | ✅ |
+| UC-L12 | Manage Lecturer Profile (own / overview) | SuperAdmin, Lecturer | ✅ |
+
+## 3.4 Student
+
+| ID | Use Case | Actor | Status |
+|----|----------|--------|--------|
+| UC-S01 | Submit Weekly Report | Student | ✅ |
+| UC-S02 | Upload Final Report / Product | Student | ✅ |
+| UC-S03 | View Feedback | Student | ✅ |
+| UC-S04 | Resubmit Report | Student | ✅ |
+| UC-S05 | Download Documents | Student | ✅ |
+| UC-S06 | View Notifications | Student | ✅ |
+
+## 3.5 Planned / deferred
+
+| ID | Use Case | Actor | Status |
+|----|----------|--------|--------|
+| UC-P01 | Submit Internship Log | Student | ⬜ Planned |
+| UC-P02 | Manage Rubric (configurable) | Lecturer | ⬜ Deferred |
+| UC-P03 | Advanced Analytics Dashboard | Lecturer | ⬜ Deferred |
 
 ---
 
-# 4. Use Case Specifications
+# 4. Use Case Specifications (key flows)
 
 ## UC-01 Login
 
 ### Actor
 
-- Lecturer
-- Student
+SuperAdmin, Lecturer, Student
 
 ### Description
 
-Đăng nhập hệ thống.
+Đăng nhập bằng username / password, nhận JWT.
 
 ### Preconditions
 
-Người dùng có tài khoản hợp lệ.
+Tài khoản tồn tại, `IsActive = true`, chưa soft-delete.
 
 ### Main Flow
 
-1. Nhập tài khoản.
-2. Nhập mật khẩu.
-3. Hệ thống xác thực.
-4. Chuyển đến Dashboard.
+1. Người dùng nhập username và password.
+2. Hệ thống xác thực hash mật khẩu.
+3. Hệ thống trả JWT + `Role` + `MustChangePassword`.
+4. Nếu `MustChangePassword = true`, client chuyển sang đổi mật khẩu.
 
 ### Alternative Flow
 
-- Sai tài khoản hoặc mật khẩu.
+- Sai credentials → 401.
+- Tài khoản bị khóa (`IsActive = false`) → 401.
+
+### API
+
+`POST /api/Auth/login`
 
 ---
 
-## UC-05 Manage Companies
+## UC-03 Forgot Password
+
+### Actor
+
+SuperAdmin, Lecturer, Student
+
+### Description
+
+Yêu cầu link đặt lại mật khẩu qua email (không trả mật khẩu plaintext).
+
+### Main Flow
+
+1. Người dùng gửi email đã đăng ký.
+2. Nếu email tồn tại và active → tạo `PasswordResetToken` (hash, expiry 24h).
+3. Gửi email chứa link `{PortalUrl}/reset-password?token=...`.
+4. API luôn trả 200 (không lộ email có tồn tại hay không).
+
+### API
+
+`POST /api/Auth/forgot-password`
+
+**Sequence:** [`forgot-password.md`](images/sequence/forgot-password.md)
+
+---
+
+## UC-04 Reset Password
+
+### Actor
+
+SuperAdmin, Lecturer, Student
+
+### Description
+
+Đặt mật khẩu mới bằng token từ email.
+
+### Main Flow
+
+1. Người dùng mở link, nhập mật khẩu mới.
+2. Hệ thống hash token, tìm bản ghi chưa dùng / chưa hết hạn.
+3. Cập nhật `PasswordHash`, `MustChangePassword = false`, đánh dấu `UsedAt`.
+4. Login bằng mật khẩu mới.
+
+### Alternative Flow
+
+- Token hết hạn / đã dùng / sai → 401.
+
+### API
+
+`POST /api/Auth/reset-password`
+
+---
+
+## UC-A01 Manage Students (CRUD / Import)
+
+### Actor
+
+SuperAdmin
+
+### Description
+
+Quản lý master data sinh viên: xem, tạo, sửa, xóa mềm, import Excel.
+
+### Main Flow
+
+1. SuperAdmin mở `/api/Admin/students`.
+2. CRUD hoặc import file Excel (có cột Username nếu cần tạo TK).
+3. Hệ thống lưu profile `Students`.
+
+### Notes
+
+Lecturer chỉ **đọc** qua `/api/Student` (read-only).
+
+### API
+
+`GET|POST|PUT|DELETE /api/Admin/students`, `POST .../import`
+
+---
+
+## UC-A02 / UC-A04 Create Account + Invitation Email
+
+### Actor
+
+SuperAdmin
+
+### Description
+
+Tạo tài khoản login gắn profile SV/GV và gửi email mời (username + mật khẩu tạm).
+
+### Main Flow
+
+1. SuperAdmin tạo SV/GV (hoặc User) kèm Username + Email.
+2. Hệ thống tạo `Users` (role tương ứng), `MustChangePassword = true`.
+3. Gửi invitation email (SMTP hoặc log khi `Email:Enabled=false`).
+4. Người nhận đăng nhập → bắt buộc đổi MK.
+
+### API
+
+- Students: `POST /api/Admin/students`
+- Lecturers: `POST /api/LecturerProfile`
+- Users: `POST /api/Admin/users`
+
+**Sequence:** [`invitation-email.md`](images/sequence/invitation-email.md)
+
+---
+
+## UC-A07 Admin Reset User Password
+
+### Actor
+
+SuperAdmin
+
+### Description
+
+Đặt lại mật khẩu tạm ngẫu nhiên, gửi email thông báo (không trả MK trong API response).
+
+### Main Flow
+
+1. SuperAdmin gọi reset trên user.
+2. Hệ thống sinh password tạm, hash, `MustChangePassword = true`.
+3. Gửi email “Mật khẩu mới”.
+
+### API
+
+`POST /api/Admin/users/{id}/reset-password`
+
+---
+
+## UC-A08 Bulk Assign Students → Lecturer
+
+### Actor
+
+SuperAdmin
+
+### Description
+
+Gán nhiều sinh viên cho một giảng viên.
+
+### Main Flow
+
+1. SuperAdmin chọn `lecturerId` + danh sách `studentIds`.
+2. Với mỗi SV:
+   - Chưa có Internship → tạo stub (`NotStarted`, DN placeholder).
+   - Đã có → cập nhật `LecturerId` (re-assign).
+3. Lecturer xem SV trong workflow.
+
+### Postconditions
+
+Lecturer cũ không còn thấy SV đã re-assign.
+
+### API
+
+`POST /api/Admin/assignments`
+
+**Sequence:** [`bulk-assign.md`](images/sequence/bulk-assign.md)
+
+---
+
+## UC-L04 Assign Company for Internship
 
 ### Actor
 
@@ -118,23 +332,78 @@ Lecturer
 
 ### Description
 
-Quản lý danh sách doanh nghiệp thực tập.
+Gán / đổi doanh nghiệp cho hồ sơ thực tập (SV đã được Admin phân công).
 
 ### Main Flow
 
-1. Xem danh sách doanh nghiệp.
-2. Thêm doanh nghiệp mới.
-3. Chỉnh sửa thông tin.
-4. Xóa doanh nghiệp.
-5. Tìm kiếm doanh nghiệp.
+1. Lecturer chọn internship thuộc mình.
+2. Chọn `CompanyId` từ danh sách DN (read-only list).
+3. Hệ thống cập nhật `Internships.CompanyId`.
 
-### Postconditions
+### Notes
 
-Thông tin doanh nghiệp được cập nhật.
+Lecturer **không** đổi `LecturerId` — chỉ SuperAdmin phân công GV.
+
+### API
+
+`PUT /api/Internship/{id}/company`
 
 ---
 
-## UC-09 Submit Weekly Report
+## UC-L05 / UC-L06 Review Submission + Send Feedback
+
+### Actor
+
+Lecturer
+
+### Description
+
+Xem submission của SV được giao, gửi nhận xét, cập nhật trạng thái.
+
+### Main Flow
+
+1. Lecturer mở internship → danh sách submissions.
+2. Đọc nội dung / file.
+3. Gửi feedback (`Comment`, `IsPublic`, optional `NewStatus`).
+4. Student nhận thông báo / xem phản hồi.
+
+---
+
+## UC-L08 / UC-L09 Evaluate + Finalize
+
+### Actor
+
+Lecturer
+
+### Description
+
+Chấm 4 tiêu chí (Technical, Communication, Teamwork, Initiative), tính `FinalGrade`, chốt điểm.
+
+### Main Flow
+
+1. Nhập điểm + nhận xét.
+2. Lưu evaluation (draft).
+3. Finalize → khóa chỉnh sửa.
+
+---
+
+## UC-L11 Export End-of-Term Excel
+
+### Actor
+
+Lecturer
+
+### Description
+
+Xuất Excel tổng kết SV được phân công cuối kỳ.
+
+### API
+
+`GET /api/Lecturer/export/end-of-term`
+
+---
+
+## UC-S01 Submit Weekly Report
 
 ### Actor
 
@@ -142,174 +411,34 @@ Student
 
 ### Description
 
-Sinh viên nộp báo cáo tiến độ.
+Nộp báo cáo tuần gắn internship.
 
 ### Preconditions
 
-Đã được phân công thực tập.
+Đã có Internship (đã được Admin phân công GV).
 
 ### Main Flow
 
-1. Chọn tuần.
-2. Upload báo cáo.
-3. Gửi.
-4. Hệ thống lưu phiên bản.
-
-### Postconditions
-
-Giảng viên nhận được báo cáo.
+1. Chọn tuần (`WeekNumber`).
+2. Nhập tiêu đề / nội dung (hoặc file qua Submission).
+3. Submit → trạng thái Submitted.
+4. Lecturer review.
 
 ---
 
-## UC-13 Review Submission
+## UC-S04 Resubmit Report
 
 ### Actor
 
-Lecturer
+Student
 
 ### Description
 
-Kiểm tra báo cáo sinh viên.
+Nộp lại sau khi Lecturer yêu cầu chỉnh sửa (`RevisionRequested`).
 
-### Main Flow
+### Extend
 
-1. Chọn sinh viên.
-2. Mở báo cáo.
-3. Xem lịch sử phiên bản.
-4. Gửi nhận xét.
-
----
-
-## UC-17 Đánh giá sinh viên
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Đánh giá hiệu suất và chất lượng thực tập của sinh viên.
-
-### Main Flow
-
-1. Chọn sinh viên cần đánh giá.
-2. Xem thông tin thực tập và báo cáo.
-3. Nhập nhận xét đánh giá.
-4. Lưu kết quả đánh giá.
-
----
-
-## UC-18 Chấm điểm
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Chấm điểm các báo cáo, sản phẩm và hoạt động thực tập.
-
-### Main Flow
-
-1. Chọn mục cần chấm.
-2. Nhập điểm theo thang điểm.
-3. Xem tổng kết điểm.
-4. Lưu kết quả.
-
----
-
-## UC-19 Quản lý Rubric
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Quản lý tiêu chí đánh giá cho các hoạt động thực tập.
-
-### Main Flow
-
-1. Xem danh sách rubric.
-2. Tạo rubric mới.
-3. Sửa rubric hiện tại.
-4. Lưu thay đổi.
-
----
-
-## UC-20 Xuất bảng điểm
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Xuất bảng điểm dưới dạng file để báo cáo hoặc lưu trữ.
-
-### Main Flow
-
-1. Chọn khoảng thời gian hoặc lớp.
-2. Chọn định dạng xuất.
-3. Tạo file bảng điểm.
-4. Tải xuống.
-
----
-
-## UC-21 Xem Dashboard thống kê
-
-### Actor
-
-- Lecturer
-- Student
-
-### Description
-
-Xem dashboard thống kê tổng quan về tiến độ, điểm số và hoạt động.
-
-### Main Flow
-
-1. Mở trang Dashboard.
-2. Xem các chỉ số KPI và biểu đồ.
-3. Lọc và phân tích dữ liệu.
-
----
-
-## UC-22 Xuất báo cáo
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Xuất báo cáo chi tiết về sinh viên, doanh nghiệp và kết quả thực tập.
-
-### Main Flow
-
-1. Chọn loại báo cáo.
-2. Chọn phạm vi dữ liệu.
-3. Tạo báo cáo.
-4. Tải xuống.
-
----
-
-## UC-23 Phân tích dữ liệu
-
-### Actor
-
-- Lecturer
-
-### Description
-
-Phân tích dữ liệu hoạt động để hỗ trợ ra quyết định.
-
-### Main Flow
-
-1. Mở phần Analytics.
-2. Chọn số liệu cần phân tích.
-3. Xem biểu đồ và kết quả phân tích.
-4. Lưu hoặc xuất báo cáo.
+UC-S03 View Feedback
 
 ---
 
@@ -317,25 +446,37 @@ Phân tích dữ liệu hoạt động để hỗ trợ ra quyết định.
 
 ## Include
 
-- Review Submission → View Student Profile
-- Send Feedback → Review Submission
-- Evaluate Internship → View Progress
-
----
+- UC-L06 Send Feedback → UC-L05 Review Submission
+- UC-A02 Create Student Account → invitation email send
+- UC-A08 Bulk Assign → create/update Internship
 
 ## Extend
 
-- Resubmit Report → View Feedback
-- Upload Product → Submit Weekly Report
+- UC-S04 Resubmit → UC-S03 View Feedback
+- UC-01 Login → UC-02 Change Password (khi `MustChangePassword`)
+
+## Authorization boundary
+
+```text
+RequireAdmin     → SuperAdmin only  (/api/Admin/*)
+RequireLecturer  → Lecturer only    (workflow, không gộp SuperAdmin)
+RequireStudent   → Student only
+```
 
 ---
 
 # 6. Summary
 
-InternLink cung cấp 23 Use Case chính cho hai nhóm người dùng.
+| Nhóm | Số UC chính (implemented) |
+|------|---------------------------|
+| Auth | 5 |
+| SuperAdmin | 11 |
+| Lecturer | 12 |
+| Student | 6 |
+| **Tổng** | **~34** (MVP + Admin) |
 
-Các Use Case tập trung vào ba quy trình cốt lõi:
+Ba quy trình cốt lõi sau Admin module:
 
-- Quản lý tiến độ thực tập.
-- Quản lý nộp bài và phản hồi.
-- Quản lý doanh nghiệp.
+1. **Admin vận hành:** import master data → cấp TK + email → phân công SV→GV.
+2. **Lecturer hướng dẫn:** gán DN → duyệt / feedback → chấm điểm → export.
+3. **Student thực tập:** nộp bài → xem phản hồi → nộp lại; tự phục vụ quên MK.

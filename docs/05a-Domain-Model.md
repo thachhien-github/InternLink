@@ -2,9 +2,9 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.2
+**Version:** 1.3
 
-**Status:** Active — aligned with implementation (Admin module Phase 0)
+**Status:** Active — aligned with implementation (Admin module complete)
 
 ---
 
@@ -23,6 +23,8 @@ Khác với ERD, Domain Model tập trung vào nghiệp vụ thay vì thiết k�
 ## User
 
 Đại diện cho tài khoản đăng nhập hệ thống.
+
+Thuộc tính bổ sung: `MustChangePassword` (bắt đổi MK lần đầu sau invitation / admin reset).
 
 Vai trò:
 
@@ -151,6 +153,13 @@ Thông báo hệ thống (`Title`, `Content`, `IsRead`).
 
 ---
 
+## PasswordResetToken
+
+Token một lần cho luồng quên mật khẩu (hash, expiry, UsedAt).  
+Liên kết `User`; không lưu plaintext token trong DB.
+
+---
+
 # 5. Domain Relationships
 
 ```
@@ -161,12 +170,15 @@ Internship ──1:N── WeeklyReport | Submission | Document
 Internship ──0..1── Evaluation
 Submission ──1:N── Feedback
 User ──1:N── Notification
+User ──1:N── PasswordResetToken
 ```
 
 ---
 
 # 6. Summary
 
-InternLink gồm **12 miền nghiệp vụ** (11 đã triển khai + InternshipLog planned):
+InternLink gồm **13 miền nghiệp vụ** (12 đã triển khai + InternshipLog planned):
 
-User · Lecturer · Student · Company · Internship · WeeklyReport · Submission · Feedback · Evaluation · Document · Notification · *(InternshipLog)*
+User · Lecturer · Student · Company · Internship · WeeklyReport · Submission · Feedback · Evaluation · Document · Notification · PasswordResetToken · *(InternshipLog)*
+
+Database ops: [`database/README.md`](../database/README.md)

@@ -2,9 +2,11 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.0
+**Version:** 1.2
 
-**Status:** Draft
+**Status:** Active — aligned with EF Core / SQL Server (12 tables)
+
+**See also:** [`database/README.md`](../database/README.md) · [`database/MIGRATIONS.md`](../database/MIGRATIONS.md)
 
 ---
 
@@ -12,13 +14,12 @@
 
 Tài liệu này mô tả các quyết định thiết kế cơ sở dữ liệu của hệ thống InternLink.
 
-Mục tiêu là xây dựng một cơ sở dữ liệu:
+Mục tiêu:
 
-- Chuẩn hóa
-- Dễ mở rộng
-- Dễ bảo trì
-- Phù hợp với Entity Framework Core
-- Đáp ứng nhu cầu quản lý thực tập của giảng viên
+- Chuẩn hóa (3NF)
+- Dễ mở rộng và bảo trì
+- Phù hợp Entity Framework Core code-first
+- Hỗ trợ SuperAdmin module + workflow Giảng viên
 
 ---
 
@@ -27,345 +28,170 @@ Mục tiêu là xây dựng một cơ sở dữ liệu:
 | Item | Technology |
 |------|------------|
 | DBMS | Microsoft SQL Server |
-| ORM | Entity Framework Core |
+| ORM | Entity Framework Core 10 |
 | Language | C# |
 | Backend | ASP.NET Core Web API |
-| Naming Convention | PascalCase |
+| Naming | PascalCase tables/columns; PK `{Entity}Id` |
 
 ---
 
-# 3. Design Principles
+# 3. Current Schema (12 tables)
 
-Cơ sở dữ liệu được thiết kế dựa trên các nguyên tắc sau:
+| Table | Purpose |
+|-------|---------|
+| Users | Authentication, roles, MustChangePassword |
+| Lecturers | GV profile, StaffCode unique |
+| Students | SV profile, MSSV |
+| Companies | DN thực tập |
+| Internships | Hồ sơ SV–GV–DN, status workflow |
+| WeeklyReports | Báo cáo tuần |
+| Submissions | Nộp bài + versioning |
+| Feedbacks | Nhận xét GV |
+| Evaluations | Chấm cuối kỳ |
+| Documents | File metadata |
+| Notifications | Thông báo in-app |
+| PasswordResetTokens | Forgot-password (hashed token) |
 
-- Chuẩn hóa đến tối thiểu Third Normal Form (3NF).
-- Mỗi bảng chỉ đại diện cho một thực thể nghiệp vụ.
-- Hạn chế lưu trùng dữ liệu.
-- Sử dụng khóa ngoại để đảm bảo toàn vẹn dữ liệu.
-- Ưu tiên khả năng mở rộng hơn tối ưu hóa sớm.
+**Planned:** InternshipLogs
+
+Chi tiết cột: `docs/05c-Data-Dictionary.md`
 
 ---
 
-# 4. Primary Key Strategy
+# 4. Migration History
 
-Toàn bộ bảng sử dụng:
+| Migration | Change |
+|-----------|--------|
+| InitialCreate | Core entities |
+| AddLecturerWorkflow | Workflow fields |
+| AddDocumentAndEvaluationEntities | Documents, Evaluations |
+| AddStudentUserAndWeeklyReportAndNotification | User link, weekly reports |
+| AddLecturerEntity | Lecturers table |
+| StandardizeColumnNaming | `{Entity}Id` PK columns |
+| AddMustChangePasswordToUsers | Users.MustChangePassword |
+| AddPasswordResetTokens | Self-service password reset |
+
+Full list: [`database/MIGRATIONS.md`](../database/MIGRATIONS.md)
+
+---
+
+# 5. Design Principles
+
+- Third Normal Form (3NF); một bảng một thực thể nghiệp vụ.
+- Foreign keys bắt buộc cho quan hệ cha–con.
+- Soft delete (`IsDeleted`) trên bảng nghiệp vụ chính.
+- Audit: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`.
+
+---
+
+# 6. Primary Key Strategy
+
+Toàn bộ bảng dùng `UNIQUEIDENTIFIER` (GUID):
 
 ```text
-UNIQUEIDENTIFIER (GUID)
+StudentId, CompanyId, InternshipId, UserId, ...
 ```
 
-Ví dụ
-
-```text
-StudentId
-CompanyId
-InternshipId
-SubmissionId
-```
-
-## Advantages
-
-- Không bị trùng khi mở rộng hệ thống.
-- Thuận tiện đồng bộ dữ liệu.
-- Phù hợp với EF Core.
-- Dễ tích hợp API.
+C# entity: `BaseEntity.Id` → map Fluent API → `{Entity}Id`.
 
 ---
 
-# 5. Foreign Key Strategy
+# 7. Relationship Design
 
-Mọi quan hệ giữa các bảng đều sử dụng Foreign Key.
+| Type | Example |
+|------|---------|
+| 1:1 | Student ↔ Internship |
+| 1:N | Company → Internships, Lecturer → Internships |
+| 1:N | Internship → Submissions, WeeklyReports |
+| 1:0..1 | Internship ↔ Evaluation |
+| 1:N | User → Notifications, PasswordResetTokens |
 
-Ví dụ
-
-Student
-
-↓
-
-Internship
-
-↓
-
-Submission
-
-↓
-
-Feedback
-
-Điều này giúp đảm bảo:
-
-- Không tồn tại dữ liệu mồ côi.
-- Dễ truy vấn.
-- Đảm bảo tính toàn vẹn.
+ERD: [`database/diagrams/erd.md`](../database/diagrams/erd.md)
 
 ---
 
-# 6. Relationship Design
+# 8. File Storage Strategy
 
-## One-to-One
-
-Student
-
-↓
-
-Internship
-
-Một sinh viên chỉ có một hồ sơ thực tập trong một đợt.
+Database chỉ lưu metadata (`FileName`, `FilePath`, `FileUrl`, `MimeType`, `FileSize`).  
+File binary lưu ngoài SQL (filesystem / object storage).
 
 ---
 
-## One-to-Many
+# 9. Soft Delete & Audit
 
-Company
-
-↓
-
-Internship
-
-Một doanh nghiệp tiếp nhận nhiều sinh viên.
+- `IsDeleted BIT` — không xóa vật lý dữ liệu nghiệp vụ quan trọng.
+- Token reset cũ được đánh dấu `IsDeleted` khi phát hành token mới.
 
 ---
 
-Internship
+# 10. Index Strategy
 
-↓
-
-WeeklyReport
-
-Một hồ sơ thực tập có nhiều báo cáo tuần.
-
----
-
-Internship
-
-↓
-
-Submission
-
-Một hồ sơ thực tập có nhiều lần nộp.
+| Area | Index |
+|------|-------|
+| Users | Username (query login) |
+| Lecturers | StaffCode (unique) |
+| Students | StudentCode, UserId (unique filtered) |
+| Internships | StudentId, LecturerId, CompanyId, Status |
+| WeeklyReports | (InternshipId, WeekNumber) |
+| Notifications | (UserId, IsRead) |
+| PasswordResetTokens | TokenHash (unique), (UserId, UsedAt) |
 
 ---
 
-Submission
+# 11. Enum Strategy (Domain → DB int)
 
-↓
+## Role
 
-Feedback
-
-Một lần nộp có nhiều phản hồi.
-
----
-
-User
-
-↓
-
-Notification
-
-Một người dùng nhận nhiều thông báo.
-
----
-
-# 7. File Storage Strategy
-
-InternLink không lưu file trực tiếp trong SQL Server.
-
-Database chỉ lưu:
-
-- FileUrl
-- FileName
-- FileType
-- FileSize
-
-Các tệp sẽ được lưu trong File Storage của hệ thống hoặc dịch vụ lưu trữ phù hợp.
-
-Điều này giúp:
-
-- Giảm kích thước cơ sở dữ liệu.
-- Tăng hiệu năng.
-- Dễ sao lưu.
-
----
-
-# 8. Soft Delete Strategy
-
-Không xóa dữ liệu vật lý đối với các bảng quan trọng.
-
-Các bảng có thể sử dụng:
-
-```text
-IsDeleted
-DeletedAt
-```
-
-Điều này giúp:
-
-- Khôi phục dữ liệu.
-- Đảm bảo lịch sử.
-- Hạn chế mất dữ liệu ngoài ý muốn.
-
----
-
-# 9. Audit Fields
-
-Một số bảng sẽ có các trường chung:
-
-| Column | Description |
-|----------|-------------|
-| CreatedAt | Thời gian tạo |
-| UpdatedAt | Thời gian cập nhật |
-| CreatedBy | Người tạo |
-| UpdatedBy | Người cập nhật |
-
-Audit Fields hỗ trợ theo dõi lịch sử thay đổi dữ liệu.
-
----
-
-# 10. Data Integrity
-
-Hệ thống áp dụng các ràng buộc sau:
-
-- Primary Key
-- Foreign Key
-- NOT NULL
-- UNIQUE (khi cần)
-- CHECK Constraint (nếu cần)
-
-Ví dụ:
-
-- Username không được trùng.
-- StudentCode không được trùng.
-- Email phải duy nhất trong từng nhóm người dùng (nếu áp dụng).
-
----
-
-# 11. Index Strategy
-
-Các trường thường xuyên tìm kiếm sẽ được tạo Index.
-
-Ví dụ:
-
-- StudentCode
-- CompanyName
-- Username
-- Internship.Status
-- Submission.SubmittedAt
-
-Điều này giúp tăng tốc độ truy vấn.
-
----
-
-# 12. Enum Strategy
-
-Các giá trị cố định sẽ được quản lý bằng Enum trong tầng Domain.
-
-Ví dụ
-
-## UserRole
-
-- Lecturer
-- Student
-
----
+SuperAdmin, Lecturer, Student
 
 ## InternshipStatus
 
-- NotStarted
-- InProgress
-- WaitingFeedback
-- NeedRevision
-- Overdue
-- Completed
-- Evaluated
+NotStarted, InProgress, BehindSchedule, AwaitingFeedback, RequiresRevision, Completed, Graded
+
+## SubmissionStatus
+
+Submitted, Reviewed, RevisionRequested, Approved, Rejected
+
+## WeeklyReportStatus
+
+Draft, Submitted, Reviewed, RevisionRequested, Approved
 
 ---
 
-## DocumentCategory
+# 12. Security-Related Columns
 
-- InternshipGuide
-- RegistrationForm
-- WeeklyReport
-- FinalReport
-- EvaluationForm
-- Other
-
-Việc sử dụng Enum giúp đảm bảo tính nhất quán giữa mã nguồn và dữ liệu.
+| Column | Table | Purpose |
+|--------|-------|---------|
+| PasswordHash | Users | ASP.NET Identity hasher |
+| MustChangePassword | Users | Force change on first login / admin reset |
+| TokenHash | PasswordResetTokens | SHA-256 of reset token (never store plaintext) |
+| ExpiresAt / UsedAt | PasswordResetTokens | Time-bound, one-time use |
 
 ---
 
 # 13. Naming Convention
 
-## Table
-
-PascalCase
-
-Ví dụ
-
-```text
-Student
-Company
-Submission
-```
+- **Tables:** PascalCase plural (`Students`, `Internships`)
+- **PK:** `{Entity}Id`
+- **FK:** `{ReferencedEntity}Id`
 
 ---
 
-## Column
+# 14. Future Enhancements
 
-PascalCase
-
-Ví dụ
-
-```text
-StudentId
-CompanyName
-CreatedAt
-```
-
----
-
-## Primary Key
-
-```text
-<EntityName>Id
-```
-
----
-
-## Foreign Key
-
-```text
-<EntityName>Id
-```
-
----
-
-# 14. Future Database Enhancements
-
-Các tính năng dự kiến trong các phiên bản sau:
-
-- InternshipBatch
-- CompanyRating
-- CompanyRecruitmentHistory
-- ActivityLog
-- RefreshToken
-- EmailQueue
-- AIRecommendation
-- AIReportAnalysis
-- InternshipSkill
-- StudentSkill
-
-Những bảng này không thuộc phạm vi MVP nhưng đã được xem xét để thuận tiện mở rộng sau này.
+- InternshipBatch, CompanyRating, ActivityLog
+- EmailQueue (bulk import mail)
+- AIRecommendation, StudentSkill
 
 ---
 
 # 15. Summary
 
-Cơ sở dữ liệu của InternLink được thiết kế theo hướng chuẩn hóa, dễ mở rộng và phù hợp với kiến trúc ASP.NET Core Web API kết hợp Entity Framework Core.
+Schema hiện tại phục vụ:
 
-Thiết kế tập trung giải quyết ba bài toán nghiệp vụ chính:
+1. Quản lý master data (SV, GV, DN) — SuperAdmin
+2. Phân công SV → GV + workflow thực tập
+3. Nộp bài, phản hồi, chấm điểm
+4. Tài khoản, email invitation, forgot password
 
-- Quản lý tiến độ thực tập.
-- Quản lý nộp bài và phản hồi.
-- Quản lý doanh nghiệp.
-
-Đồng thời vẫn đảm bảo khả năng mở rộng cho các chức năng AI và phân tích dữ liệu trong tương lai mà không cần thay đổi lớn về cấu trúc cơ sở dữ liệu.
+Triển khai và verify: `dotnet ef database update` + `database/scripts/verify-schema.sql`.

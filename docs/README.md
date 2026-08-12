@@ -114,7 +114,7 @@ InternLink/
 │
 ├── backend/
 │
-├── database/
+├── database/          ← README, MIGRATIONS, diagrams/erd, scripts/verify-schema
 │
 ├── docs/
 │
@@ -127,20 +127,42 @@ InternLink/
 
 ```text
 docs/
-├── 01-Software-Requirements-Specification.md
-├── 02-Business-Workflow.md
-├── 03-Use-Case-Specification.md
-├── 04-Domain-Model.md
-├── 05a-Entity-Relationship-Diagram.md
-├── 05b-Data-Dictionary.md
-├── 05c-Database-Design.md
+├── 01-Vision-Scope.md
+├── 02-Software-Requirements-Specification.md
+├── 04-Use-Case-Specification.md      ← actors + UC list (v2, SuperAdmin)
+├── 05a-Domain-Model.md
+├── 05b-Entity-Relationship-Diagram.md
+├── 05c-Data-Dictionary.md
+├── 05d-Database-Design.md
 ├── 06-System-Architecture.md
-├── 07-Information-Architecture.md
-├── 07b-Application-Flow.md
-├── 08-API-Specification.md
-├── 09-UI-UX-Guidelines.md
+├── Backend-Plan.md
+├── Admin-Implementation-Plan.md
+├── Admin-Smoke-Test-Checklist.md
 ├── 10-Roadmap.md
+└── images/
+    ├── usecase/usecase-diagram.md
+    ├── sequence/                     ← invitation, bulk-assign, forgot-password
+    ├── architecture/
+    ├── application-flow/
+    ├── information-architecture/
+    └── workflow/
+
+database/
+├── README.md
+├── MIGRATIONS.md
+├── diagrams/erd.md
+└── scripts/verify-schema.sql
 ```
+
+### Key diagrams (ưu tiên đọc)
+
+| Diagram | Path |
+|---------|------|
+| Use Case | [`images/usecase/usecase-diagram.md`](images/usecase/usecase-diagram.md) |
+| Sequence — Invitation | [`images/sequence/invitation-email.md`](images/sequence/invitation-email.md) |
+| Sequence — Bulk assign | [`images/sequence/bulk-assign.md`](images/sequence/bulk-assign.md) |
+| Sequence — Forgot password | [`images/sequence/forgot-password.md`](images/sequence/forgot-password.md) |
+| ERD | [`../database/diagrams/erd.md`](../database/diagrams/erd.md) |
 
 ---
 
@@ -154,7 +176,7 @@ docs/
 | Information Architecture | ✅ |
 | API Design | ✅ |
 | UI/UX Guidelines | ✅ |
-| Backend Development | 🚧 |
+| Backend Development | ✅ MVP + Admin module |
 | Frontend Development | 🚧 |
 | Integration Testing | ⏳ |
 | MVP Release | ⏳ |

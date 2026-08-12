@@ -16,7 +16,7 @@
 - `InternLink.Infrastructure`: DbContext, migrations, seed, services.
 - `InternLink.Tests`: 75 unit tests.
 
-## 3. Database (11 bảng — đã chuẩn hóa naming v1.1)
+## 3. Database (12 bảng — aligned with EF Core v1.2)
 - PK cột DB: `{Entity}Id` — C# vẫn dùng `BaseEntity.Id` (map Fluent API).
 - Soft delete + audit: `CreatedAt`, `UpdatedAt`, `IsDeleted`, …
 - Chi tiết: `docs/05c-Data-Dictionary.md`
@@ -35,6 +35,8 @@
 | Evaluations | 4 tiêu chí + FinalGrade |
 | Notifications | Content, mark-read |
 | PasswordResetTokens | Forgot-password flow |
+
+**Docs:** [`database/README.md`](../database/README.md) · [`docs/05c-Data-Dictionary.md`](05c-Data-Dictionary.md)
 
 **Migrations:** InitialCreate → … → AddMustChangePasswordToUsers → AddPasswordResetTokens
 

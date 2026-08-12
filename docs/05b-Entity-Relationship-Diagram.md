@@ -2,9 +2,11 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.1
+**Version:** 1.2
 
-**Status:** Active — aligned with EF Core / SQL Server implementation
+**Status:** Active — aligned with EF Core / SQL Server (12 tables)
+
+**Diagram (Mermaid):** [`database/diagrams/erd.md`](../database/diagrams/erd.md)
 
 ---
 
@@ -12,186 +14,113 @@
 
 ERD mô tả cấu trúc dữ liệu của hệ thống InternLink.
 
-Các Entity được xây dựng dựa trên Domain Model và Use Case.
-
 **Quy ước triển khai:**
+
 - Bảng SQL: PascalCase **số nhiều** (`Students`, `Companies`, …)
-- PK cột DB: `{Entity}Id` (ví dụ `StudentId`, `LecturerId`)
-- C# entity: property `Id` (map qua Fluent API → `{Entity}Id`)
+- PK cột DB: `{Entity}Id`
+- C# entity: property `Id` (map qua Fluent API)
 
 ---
 
-# 2. Main Entities
+# 2. Entities (implemented)
 
 ## User
 
-- UserId
-- Username
-- PasswordHash
-- Role
+- UserId, Username, PasswordHash, FullName, Email, Role
+- IsActive, **MustChangePassword**, LastLoginAt
 
----
+## PasswordResetToken
+
+- PasswordResetTokenId, UserId, TokenHash, ExpiresAt, UsedAt
 
 ## Lecturer
 
-- LecturerId
-- FullName
-- Email
-- Phone
-
----
+- LecturerId, UserId, StaffCode, FullName, Email, Department
 
 ## Student
 
-- StudentId
-- StudentCode
-- FullName
-- Class
-- Major
-- Email
-- Phone
-
----
+- StudentId, UserId, StudentCode, FullName, Class, Major
 
 ## Company
 
-- CompanyId
-- CompanyName
-- Website
-- Address
-- Industry
-- ContactPerson
-- ContactEmail
-- ContactPhone
-- Capacity
-
----
+- CompanyId, CompanyName, Industry, Capacity, IsActive
 
 ## Internship
 
-- InternshipId
-- StudentId
-- LecturerId
-- CompanyId
-- StartDate
-- EndDate
-- Position
-- Status
-
----
+- InternshipId, StudentId, LecturerId, CompanyId, Status, StartDate, EndDate
 
 ## WeeklyReport
 
-- ReportId → WeeklyReportId
-- InternshipId
-- WeekNumber
-- Content
-- SubmittedAt
-
----
-
-## InternshipLog
-
-- LogId
-- InternshipId
-- WorkDate
-- Description
-
----
+- WeeklyReportId, InternshipId, WeekNumber, Content, Status
 
 ## Submission
 
-- SubmissionId
-- InternshipId
-- Title
-- FileUrl
-- Version
-- SubmittedAt
-
----
+- SubmissionId, InternshipId, Type, Status, Version, FileUrl
 
 ## Feedback
 
-- FeedbackId
-- SubmissionId
-- LecturerId
-- Comment
-- CreatedAt
-
----
+- FeedbackId, SubmissionId, LecturerId, Comment
 
 ## Evaluation
 
-- EvaluationId
-- InternshipId
-- ProcessScore
-- ReportScore
-- CompanyScore
-- FinalScore
-- Comment
-
----
+- EvaluationId, InternshipId, EvaluatedById
+- TechnicalScore, CommunicationScore, TeamworkScore, InitiativeScore
+- FinalGrade, IsFinalized
 
 ## Document
 
-- DocumentId
-- Title
-- Category
-- FileUrl
-- UploadedAt
-
----
+- DocumentId, InternshipId, Title, Category, FilePath, MimeType
 
 ## Notification
 
-- NotificationId
-- UserId
-- Title
-- Content
-- IsRead
-- CreatedAt
+- NotificationId, UserId, Title, Content, IsRead
 
 ---
 
-# 3. Relationships
+# 3. Planned
 
-User (1) ------ (1) Lecturer
+## InternshipLog
 
-User (1) ------ (1) Student
-
-Lecturer (1) ------ (*) Internship
-
-Student (1) ------ (1) Internship
-
-Company (1) ------ (*) Internship
-
-Internship (1) ------ (*) WeeklyReport
-
-Internship (1) ------ (*) InternshipLog
-
-Internship (1) ------ (*) Submission
-
-Submission (1) ------ (*) Feedback
-
-Internship (1) ------ (1) Evaluation
-
-User (1) ------ (*) Notification
+- InternshipLogId, InternshipId, WorkDate, Description
 
 ---
 
-# 4. Notes
+# 4. Relationships
 
-- Một sinh viên chỉ có một hồ sơ thực tập trong một đợt.
-- Một doanh nghiệp tiếp nhận nhiều sinh viên.
-- Một lần nộp có thể nhận nhiều phản hồi.
-- Một hồ sơ thực tập chỉ có một kết quả đánh giá cuối kỳ.
+```
+User (1) ──0..1── Lecturer
+User (1) ──0..1── Student
+User (1) ──*──── PasswordResetToken
+User (1) ──*──── Notification
+
+Lecturer (1) ──*── Internship
+Student (1) ──1── Internship
+Company (1) ──*── Internship
+
+Internship (1) ──*── WeeklyReport
+Internship (1) ──*── Submission
+Internship (1) ──*── Document
+Internship (1) ──0..1── Evaluation
+
+Submission (1) ──*── Feedback
+Lecturer (1) ──*── Feedback
+```
 
 ---
 
-# 5. Next Step
+# 5. Business Rules
 
-Từ ERD sẽ tiến hành:
+- Một sinh viên một hồ sơ thực tập (1:1) trong đợt.
+- Admin phân công `Internship.LecturerId`; Lecturer gán `CompanyId`.
+- Một submission có thể có nhiều feedback.
+- Một internship tối đa một evaluation đã finalize.
 
-- Thiết kế Database
-- Thiết kế API
-- Xây dựng Entity Framework Core Models
+---
+
+# 6. Related Documents
+
+| Doc | Content |
+|-----|---------|
+| `docs/05c-Data-Dictionary.md` | Column-level detail |
+| `docs/05d-Database-Design.md` | Design decisions |
+| `database/README.md` | Ops guide, seed, migrate |

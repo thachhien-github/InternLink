@@ -2,9 +2,9 @@
 
 **Project:** InternLink – Internship Management & Collaboration Platform
 
-**Version:** 1.1
+**Version:** 1.2
 
-**Status:** Active — aligned with EF Core implementation
+**Status:** Active — aligned with EF Core implementation (Admin module complete)
 
 ---
 
@@ -77,6 +77,7 @@ Ví dụ: `StudentId`, `CompanyId`, `LecturerId`, `UserId`
 | Email | NVARCHAR(200) | Yes | Email |
 | Role | INT | No | SuperAdmin / Lecturer / Student |
 | IsActive | BIT | No | Tài khoản hoạt động |
+| MustChangePassword | BIT | No | Bắt đổi MK lần đầu (default 0) |
 | LastLoginAt | DATETIME2 | Yes | Lần đăng nhập cuối |
 | CreatedAt | DATETIME2 | No | Ngày tạo |
 | UpdatedAt | DATETIME2 | Yes | Ngày cập nhật |
@@ -246,6 +247,23 @@ Ví dụ: `StudentId`, `CompanyId`, `LecturerId`, `UserId`
 
 ---
 
+## PasswordResetTokens
+
+| Column | Data Type | Nullable | Description |
+|--------|-----------|----------|-------------|
+| PasswordResetTokenId | UNIQUEIDENTIFIER | No | Primary Key |
+| UserId | UNIQUEIDENTIFIER | No | FK → Users (CASCADE delete) |
+| TokenHash | NVARCHAR(64) | No | SHA-256 hex hash của token (unique index) |
+| ExpiresAt | DATETIME2 | No | Thời điểm hết hạn |
+| UsedAt | DATETIME2 | Yes | Thời điểm đã sử dụng (one-time) |
+| CreatedAt | DATETIME2 | No | Ngày tạo |
+| UpdatedAt | DATETIME2 | Yes | Ngày cập nhật |
+| IsDeleted | BIT | No | Xóa mềm / vô hiệu token cũ |
+
+**Index:** `IX_PasswordResetTokens_TokenHash` (unique), `IX_PasswordResetTokens_UserId_UsedAt`
+
+---
+
 # 4. Planned (not yet implemented)
 
 ## InternshipLogs
@@ -263,6 +281,7 @@ Ví dụ: `StudentId`, `CompanyId`, `LecturerId`, `UserId`
 
 - Sử dụng `UNIQUEIDENTIFIER` làm khóa chính.
 - Các trường văn bản sử dụng `NVARCHAR` để hỗ trợ tiếng Việt.
-- Mật khẩu chỉ lưu dưới dạng `PasswordHash`.
+- Mật khẩu chỉ lưu dưới dạng `PasswordHash` — token reset lưu **hash**, không lưu plaintext.
 - Enum lưu DB dạng `int`; API trả về dạng `string`.
 - Feedback và Document upload liên kết trực tiếp `Lecturers`, không qua `Users`.
+- Migration history & verify script: [`database/`](../database/README.md)
