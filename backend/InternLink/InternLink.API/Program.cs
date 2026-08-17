@@ -18,12 +18,34 @@ builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowAnyOrigin());
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(Array.Empty<string>())
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
 });
 
 builder.Services.AddApplication();
@@ -49,6 +71,16 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+// Fail-fast validation: Ensure strong JWT Secret is configured
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Critical Security Error: 'Jwt:Secret' is missing, empty, or shorter than 32 characters. " +
+        "Please configure a strong secret (>= 32 characters) via environment variable (Jwt__Secret), " +
+        "User Secrets (dotnet user-secrets set \"Jwt:Secret\" \"<your-secret>\"), or appsettings.Development.json.");
+}
 
 app.UseApiExceptionHandler();
 app.UseSerilogRequestLogging();

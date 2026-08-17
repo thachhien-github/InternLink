@@ -1,22 +1,21 @@
 /* ============================================
    INTERNLINK DESIGN SYSTEM — CSS Custom Properties
-   Option 1: Modern Enterprise Bento & Glass (SaaS Aesthetic)
+   F0: Flat academic UI — reduced radius, no AI-generic glow
    ============================================ */
 
 :root {
-  /* Brand Palette (Deep Sapphire to Indigo Accent) */
+  /* Brand — navy primary, single blue accent (avoid indigo/purple default) */
   --il-brand-navy: #0b132b;
   --il-brand-navy-light: #1c2541;
-  --il-brand-blue: #3b82f6;
-  --il-brand-indigo: #6366f1;
-  --il-brand-indigo-glow: rgba(99, 102, 241, 0.2);
+  --il-brand-blue: #1d4ed8;
+  --il-brand-blue-soft: #eff6ff;
 
-  /* Semantic Colors */
-  --il-color-success: #10b981;
+  /* Semantic */
+  --il-color-success: #059669;
   --il-color-success-light: #d1fae5;
-  --il-color-warning: #f59e0b;
+  --il-color-warning: #d97706;
   --il-color-warning-light: #fef3c7;
-  --il-color-danger: #ef4444;
+  --il-color-danger: #dc2626;
   --il-color-danger-light: #fee2e2;
   --il-color-info: #0284c7;
   --il-color-info-light: #e0f2fe;
@@ -25,32 +24,43 @@
   --il-surface-bg: #f8fafc;
   --il-surface-card: #ffffff;
   --il-surface-muted: #f1f5f9;
-  --il-surface-border: rgba(226, 232, 240, 0.85);
+  --il-surface-border: #e2e8f0;
 
-  /* Text Colors */
+  /* Text */
   --il-text-primary: #0f172a;
   --il-text-secondary: #475569;
   --il-text-muted: #94a3b8;
 
-  /* Typography Families */
-  --il-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --il-font-display: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-  --il-font-mono: 'JetBrains Mono', monospace;
+  /* Typography */
+  --il-font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --il-font-display: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+  --il-font-mono: "JetBrains Mono", monospace;
 
-  /* Radius & Shadows */
-  --il-radius-bento: 0.625rem; /* 10px */
+  /* Radius — keep modest (F0) */
+  --il-radius-sm: 0.25rem; /* 4px */
   --il-radius-base: 0.375rem; /* 6px */
-  --il-shadow-bento: 0 10px 20px -8px rgba(15, 23, 42, 0.12), 0 6px 12px -8px rgba(15, 23, 42, 0.08);
-  --il-shadow-bento-hover: 0 14px 26px -10px rgba(15, 23, 42, 0.18), 0 8px 16px -10px rgba(15, 23, 42, 0.1);
+  --il-radius-panel: 0.5rem; /* 8px */
+  --il-radius-modal: 0.625rem; /* 10px */
+  /* legacy alias */
+  --il-radius-bento: var(--il-radius-panel);
+
+  /* Shadows — hairline preference over soft blobs */
+  --il-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --il-shadow-bento: var(--il-shadow-panel);
+  --il-shadow-bento-hover: var(--il-shadow-panel);
 
   /* Transitions */
-  --il-transition-base: 220ms cubic-bezier(0.16, 1, 0.3, 1);
-  --il-transition-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --il-transition-base: 180ms ease;
 }
 
-/* Base Body Setup */
 html[data-theme="education"] {
   color-scheme: light;
+}
+
+/* Hallmark gate 34 — prevent horizontal scroll */
+html,
+body {
+  overflow-x: clip;
 }
 
 body {
@@ -60,7 +70,10 @@ body {
   min-height: 100vh;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
@@ -69,96 +82,409 @@ button, input, select, textarea {
 }
 
 :focus-visible {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 3px;
+  outline: 2px solid var(--il-brand-blue);
+  outline-offset: 2px;
 }
 
-/* Bento Card Style */
-.il-bento-card {
-  background: #ffffff;
+/* Primary content panel — use instead of card stacks */
+.il-panel {
+  background: var(--il-surface-card);
   border: 1px solid var(--il-surface-border);
-  border-radius: var(--il-radius-bento);
-  box-shadow: var(--il-shadow-bento);
-  transition: all var(--il-transition-base);
+  border-radius: var(--il-radius-panel);
+  box-shadow: none;
+}
+
+/* Legacy alias — no hover lift */
+.il-bento-card {
+  background: var(--il-surface-card);
+  border: 1px solid var(--il-surface-border);
+  border-radius: var(--il-radius-panel);
+  box-shadow: none;
+  transition: border-color var(--il-transition-base);
   position: relative;
   overflow: hidden;
 }
 
 .il-bento-card:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: var(--il-shadow-bento-hover);
-  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: none;
+  transform: none;
 }
 
-/* Glassmorphism Panel */
-.il-glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+/* Toolbar / page chrome — flat, not a floating card */
+.il-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--il-surface-border);
+  margin-bottom: 1rem;
 }
 
-/* Dark Glassmorphism Panel (for hero sections / dark sidebar) */
-.il-glass-dark {
-  background: rgba(11, 19, 43, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Buttons */
+.il-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--il-radius-base);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--il-transition-base),
+    border-color var(--il-transition-base);
 }
 
-/* Glowing Indicator Pill */
-.il-active-pill {
-  position: relative;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+.il-btn-primary {
+  background: var(--il-brand-blue);
+  color: #fff;
+}
+
+.il-btn-primary:hover {
+  background: #1e40af;
+}
+
+.il-btn-secondary {
+  background: #fff;
+  color: var(--il-text-primary);
+  border-color: var(--il-surface-border);
+}
+
+.il-btn-secondary:hover {
+  background: var(--il-surface-muted);
+}
+
+.il-btn-ghost {
+  background: var(--il-surface-muted);
+  color: var(--il-text-secondary);
+  border-color: var(--il-surface-border);
+}
+
+.il-btn-ghost:hover {
+  background: #e2e8f0;
+}
+
+/* Nav active — logo blue */
+.il-nav-active {
+  background: var(--il-brand-blue);
   color: #ffffff;
-  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35);
+  font-weight: 700;
 }
 
-/* High contrast KPI font */
+.il-nav-idle {
+  color: #475569;
+}
+
+.il-nav-idle:hover {
+  background: var(--il-surface-muted);
+  color: var(--il-text-primary);
+}
+
+/* Legacy active pill → logo blue */
+.il-active-pill {
+  background: var(--il-brand-blue);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+/* Portal badge under logo */
+.il-portal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--il-text-muted);
+}
+
+/* App sidebar — light surface, brand wordmark colors preserved */
+.il-sidebar {
+  background: #ffffff;
+  color: var(--il-text-primary);
+  border-right: 1px solid var(--il-surface-border);
+  box-shadow: inset -3px 0 0 var(--il-brand-blue);
+}
+
+.il-sidebar .il-portal-badge {
+  color: var(--il-text-muted);
+}
+
+.il-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--il-surface-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(
+    180deg,
+    rgba(239, 246, 255, 0.65) 0%,
+    #ffffff 100%
+  );
+}
+
+.il-sidebar-logo {
+  padding: 0.375rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--il-radius-base);
+  flex-shrink: 0;
+}
+
+.il-sidebar-brand-intern {
+  color: var(--il-brand-navy);
+}
+
+.il-sidebar-brand-link {
+  color: var(--il-brand-blue);
+}
+
+.il-sidebar-section {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.il-sidebar-nav {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--il-radius-base);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition:
+    background-color var(--il-transition-base),
+    color var(--il-transition-base);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #475569;
+  text-align: left;
+}
+
+.il-sidebar-nav:hover {
+  background: var(--il-surface-muted);
+  color: var(--il-text-primary);
+}
+
+.il-sidebar-nav.is-active {
+  background: var(--il-brand-blue);
+  color: #ffffff;
+}
+
+.il-sidebar-badge {
+  font-size: 10px;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-family: var(--il-font-display);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.il-sidebar-nav.is-active .il-sidebar-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.il-sidebar-nav:not(.is-active) .il-sidebar-badge {
+  background: #eff6ff;
+  color: var(--il-brand-blue);
+  border: 1px solid #bfdbfe;
+}
+
+.il-sidebar-footer {
+  padding: 0.75rem;
+  border-top: 1px solid var(--il-surface-border);
+  background: #f8fafc;
+}
+
+.il-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: var(--il-radius-base);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--il-transition-base),
+    border-color var(--il-transition-base);
+}
+
+.il-sidebar-profile:hover {
+  background: #ffffff;
+  border-color: var(--il-surface-border);
+}
+
+.il-sidebar-profile-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--il-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.il-sidebar-profile-meta {
+  font-size: 10px;
+  color: var(--il-text-secondary);
+  font-weight: 500;
+}
+
+/* KPI — unified stat strip inside one panel */
+.il-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--il-surface-card);
+  border: 1px solid var(--il-surface-border);
+  border-radius: var(--il-radius-panel);
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .il-kpi-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.il-kpi-cell {
+  padding: 1rem 1.25rem;
+  border-right: 1px solid var(--il-surface-border);
+  border-bottom: 1px solid var(--il-surface-border);
+  background: var(--il-surface-card);
+  transition: background-color var(--il-transition-base);
+}
+
+@media (min-width: 640px) {
+  .il-kpi-cell {
+    border-bottom: none;
+  }
+
+  .il-kpi-cell:nth-child(4n),
+  .il-kpi-cell:last-child {
+    border-right: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .il-kpi-cell:nth-child(2n),
+  .il-kpi-cell:last-child {
+    border-right: none;
+  }
+
+  .il-kpi-cell:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+}
+
+.il-kpi-cell.is-clickable {
+  cursor: pointer;
+}
+
+.il-kpi-cell.is-clickable:hover {
+  background: var(--il-surface-muted);
+}
+
+.il-kpi-cell-accent-blue {
+  box-shadow: inset 3px 0 0 var(--il-brand-blue);
+}
+
+.il-kpi-cell-accent-emerald {
+  box-shadow: inset 3px 0 0 var(--il-color-success);
+}
+
+.il-kpi-cell-accent-amber {
+  box-shadow: inset 3px 0 0 var(--il-color-warning);
+}
+
+.il-kpi-cell-accent-sky {
+  box-shadow: inset 3px 0 0 var(--il-color-info);
+}
+
+.il-kpi-cell-accent-rose {
+  box-shadow: inset 3px 0 0 var(--il-color-danger);
+}
+
+/* Glass — login only; do not use on app chrome */
+.il-glass-panel {
+  background: #ffffff;
+  border: 1px solid var(--il-surface-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.il-glass-dark {
+  background: var(--il-brand-navy);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .il-kpi-val {
   font-family: var(--il-font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
-/* Dynamic Ambient Mesh Gradient for Login */
+/* Login ambient — toned down */
 .il-mesh-bg {
   background-color: #0b132b;
-  background-image: 
-    radial-gradient(at 10% 15%, rgba(99, 102, 241, 0.25) 0px, transparent 50%),
-    radial-gradient(at 85% 20%, rgba(59, 130, 246, 0.25) 0px, transparent 50%),
-    radial-gradient(at 50% 80%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
-    radial-gradient(at 90% 90%, rgba(139, 92, 246, 0.2) 0px, transparent 50%);
+  background-image:
+    radial-gradient(at 15% 20%, rgba(29, 78, 216, 0.18) 0px, transparent 45%),
+    radial-gradient(at 80% 70%, rgba(15, 23, 42, 0.5) 0px, transparent 50%);
   background-attachment: fixed;
 }
 
-/* Subtle Shimmer Skeleton */
 @keyframes il-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
+
 .il-skeleton {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
   background-size: 200% 100%;
   animation: il-shimmer 1.5s ease-in-out infinite;
-  border-radius: 0.5rem;
+  border-radius: var(--il-radius-base);
 }
 
-/* Entrance Animation */
-@keyframes il-slide-up {
+@keyframes il-fade-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
-.il-animate-up {
-  animation: il-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+.il-animate-up,
+.il-animate-in {
+  animation: il-fade-in 180ms ease both;
 }
 
-/* Custom Scrollbar */
+/* Insight / status strip — flat, not gradient hero */
+.il-accent-panel {
+  background: var(--il-surface-card);
+  border: 1px solid var(--il-surface-border);
+  border-left: 4px solid var(--il-brand-blue);
+  border-radius: var(--il-radius-panel);
+}
+
 .il-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -168,9 +494,12 @@ button, input, select, textarea {
 }
 .il-scrollbar::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 9999px;
+  border-radius: var(--il-radius-sm);
 }
 .il-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
+.il-btn-press:active {
+  transform: scale(0.98);
+}

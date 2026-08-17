@@ -19,7 +19,4 @@ export interface Submission {
   gradeScore?: number;
 }
 
-export type SubmissionStatus =
-  | 'Đã duyệt'
-  | 'Chờ duyệt'
-  | 'Yêu cầu sửa';
+export type SubmissionStatus = "Đã duyệt" | "Chờ duyệt" | "Yêu cầu sửa";

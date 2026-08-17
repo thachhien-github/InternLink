@@ -15,10 +15,29 @@ namespace InternLink.API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IEmailService _emailService;
+    private readonly IInternshipService _internshipService;
 
-    public AdminController(IEmailService emailService)
+    public AdminController(IEmailService emailService, IInternshipService internshipService)
     {
         _emailService = emailService;
+        _internshipService = internshipService;
+    }
+
+    /// <summary>
+    /// Internship status counts for admin dashboard KPIs and charts.
+    /// </summary>
+    [HttpGet("internship-stats")]
+    public async Task<IActionResult> GetInternshipStats()
+    {
+        try
+        {
+            var stats = await _internshipService.GetInternshipStatsAsync();
+            return Ok(ApiResponse<InternshipStatsDto>.Ok(stats));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(new ApiError { Title = "Internal server error", Detail = ex.Message }));
+        }
     }
 
     /// <summary>

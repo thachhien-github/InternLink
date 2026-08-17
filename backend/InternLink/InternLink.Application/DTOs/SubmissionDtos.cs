@@ -1,5 +1,7 @@
 namespace InternLink.Application.DTOs;
 
+using Microsoft.AspNetCore.Http;
+
 public sealed class CreateSubmissionRequest
 {
     public Guid InternshipId { get; set; }
@@ -26,4 +28,29 @@ public sealed class ResubmitRequest
 public sealed class UpdateFeedbackRequest
 {
     public string Comment { get; set; } = null!;
+}
+
+/// <summary>Multipart form for student product submission with file.</summary>
+public sealed class UploadSubmissionFormRequest
+{
+    public Guid InternshipId { get; set; }
+    public string Type { get; set; } = null!;
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public IFormFile? File { get; set; }
+}
+
+/// <summary>Multipart form for resubmitting with a new file.</summary>
+public sealed class ResubmitSubmissionFormRequest
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public IFormFile? File { get; set; }
+}
+
+public sealed class SubmissionFileDownloadDto
+{
+    public byte[] FileContent { get; set; } = null!;
+    public string FileName { get; set; } = null!;
+    public string MimeType { get; set; } = "application/octet-stream";
 }

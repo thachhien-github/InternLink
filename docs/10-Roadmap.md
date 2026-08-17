@@ -23,8 +23,8 @@ Roadmap theo hướng **MVP-first**: backend + Admin module xong → frontend po
 | Backend MVP (Lecturer + Student APIs) | ✅ |
 | SuperAdmin module (Phases 0–7) | ✅ |
 | OpenAPI / Postman | ✅ |
-| Frontend Admin / Lecturer / Student | 🚧 Next |
-| Integration & UAT | ⏳ |
+| Frontend Admin / Lecturer / Student | ✅ MVP wired |
+| Integration & UAT | ✅ M6 + M7 API |
 | Future (AI, InternshipLog, Hangfire) | Backlog |
 
 ---
@@ -69,9 +69,9 @@ IA: [`07a-Information-Architecture.md`](07a-Information-Architecture.md)
 | M2 | Database complete | EF migrations + docs | ✅ |
 | M3 | Backend API ready | Swagger + Admin | ✅ |
 | M4 | Docs polish | Docs plan D0–D5 | ✅ |
-| M5 | Frontend ready | 3 portals | ⏳ |
-| M6 | Integration & UAT | Smoke + real SMTP | ⏳ |
-| M7 | MVP demo | Stakeholder demo | ⏳ |
+| M5 | Frontend ready | 3 portals + API wire | ✅ |
+| M6 | Integration smoke | `smoke-test-m6.ps1` | ✅ |
+| M7 | MVP demo | UAT + `smoke-test-m7.ps1` | ✅ |
 
 ---
 
@@ -106,7 +106,7 @@ IA: [`07a-Information-Architecture.md`](07a-Information-Architecture.md)
 - [x] SuperAdmin import + cấp TK + phân công SV→GV  
 - [x] Lecturer quản lý workflow SV được giao + chấm + export  
 - [x] Student nộp báo cáo / xem feedback  
-- [ ] Frontend 3 portals usable in demo  
+- [x] Frontend 3 portals usable in demo (`docs/Demo-UI-Script.md`)  
 - [ ] Ổn định trên môi trường thử nghiệm khoa  
 
 ---
@@ -123,5 +123,5 @@ IA: [`07a-Information-Architecture.md`](07a-Information-Architecture.md)
 
 # 10. Summary
 
-**Backend MVP + Admin = Done.**  
-Bước tiếp theo chính: **Frontend portals** theo IA v2, rồi UAT/demo.
+**Backend MVP + Admin + Frontend MVP = Done.**  
+Demo: [`Demo-UI-Script.md`](Demo-UI-Script.md) · UAT: [`M7-UAT-Checklist.md`](M7-UAT-Checklist.md) · FE plan: [`Frontend-UI-Plan.md`](Frontend-UI-Plan.md).

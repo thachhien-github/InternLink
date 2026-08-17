@@ -12,5 +12,9 @@ public class Student : BaseEntity
     public string? Email { get; set; }
     public string? Phone { get; set; }
 
-    public Internship? Internship { get; set; }
+    /// <summary>
+    /// Collection of internships across multiple semesters
+    /// One student can have multiple internships (1:N per semester)
+    /// </summary>
+    public ICollection<Internship> Internships { get; set; } = new List<Internship>();
 }

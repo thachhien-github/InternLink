@@ -90,12 +90,14 @@ public class StudentServiceTests
 
         result.UserId.Should().NotBeNull();
         (await db.Users.CountAsync(u => u.Username == "sv100" && u.Role == Role.Student)).Should().Be(1);
+        var user = await db.Users.FirstAsync(u => u.Username == "sv100");
+        user.MustChangePassword.Should().BeTrue();
         email.Verify(e => e.SendInvitationAsync(
             It.Is<InvitationEmailRequest>(r =>
                 r.ToEmail == "sv@example.com" &&
                 r.Username == "sv100" &&
                 r.Role == InvitationRole.Student &&
-                r.TemporaryPassword == SeedData.DefaultPassword),
+                r.TemporaryPassword.Length == 8),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -381,9 +383,13 @@ public class StudentServiceTests
         result.SuccessCount.Should().Be(1);
         result.EmailSentCount.Should().Be(1);
         result.EmailFailedCount.Should().Be(0);
-        result.DefaultPassword.Should().Be(SeedData.DefaultPassword);
+        result.DefaultPassword.Should().Be(StudentService.TemporaryPasswordPolicyDescription);
         (await db.Users.CountAsync(u => u.Username == "sv.import99" && u.Role == Role.Student)).Should().Be(1);
-        email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        var user = await db.Users.FirstAsync(u => u.Username == "sv.import99");
+        user.MustChangePassword.Should().BeTrue();
+        email.Verify(e => e.SendInvitationAsync(
+            It.Is<InvitationEmailRequest>(r => r.TemporaryPassword.Length == 8),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -403,31 +409,98 @@ public class StudentServiceTests
         result.EmailFailedCount.Should().Be(1);
         result.EmailErrors.Should().ContainSingle(e => e.Message.Contains("no email", StringComparison.OrdinalIgnoreCase));
         email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        var user = await db.Users.FirstAsync(u => u.Username == "sv.nomail");
+        user.MustChangePassword.Should().BeTrue();
         (await db.Users.CountAsync(u => u.Username == "sv.nomail")).Should().Be(1);
     }
 
     [Fact]
-    public async Task ImportStudentsFromExcelAsync_WithDuplicateMssv_ShouldReportError()
+    public async Task ImportStudentsFromExcelAsync_WithEmailOnly_ShouldDefaultUsernameToMssv()
     {
         var db = GetInMemoryDbContext();
-        var service = CreateService(db);
-        db.Students.Add(new Student
-        {
-            Id = Guid.NewGuid(),
-            StudentCode = "2421160052",
-            FullName = "Existing",
-            CreatedAt = DateTime.UtcNow
-        });
-        await db.SaveChangesAsync();
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InvitationEmailRequest r, CancellationToken _) => SendEmailResult.Ok(r.ToEmail));
+
+        var service = CreateService(db, email.Object);
 
         using var stream = CreateStudentExcel(
-            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", null, null, null));
+            ("2421160077", "Email Only", "DH24TIN06", "CNTT", "only@test.com", "0904444444", null));
 
         var result = await service.ImportStudentsFromExcelAsync(stream);
 
-        result.SuccessCount.Should().Be(0);
-        result.SkippedDuplicateCount.Should().Be(1);
-        result.Errors.Should().Contain(e => e.StudentCode == "2421160052");
+        result.SuccessCount.Should().Be(1);
+        result.EmailSentCount.Should().Be(1);
+        (await db.Users.CountAsync(u => u.Username == "2421160077" && u.Role == Role.Student)).Should().Be(1);
+        email.Verify(e => e.SendInvitationAsync(
+            It.Is<InvitationEmailRequest>(r => r.Username == "2421160077"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithDuplicateMssvInFile_ShouldReportError()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+
+        using var stream = CreateStudentExcel(
+            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", null, null, null),
+            ("2421160052", "Nguyen Van A 2", "DH24TIN06", "CNTT", null, null, null));
+
+        var result = await service.ImportStudentsFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.Errors.Should().Contain(e => e.StudentCode == "2421160052" && e.Message.Contains("Duplicate MSSV in file"));
+    }
+
+    [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithExistingStudent_ShouldUpdateAndEnrollInNewSemester()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+
+        var oldSemester = new Semester { Id = Guid.NewGuid(), Name = "Old Semester", Term = "Học kỳ I", AcademicYear = "2025 - 2026", Status = SemesterStatus.Completed, CreatedAt = DateTime.UtcNow.AddMonths(-6) };
+        var newSemester = new Semester { Id = Guid.NewGuid(), Name = "New Semester", Term = "Học kỳ II", AcademicYear = "2025 - 2026", Status = SemesterStatus.Active, CreatedAt = DateTime.UtcNow };
+
+        var existingStudent = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2421160052",
+            FullName = "Nguyen Van A (Old)",
+            Class = "DH23TIN01",
+            CreatedAt = DateTime.UtcNow.AddMonths(-6)
+        };
+
+        var oldInternship = new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = existingStudent.Id,
+            SemesterId = oldSemester.Id,
+            Status = InternshipStatus.Completed,
+            CreatedAt = DateTime.UtcNow.AddMonths(-6)
+        };
+
+        db.Semesters.AddRange(oldSemester, newSemester);
+        db.Students.Add(existingStudent);
+        db.Internships.Add(oldInternship);
+        await db.SaveChangesAsync();
+
+        using var stream = CreateStudentExcel(
+            ("2421160052", "Nguyen Van A", "DH24TIN06", "CNTT", "vana@student.edu.vn", "0901234567", null));
+
+        var result = await service.ImportStudentsFromExcelAsync(stream, newSemester.Id);
+
+        result.SuccessCount.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var updatedStudent = await db.Students.FindAsync(existingStudent.Id);
+        updatedStudent!.FullName.Should().Be("Nguyen Van A");
+        updatedStudent.Class.Should().Be("DH24TIN06");
+
+        var studentInternships = await db.Internships.Where(i => i.StudentId == existingStudent.Id).ToListAsync();
+        studentInternships.Should().HaveCount(2);
+        studentInternships.Should().Contain(i => i.SemesterId == oldSemester.Id && i.Status == InternshipStatus.Completed);
+        studentInternships.Should().Contain(i => i.SemesterId == newSemester.Id && i.Status == InternshipStatus.NotStarted);
     }
 
     [Fact]

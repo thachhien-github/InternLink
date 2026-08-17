@@ -1,8 +1,15 @@
-import { useState, useMemo } from 'react';
-import { Toast } from '../../../components/common/Toast';
-import { EvaluationWorkspace } from './EvaluationWorkspace';
-import { RubricEvaluation } from './RubricEvaluation';
-import { EvaluationDetail } from './EvaluationDetail';
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Toast } from "../../../components/common/Toast";
+import { PageHeader } from "../../../components/common/PageHeader";
+import { Toolbar } from "../../../components/common/Toolbar";
+import { Panel } from "../../../components/common/Panel";
+import { EvaluationWorkspace } from "./EvaluationWorkspace";
+import { RubricEvaluation } from "./RubricEvaluation";
+import { EvaluationDetail } from "./EvaluationDetail";
+import { USE_MOCK } from "../../../config/env";
+import { getApiErrorMessage } from "../../../lib/apiClient";
+import { mapEvaluationListItemToUi } from "../../../lib/portalMappers";
+import { evaluationService } from "../../../services/evaluation.service";
 import {
   Award,
   Search,
@@ -22,14 +29,15 @@ import {
   GraduationCap,
   PieChart,
   Save,
-  Sliders
-} from 'lucide-react';
+  Sliders,
+} from "lucide-react";
 const INITIAL_EVALUATIONS = [
   {
     id: "eval-1",
     name: "Nguy\u1EC5n V\u0103n An",
     mssv: "20210001",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15A",
     major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
     company: "FPT Software",
@@ -43,14 +51,16 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "12/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "Sinh vi\xEAn ho\xE0n th\xE0nh xu\u1EA5t s\u1EAFc \u0111\u1EC1 t\xE0i, th\xE1i \u0111\u1ED9 l\xE0m vi\u1EC7c t\u1EA1i FPT r\u1EA5t chuy\xEAn nghi\u1EC7p.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc"
+    lecturerComments:
+      "Sinh vi\xEAn ho\xE0n th\xE0nh xu\u1EA5t s\u1EAFc \u0111\u1EC1 t\xE0i, th\xE1i \u0111\u1ED9 l\xE0m vi\u1EC7c t\u1EA1i FPT r\u1EA5t chuy\xEAn nghi\u1EC7p.",
+    gradeClassification: "Xu\u1EA5t s\u1EAFc",
   },
   {
     id: "eval-2",
     name: "Tr\u1EA7n Th\u1ECB B\xECnh",
     mssv: "20210002",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
     major: "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
     company: "Viettel Telecom",
@@ -64,14 +74,16 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "12/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "B\xE1o c\xE1o Data Pipeline xu\u1EA5t s\u1EAFc, \u0111\u01B0\u1EE3c DN \u0111\xE1nh gi\xE1 cao v\xE0 gi\u1EEF l\u1EA1i l\xE0m ch\xEDnh th\u1EE9c.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc"
+    lecturerComments:
+      "B\xE1o c\xE1o Data Pipeline xu\u1EA5t s\u1EAFc, \u0111\u01B0\u1EE3c DN \u0111\xE1nh gi\xE1 cao v\xE0 gi\u1EEF l\u1EA1i l\xE0m ch\xEDnh th\u1EE9c.",
+    gradeClassification: "Xu\u1EA5t s\u1EAFc",
   },
   {
     id: "eval-3",
     name: "L\xEA Ho\xE0ng C\u01B0\u1EDDng",
     mssv: "20210003",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     class: "HTTT-K15",
     major: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
     company: "VNG Corporation",
@@ -85,14 +97,16 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "11/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "\u0110ang r\xE0 so\xE1t l\u1EA1i ph\u1EA7n tr\xECnh b\xE0y ki\u1EBFn tr\xFAc Cloud Infrastructure.",
-    gradeClassification: "Gi\u1ECFi"
+    lecturerComments:
+      "\u0110ang r\xE0 so\xE1t l\u1EA1i ph\u1EA7n tr\xECnh b\xE0y ki\u1EBFn tr\xFAc Cloud Infrastructure.",
+    gradeClassification: "Gi\u1ECFi",
   },
   {
     id: "eval-4",
     name: "Ph\u1EA1m Minh \u0110\u1EE9c",
     mssv: "20210004",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15A",
     major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
     company: "MISA Joint Stock Co.",
@@ -106,14 +120,16 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "12/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "\u0110\xE1p \u1EE9ng t\u1ED1t c\xE1c chu\u1EA9n k\u1EF9 n\u0103ng c\u01A1 b\u1EA3n, b\xE1o c\xE1o tr\xECnh b\xE0y m\u1EA1ch l\u1EA1c.",
-    gradeClassification: "Gi\u1ECFi"
+    lecturerComments:
+      "\u0110\xE1p \u1EE9ng t\u1ED1t c\xE1c chu\u1EA9n k\u1EF9 n\u0103ng c\u01A1 b\u1EA3n, b\xE1o c\xE1o tr\xECnh b\xE0y m\u1EA1ch l\u1EA1c.",
+    gradeClassification: "Gi\u1ECFi",
   },
   {
     id: "eval-5",
     name: "\u0110\u1ED7 Th\u1ECB Giang",
     mssv: "20210005",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
     major: "An to\xE0n Th\xF4ng tin",
     company: "VNPT IT",
@@ -128,13 +144,14 @@ const INITIAL_EVALUATIONS = [
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments: "",
-    gradeClassification: void 0
+    gradeClassification: void 0,
   },
   {
     id: "eval-6",
     name: "V\u0169 Qu\u1ED1c Huy",
     mssv: "20210006",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     class: "HTTT-K15",
     major: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
     company: "Techcombank",
@@ -149,13 +166,14 @@ const INITIAL_EVALUATIONS = [
     finalReportSubmitted: false,
     enterpriseFeedbackSubmitted: false,
     lecturerComments: "",
-    gradeClassification: void 0
+    gradeClassification: void 0,
   },
   {
     id: "eval-7",
     name: "Ho\xE0ng Th\u1ECB Kh\xE1nh",
     mssv: "20210007",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15A",
     major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
     company: "CMC Global",
@@ -169,14 +187,16 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "12/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "\u0110\u1EC1 t\xE0i t\xEDch h\u1EE3p AI v\xE0o quy tr\xECnh th\u1EED nghi\u1EC7m t\u1EF1 \u0111\u1ED9ng r\u1EA5t \u1EA5n t\u01B0\u1EE3ng.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc"
+    lecturerComments:
+      "\u0110\u1EC1 t\xE0i t\xEDch h\u1EE3p AI v\xE0o quy tr\xECnh th\u1EED nghi\u1EC7m t\u1EF1 \u0111\u1ED9ng r\u1EA5t \u1EA5n t\u01B0\u1EE3ng.",
+    gradeClassification: "Xu\u1EA5t s\u1EAFc",
   },
   {
     id: "eval-8",
     name: "B\xF9i Anh Long",
     mssv: "20210008",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
     major: "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
     company: "MB Bank",
@@ -190,12 +210,14 @@ const INITIAL_EVALUATIONS = [
     weeklyReportCount: "6/12",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
-    lecturerComments: "Ngh\u1EC9 qu\xE1 s\u1ED1 bu\u1ED5i qui \u0111\u1ECBnh, b\xE1o c\xE1o s\u01A1 s\xE0i kh\xF4ng \u0111\u1EE7 ti\xEAu chu\u1EA9n.",
-    gradeClassification: "Kh\xF4ng \u0111\u1EA1t"
-  }
+    lecturerComments:
+      "Ngh\u1EC9 qu\xE1 s\u1ED1 bu\u1ED5i qui \u0111\u1ECBnh, b\xE1o c\xE1o s\u01A1 s\xE0i kh\xF4ng \u0111\u1EE7 ti\xEAu chu\u1EA9n.",
+    gradeClassification: "Kh\xF4ng \u0111\u1EA1t",
+  },
 ];
 export const EvaluationDashboard = () => {
   const [evaluations, setEvaluations] = useState(INITIAL_EVALUATIONS);
+  const [isLoadingApi, setIsLoadingApi] = useState(!USE_MOCK);
   const [isAiWidgetExpanded, setIsAiWidgetExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("HK I - 2026");
@@ -207,26 +229,66 @@ export const EvaluationDashboard = () => {
   const [activeGradingStudent, setActiveGradingStudent] = useState(null);
   const [activeSheetStudent, setActiveSheetStudent] = useState(null);
   const [activeDetailStudent, setActiveDetailStudent] = useState(null);
-  const [gradeInput, setGradeInput] = useState({ enterprise: 8.5, lecturer: 8.5, presentation: 8.5, comments: "" });
+  const [gradeInput, setGradeInput] = useState({
+    enterprise: 8.5,
+    lecturer: 8.5,
+    presentation: 8.5,
+    comments: "",
+  });
   const [toastMessage, setToastMessage] = useState(null);
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3e3);
   };
+
+  const refreshEvaluations = useCallback(async () => {
+    const rows = await evaluationService.list();
+    setEvaluations(rows.map(mapEvaluationListItemToUi));
+  }, []);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+    let cancelled = false;
+    (async () => {
+      setIsLoadingApi(true);
+      try {
+        const rows = await evaluationService.list();
+        if (!cancelled) {
+          setEvaluations(rows.map(mapEvaluationListItemToUi));
+        }
+      } catch (err) {
+        if (!cancelled) showToast(getApiErrorMessage(err));
+      } finally {
+        if (!cancelled) setIsLoadingApi(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const filteredEvaluations = useMemo(() => {
     return evaluations.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.mssv.includes(searchQuery);
-      const matchesClass = classFilter === "T\u1EA5t c\u1EA3" || item.class === classFilter;
-      const matchesEnterprise = enterpriseFilter === "T\u1EA5t c\u1EA3" || item.company === enterpriseFilter;
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.mssv.includes(searchQuery);
+      const matchesClass =
+        classFilter === "T\u1EA5t c\u1EA3" || item.class === classFilter;
+      const matchesEnterprise =
+        enterpriseFilter === "T\u1EA5t c\u1EA3" ||
+        item.company === enterpriseFilter;
       let matchesStatus = true;
       if (statusFilter === "\u0110\xE3 ch\u1EA5m") {
         matchesStatus = item.status === "Ho\xE0n th\xE0nh";
       } else if (statusFilter === "Ch\u01B0a ch\u1EA5m") {
-        matchesStatus = item.status === "Ch\u01B0a ch\u1EA5m" || item.status === "\u0110ang ch\u1EA5m";
+        matchesStatus =
+          item.status === "Ch\u01B0a ch\u1EA5m" ||
+          item.status === "\u0110ang ch\u1EA5m";
       }
-      return matchesSearch && matchesClass && matchesEnterprise && matchesStatus;
+      return (
+        matchesSearch && matchesClass && matchesEnterprise && matchesStatus
+      );
     });
   }, [evaluations, searchQuery, classFilter, enterpriseFilter, statusFilter]);
   const totalPages = Math.ceil(filteredEvaluations.length / pageSize) || 1;
@@ -235,21 +297,48 @@ export const EvaluationDashboard = () => {
     return filteredEvaluations.slice(start, start + pageSize);
   }, [filteredEvaluations, currentPage, pageSize]);
   const totalStudents = evaluations.length;
-  const gradedCount = evaluations.filter((e) => e.status === "Ho\xE0n th\xE0nh").length;
-  const ungradedCount = evaluations.filter((e) => e.status === "Ch\u01B0a ch\u1EA5m" || e.status === "\u0110ang ch\u1EA5m").length;
+  const gradedCount = evaluations.filter(
+    (e) => e.status === "Ho\xE0n th\xE0nh",
+  ).length;
+  const ungradedCount = evaluations.filter(
+    (e) =>
+      e.status === "Ch\u01B0a ch\u1EA5m" || e.status === "\u0110ang ch\u1EA5m",
+  ).length;
   const gradedStudentsList = evaluations.filter((e) => e.totalScore !== null);
-  const avgScore = gradedStudentsList.length > 0 ? (gradedStudentsList.reduce((acc, curr) => acc + (curr.totalScore || 0), 0) / gradedStudentsList.length).toFixed(1) : "0.0";
-  const excellentCount = evaluations.filter((e) => e.gradeClassification === "Xu\u1EA5t s\u1EAFc").length;
-  const failedCount = evaluations.filter((e) => e.gradeClassification === "Kh\xF4ng \u0111\u1EA1t").length;
+  const avgScore =
+    gradedStudentsList.length > 0
+      ? (
+          gradedStudentsList.reduce(
+            (acc, curr) => acc + (curr.totalScore || 0),
+            0,
+          ) / gradedStudentsList.length
+        ).toFixed(1)
+      : "0.0";
+  const excellentCount = evaluations.filter(
+    (e) => e.gradeClassification === "Xu\u1EA5t s\u1EAFc",
+  ).length;
+  const failedCount = evaluations.filter(
+    (e) => e.gradeClassification === "Kh\xF4ng \u0111\u1EA1t",
+  ).length;
   const distribution = {
-    excellent: evaluations.filter((e) => e.totalScore && e.totalScore >= 9).length,
-    good: evaluations.filter((e) => e.totalScore && e.totalScore >= 8 && e.totalScore < 9).length,
-    fair: evaluations.filter((e) => e.totalScore && e.totalScore >= 6.5 && e.totalScore < 8).length,
-    average: evaluations.filter((e) => e.totalScore && e.totalScore >= 5 && e.totalScore < 6.5).length,
-    failed: evaluations.filter((e) => e.totalScore && e.totalScore < 5).length
+    excellent: evaluations.filter((e) => e.totalScore && e.totalScore >= 9)
+      .length,
+    good: evaluations.filter(
+      (e) => e.totalScore && e.totalScore >= 8 && e.totalScore < 9,
+    ).length,
+    fair: evaluations.filter(
+      (e) => e.totalScore && e.totalScore >= 6.5 && e.totalScore < 8,
+    ).length,
+    average: evaluations.filter(
+      (e) => e.totalScore && e.totalScore >= 5 && e.totalScore < 6.5,
+    ).length,
+    failed: evaluations.filter((e) => e.totalScore && e.totalScore < 5).length,
   };
   const topScorers = useMemo(() => {
-    return [...evaluations].filter((e) => e.totalScore !== null).sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0)).slice(0, 5);
+    return [...evaluations]
+      .filter((e) => e.totalScore !== null)
+      .sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0))
+      .slice(0, 5);
   }, [evaluations]);
   const ungradedList = useMemo(() => {
     return evaluations.filter((e) => e.status !== "Ho\xE0n th\xE0nh");
@@ -272,7 +361,7 @@ export const EvaluationDashboard = () => {
       "\u0110i\u1EC3m T\u1ED5ng k\u1EBFt",
       "X\u1EBFp lo\u1EA1i",
       "Tr\u1EA1ng th\xE1i",
-      "Nh\u1EADn x\xE9t / Ghi ch\xFA"
+      "Nh\u1EADn x\xE9t / Ghi ch\xFA",
     ];
     const rows = targetList.map((item, idx) => [
       idx + 1,
@@ -289,11 +378,11 @@ export const EvaluationDashboard = () => {
       item.totalScore !== null ? item.totalScore : "",
       `"${item.gradeClassification || "Ch\u01B0a x\u1EBFp lo\u1EA1i"}"`,
       `"${item.status}"`,
-      `"${(item.lecturerComments || "").replace(/"/g, '""')}"`
+      `"${(item.lecturerComments || "").replace(/"/g, '""')}"`,
     ]);
     const csvContent = [
       "\uFEFF" + headers.join(","),
-      ...rows.map((row) => row.join(","))
+      ...rows.map((row) => row.join(",")),
     ].join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -317,281 +406,257 @@ export const EvaluationDashboard = () => {
     }
     executeExportExcel(targetList);
     setShowExportModal(false);
-    showToast(`\u0110\xE3 t\u1EA3i xu\u1ED1ng file Excel B\u1EA3ng \u0111i\u1EC3m t\u1ED5ng h\u1EE3p (${targetList.length} sinh vi\xEAn)!`);
+    showToast(
+      `\u0110\xE3 t\u1EA3i xu\u1ED1ng file Excel B\u1EA3ng \u0111i\u1EC3m t\u1ED5ng h\u1EE3p (${targetList.length} sinh vi\xEAn)!`,
+    );
   };
   const handleOpenGrading = (student) => {
     setWorkspaceStudent(student);
   };
-  const handleSaveGrade = () => {
+  const handleSaveGrade = async () => {
     if (!activeGradingStudent) return;
     const total = parseFloat(
-      (gradeInput.enterprise * 0.4 + gradeInput.lecturer * 0.4 + gradeInput.presentation * 0.2).toFixed(1)
+      (
+        gradeInput.enterprise * 0.4 +
+        gradeInput.lecturer * 0.4 +
+        gradeInput.presentation * 0.2
+      ).toFixed(1),
     );
-    let classification = "Kh\xE1";
-    if (total >= 9) classification = "Xu\u1EA5t s\u1EAFc";
-    else if (total >= 8) classification = "Gi\u1ECFi";
-    else if (total >= 6.5) classification = "Kh\xE1";
-    else if (total >= 5) classification = "Trung b\xECnh";
-    else classification = "Kh\xF4ng \u0111\u1EA1t";
-    setEvaluations(
-      (prev) => prev.map(
-        (item) => item.id === activeGradingStudent.id ? {
-          ...item,
-          enterpriseScore: gradeInput.enterprise,
-          lecturerScore: gradeInput.lecturer,
-          presentationScore: gradeInput.presentation,
-          totalScore: total,
-          status: "Ho\xE0n th\xE0nh",
-          lecturerComments: gradeInput.comments,
-          gradeClassification: classification
-        } : item
-      )
+    let classification = "Khá";
+    if (total >= 9) classification = "Xuất sắc";
+    else if (total >= 8) classification = "Giỏi";
+    else if (total >= 6.5) classification = "Khá";
+    else if (total >= 5) classification = "Trung bình";
+    else classification = "Không đạt";
+
+    if (!USE_MOCK) {
+      try {
+        await evaluationService.persistFromUi(
+          {
+            id: activeGradingStudent.id,
+            internshipId: activeGradingStudent.internshipId,
+            enterpriseScore: gradeInput.enterprise,
+            lecturerScore: gradeInput.lecturer,
+            presentationScore: gradeInput.presentation,
+            lecturerComments: gradeInput.comments,
+          },
+          true,
+        );
+        await refreshEvaluations();
+        showToast(
+          `Đã lưu & chốt điểm cho ${activeGradingStudent.name} (${total} điểm)`,
+        );
+        setActiveGradingStudent(null);
+        return;
+      } catch (err) {
+        showToast(getApiErrorMessage(err));
+        return;
+      }
+    }
+
+    setEvaluations((prev) =>
+      prev.map((item) =>
+        item.id === activeGradingStudent.id
+          ? {
+              ...item,
+              enterpriseScore: gradeInput.enterprise,
+              lecturerScore: gradeInput.lecturer,
+              presentationScore: gradeInput.presentation,
+              totalScore: total,
+              status: "Hoàn thành",
+              lecturerComments: gradeInput.comments,
+              gradeClassification: classification,
+            }
+          : item,
+      ),
     );
-    showToast(`\u0110\xE3 l\u01B0u \u0111i\u1EC3m th\xE0nh c\xF4ng cho sinh vi\xEAn ${activeGradingStudent.name} (${total} \u0111i\u1EC3m)`);
+    showToast(
+      `Đã lưu điểm thành công cho sinh viên ${activeGradingStudent.name} (${total} điểm)`,
+    );
     setActiveGradingStudent(null);
   };
   if (rubricStudent) {
-    return <RubricEvaluation
-      student={rubricStudent}
-      onBack={() => setRubricStudent(null)}
-      onSave={(data) => {
-        setEvaluations(
-          (prev) => prev.map(
-            (item) => item.id === data.studentId ? {
-              ...item,
-              lecturerScore: data.finalScore,
-              totalScore: data.finalScore,
-              status: "Ho\xE0n th\xE0nh",
-              gradeClassification: data.classification
-            } : item
-          )
-        );
-        setRubricStudent(null);
-      }}
-    />;
+    return (
+      <RubricEvaluation
+        student={rubricStudent}
+        onBack={() => setRubricStudent(null)}
+        onSave={async (data) => {
+          if (!USE_MOCK) {
+            try {
+              await evaluationService.persistFromUi(
+                {
+                  id: data.studentId,
+                  internshipId: rubricStudent.internshipId,
+                  lecturerScore: data.finalScore,
+                  enterpriseScore: data.finalScore,
+                  presentationScore: data.finalScore,
+                },
+                true,
+              );
+              await refreshEvaluations();
+            } catch (err) {
+              showToast(getApiErrorMessage(err));
+              return;
+            }
+          } else {
+            setEvaluations((prev) =>
+              prev.map((item) =>
+                item.id === data.studentId
+                  ? {
+                      ...item,
+                      lecturerScore: data.finalScore,
+                      totalScore: data.finalScore,
+                      status: "Hoàn thành",
+                      gradeClassification: data.classification,
+                    }
+                  : item,
+              ),
+            );
+          }
+          setRubricStudent(null);
+        }}
+      />
+    );
   }
   if (activeDetailStudent) {
-    return <EvaluationDetail
-      student={activeDetailStudent}
-      onBack={() => setActiveDetailStudent(null)}
-      onEdit={(studentToEdit) => {
-        setActiveDetailStudent(null);
-        setWorkspaceStudent(studentToEdit);
-      }}
-    />;
+    return (
+      <EvaluationDetail
+        student={activeDetailStudent}
+        onBack={() => setActiveDetailStudent(null)}
+        onEdit={(studentToEdit) => {
+          setActiveDetailStudent(null);
+          setWorkspaceStudent(studentToEdit);
+        }}
+      />
+    );
   }
   if (workspaceStudent) {
-    return <EvaluationWorkspace
-      student={workspaceStudent}
-      onBack={() => setWorkspaceStudent(null)}
-      onSave={(updated) => {
-        setEvaluations(
-          (prev) => prev.map((item) => item.id === updated.id ? updated : item)
-        );
-        setWorkspaceStudent(null);
-      }}
-    />;
+    return (
+      <EvaluationWorkspace
+        student={workspaceStudent}
+        onBack={() => setWorkspaceStudent(null)}
+        onSave={async (updated) => {
+          if (!USE_MOCK) {
+            try {
+              const finalize = updated.status === "Hoàn thành";
+              await evaluationService.persistFromUi(
+                {
+                  id: updated.id,
+                  internshipId: updated.internshipId,
+                  enterpriseScore: updated.enterpriseScore,
+                  lecturerScore: updated.lecturerScore,
+                  presentationScore: updated.presentationScore,
+                  lecturerComments: updated.lecturerComments,
+                },
+                finalize,
+              );
+              await refreshEvaluations();
+            } catch (err) {
+              showToast(getApiErrorMessage(err));
+              return;
+            }
+          } else {
+            setEvaluations((prev) =>
+              prev.map((item) => (item.id === updated.id ? updated : item)),
+            );
+          }
+          setWorkspaceStudent(null);
+        }}
+      />
+    );
   }
-  return <div className="space-y-6 animate-in fade-in duration-200 pb-16 font-sans">
-      {
-    /* Toast Alert */
-  }
+  return (
+    <div className="space-y-5 max-w-[1500px] mx-auto animate-in fade-in duration-200 pb-16 font-sans">
+      {/* Toast Alert */}
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
 
-      {
-    /* HEADER SECTION */
-  }
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Award className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              Đánh giá &amp; Chấm điểm Thực tập
-            </h1>
-            <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 font-extrabold text-[10px] rounded-full border border-blue-200">
-              HK I - 2026
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Tổng hợp kết quả, quản lý điểm số và chấm điểm theo tiêu chí thực tập sinh viên Khoa CNTT.
+      <PageHeader
+        icon={Award}
+        title="Đánh giá & Chấm điểm Thực tập"
+        subtitle="Tổng hợp kết quả, quản lý điểm số và chấm điểm theo tiêu chí thực tập sinh viên Khoa CNTT."
+        badge="HK I - 2026"
+        badgeColor="bg-blue-100 text-blue-800 border-blue-200"
+        actions={[
+          {
+            label: "Tiêu chí đánh giá",
+            icon: Sliders,
+            onClick: () => setRubricStudent(evaluations[0]),
+            variant: "secondary",
+          },
+          {
+            label: "Xuất bảng điểm",
+            icon: Download,
+            onClick: handleExportTranscript,
+            variant: "primary",
+          },
+        ]}
+      />
+
+      <Toolbar
+        left={
+          <p className="text-xs text-slate-500 font-medium">
+            <span className="font-bold text-slate-800">{totalStudents}</span> SV
+            ·{" "}
+            <span className="font-bold text-emerald-700">{gradedCount}</span> đã
+            chấm ·{" "}
+            <span className="font-bold text-amber-700">{ungradedCount}</span>{" "}
+            chờ · TB{" "}
+            <span className="font-bold text-sky-700">{avgScore}</span>/10
           </p>
-        </div>
+        }
+      />
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
-          <button
-    onClick={() => setRubricStudent(evaluations[0])}
-    className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-colors border border-slate-200 flex items-center gap-1.5 shrink-0"
-  >
-            <Sliders className="w-4 h-4 text-blue-600" />
-            <span>Tiêu chí đánh giá</span>
-          </button>
-
-          <button
-    onClick={handleExportTranscript}
-    className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0"
-  >
-            <Download className="w-4 h-4" />
-            <span>Xuất bảng điểm</span>
-          </button>
-        </div>
-      </div>
-
-      {
-    /* 4 SYNCHRONIZED TOP METRIC CARDS */
-  }
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {
-    /* 1. TỔNG SINH VIÊN */
-  }
-        <div
-    onClick={() => {
-      setStatusFilter("T\u1EA5t c\u1EA3");
-      setClassFilter("T\u1EA5t c\u1EA3");
-      setEnterpriseFilter("T\u1EA5t c\u1EA3");
-      setSearchQuery("");
-    }}
-    className="bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/40 p-4 rounded-2xl border border-indigo-200/80 border-l-4 border-l-indigo-500 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-1.5"
-  >
-          <div className="flex items-center justify-between text-indigo-600">
-            <span className="text-[10px] font-extrabold uppercase text-indigo-800 tracking-wider">
-              Tổng sinh viên thực tập
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-100/80 text-indigo-600 border border-indigo-200/60 flex items-center justify-center">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-slate-900">{totalStudents}</span>
-            <span className="text-xs font-bold text-slate-400">sinh viên</span>
-          </div>
-          <span className="text-[11px] text-indigo-600 font-bold block">Danh sách toàn bộ đợt thực tập</span>
-        </div>
-
-        {
-    /* 2. ĐÃ CHẤM HOÀN TẤT */
-  }
-        <div
-    onClick={() => setStatusFilter("\u0110\xE3 ch\u1EA5m")}
-    className="bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/40 p-4 rounded-2xl border border-emerald-200/80 border-l-4 border-l-emerald-500 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-1.5"
-  >
-          <div className="flex items-center justify-between text-emerald-600">
-            <span className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">
-              Đã chấm hoàn tất
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-100/80 text-emerald-600 border border-emerald-200/60 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-emerald-800">{gradedCount}</span>
-            <span className="text-xs font-bold text-emerald-600">sinh viên</span>
-          </div>
-          <span className="text-[11px] text-emerald-600 font-bold block">
-            {(gradedCount / totalStudents * 100).toFixed(0)}% đã tổng hợp điểm
-          </span>
-        </div>
-
-        {
-    /* 3. CHỜ CHẤM ĐIỂM */
-  }
-        <div
-    onClick={() => setStatusFilter("Ch\u01B0a ch\u1EA5m")}
-    className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/40 p-4 rounded-2xl border border-amber-200/80 border-l-4 border-l-amber-500 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-1.5"
-  >
-          <div className="flex items-center justify-between text-amber-600">
-            <span className="text-[10px] font-extrabold uppercase text-amber-800 tracking-wider">
-              Chờ chấm / Đang chấm
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-100/80 text-amber-600 border border-amber-200/60 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-amber-800">{ungradedCount}</span>
-            <span className="text-xs font-bold text-amber-600">sinh viên</span>
-          </div>
-          <span className="text-[11px] text-amber-600 font-bold block">Cần hoàn thành chấm điểm</span>
-        </div>
-
-        {
-    /* 4. ĐIỂM TRUNG BÌNH ĐỢT */
-  }
-        <div
-    onClick={() => {
-      setStatusFilter("T\u1EA5t c\u1EA3");
-      setClassFilter("T\u1EA5t c\u1EA3");
-    }}
-    className="bg-gradient-to-br from-blue-50/80 via-white to-sky-50/40 p-4 rounded-2xl border border-blue-200/80 border-l-4 border-l-blue-500 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-1.5"
-  >
-          <div className="flex items-center justify-between text-blue-600">
-            <span className="text-[10px] font-extrabold uppercase text-blue-800 tracking-wider">
-              Điểm trung bình đợt
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-100/80 text-blue-600 border border-blue-200/60 flex items-center justify-center">
-              <BarChart2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-blue-900">{avgScore}</span>
-            <span className="text-xs font-bold text-blue-500">/ 10</span>
-          </div>
-          <span className="text-[11px] text-blue-600 font-bold block">Thang điểm 10 toàn đợt</span>
-        </div>
-      </section>
-
-      {
-    /* SEARCH AND SYNCHRONIZED FILTERS BAR */
-  }
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        {
-    /* Header Section Label */
-  }
+      <Panel className="space-y-4">
+        <div className="space-y-3">
+        {/* Header Section Label */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-blue-600" />
-            <h2 className="text-xs font-extrabold uppercase text-slate-800 tracking-wider">
+            <h2 className="text-xs font-bold uppercase text-slate-800 tracking-wider">
               Bộ lọc tìm kiếm &amp; Chấm điểm sinh viên
             </h2>
           </div>
 
-          {(searchQuery || classFilter !== "T\u1EA5t c\u1EA3" || enterpriseFilter !== "T\u1EA5t c\u1EA3" || statusFilter !== "T\u1EA5t c\u1EA3" || semesterFilter !== "HK I - 2026") && <button
-    onClick={() => {
-      setSearchQuery("");
-      setSemesterFilter("HK I - 2026");
-      setClassFilter("T\u1EA5t c\u1EA3");
-      setEnterpriseFilter("T\u1EA5t c\u1EA3");
-      setStatusFilter("T\u1EA5t c\u1EA3");
-    }}
-    className="text-xs text-blue-600 hover:text-blue-800 font-bold"
-  >
+          {(searchQuery ||
+            classFilter !== "T\u1EA5t c\u1EA3" ||
+            enterpriseFilter !== "T\u1EA5t c\u1EA3" ||
+            statusFilter !== "T\u1EA5t c\u1EA3" ||
+            semesterFilter !== "HK I - 2026") && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSemesterFilter("HK I - 2026");
+                setClassFilter("T\u1EA5t c\u1EA3");
+                setEnterpriseFilter("T\u1EA5t c\u1EA3");
+                setStatusFilter("T\u1EA5t c\u1EA3");
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 font-bold"
+            >
               Xóa bộ lọc
-            </button>}
+            </button>
+          )}
         </div>
 
-        {
-    /* Filter inputs in 1 neat row */
-  }
+        {/* Filter inputs in 1 neat row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-          {
-    /* Search Box */
-  }
+          {/* Search Box */}
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input
-    type="text"
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    placeholder="Tìm tên sinh viên, MSSV..."
-    className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-900 font-medium"
-  />
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm tên sinh viên, MSSV..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-900 font-medium"
+            />
           </div>
 
           <div>
             <select
-    value={semesterFilter}
-    onChange={(e) => setSemesterFilter(e.target.value)}
-    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 text-[11px]"
-  >
+              value={semesterFilter}
+              onChange={(e) => setSemesterFilter(e.target.value)}
+              className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+            >
               <option value="HK I - 2026">HK I - 2026 (Hiện tại)</option>
               <option value="HK II - 2025">HK II - 2025</option>
             </select>
@@ -599,10 +664,10 @@ export const EvaluationDashboard = () => {
 
           <div>
             <select
-    value={classFilter}
-    onChange={(e) => setClassFilter(e.target.value)}
-    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 text-[11px]"
-  >
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+            >
               <option value="Tất cả">Tất cả Lớp</option>
               <option value="CNTT-K15A">CNTT-K15A</option>
               <option value="CNTT-K15B">CNTT-K15B</option>
@@ -612,34 +677,33 @@ export const EvaluationDashboard = () => {
 
           <div>
             <select
-    value={statusFilter}
-    onChange={(e) => setStatusFilter(e.target.value)}
-    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 text-[11px]"
-  >
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+            >
               <option value="Tất cả">Tất cả Trạng thái</option>
               <option value="Đã chấm">✅ Đã chấm hoàn tất</option>
               <option value="Chưa chấm">⏳ Chưa chấm / Đang chấm</option>
             </select>
           </div>
         </div>
-      </div>
+        </div>
 
-      {
-    /* FULL WIDTH EVALUATION TABLE */
-  }
-      <div className="w-full space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden w-full">
+        {/* Evaluation table */}
+        <div className="border border-slate-200/80 rounded-md overflow-hidden w-full">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+            <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <span>Bảng kết quả chấm điểm thực tập</span>
-              <span className="text-xs font-normal text-slate-400">({filteredEvaluations.length} sinh viên)</span>
+              <span className="text-xs font-normal text-slate-400">
+                ({filteredEvaluations.length} sinh viên)
+              </span>
             </h2>
           </div>
 
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Sinh viên</th>
                   <th className="py-3.5 px-4">Doanh nghiệp &amp; Mentor</th>
                   <th className="py-3.5 px-3 text-center">Tiến độ</th>
@@ -651,35 +715,44 @@ export const EvaluationDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {paginatedEvaluations.map((item) => <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
-                    {
-    /* Avatar & Student info */
-  }
+                {paginatedEvaluations.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-blue-50/40 transition-colors"
+                  >
+                    {/* Avatar & Student info */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2.5">
                         <img
-    src={item.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
-    alt={item.name}
-    className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-  />
+                          src={
+                            item.avatar ||
+                            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                          }
+                          alt={item.name}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                        />
                         <div>
-                          <p className="font-extrabold text-slate-900 line-clamp-1">{item.name}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">{item.mssv} • {item.class}</p>
+                          <p className="font-bold text-slate-900 line-clamp-1">
+                            {item.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {item.mssv} • {item.class}
+                          </p>
                         </div>
                       </div>
                     </td>
 
-                    {
-    /* Company & Mentor */
-  }
+                    {/* Company & Mentor */}
                     <td className="py-3.5 px-4">
-                      <p className="font-bold text-slate-900 line-clamp-1">{item.company}</p>
-                      <p className="text-[10px] text-slate-500 line-clamp-1">{item.supervisor}</p>
+                      <p className="font-bold text-slate-900 line-clamp-1">
+                        {item.company}
+                      </p>
+                      <p className="text-[10px] text-slate-500 line-clamp-1">
+                        {item.supervisor}
+                      </p>
                     </td>
 
-                    {
-    /* Progress */
-  }
+                    {/* Progress */}
                     <td className="py-3.5 px-3 text-center">
                       <div className="w-20 mx-auto">
                         <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-0.5">
@@ -687,153 +760,168 @@ export const EvaluationDashboard = () => {
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
-    className={`h-1.5 rounded-full ${item.progress === 100 ? "bg-emerald-500" : item.progress >= 80 ? "bg-blue-600" : "bg-amber-500"}`}
-    style={{ width: `${item.progress}%` }}
-  />
+                            className={`h-1.5 rounded-full ${item.progress === 100 ? "bg-emerald-500" : item.progress >= 80 ? "bg-blue-600" : "bg-amber-500"}`}
+                            style={{ width: `${item.progress}%` }}
+                          />
                         </div>
                       </div>
                     </td>
 
-                    {
-    /* Điểm Doanh nghiệp */
-  }
+                    {/* Điểm Doanh nghiệp */}
                     <td className="py-3.5 px-3 text-center font-bold">
-                      {item.enterpriseScore !== null ? <span className="text-slate-900 font-mono font-bold text-xs">{item.enterpriseScore}</span> : <span className="text-slate-300 italic text-[10px]">Chưa có</span>}
+                      {item.enterpriseScore !== null ? (
+                        <span className="text-slate-900 font-mono font-bold text-xs">
+                          {item.enterpriseScore}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 italic text-[10px]">
+                          Chưa có
+                        </span>
+                      )}
                     </td>
 
-                    {
-    /* Điểm Giảng viên */
-  }
+                    {/* Điểm Giảng viên */}
                     <td className="py-3.5 px-3 text-center font-bold">
-                      {item.lecturerScore !== null ? <span className="text-slate-900 font-mono font-bold text-xs">{item.lecturerScore}</span> : <span className="text-slate-300 italic text-[10px]">Chưa chấm</span>}
+                      {item.lecturerScore !== null ? (
+                        <span className="text-slate-900 font-mono font-bold text-xs">
+                          {item.lecturerScore}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 italic text-[10px]">
+                          Chưa chấm
+                        </span>
+                      )}
                     </td>
 
-                    {
-    /* Điểm Tổng */
-  }
+                    {/* Điểm Tổng */}
                     <td className="py-3.5 px-3 text-center">
-                      {item.totalScore !== null ? <span
-    className={`font-black text-xs px-2.5 py-1 rounded-lg font-mono ${item.totalScore >= 9 ? "bg-purple-100 text-purple-900 border border-purple-200" : item.totalScore >= 8 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 5 ? "bg-emerald-100 text-emerald-900 border border-emerald-200" : "bg-rose-100 text-rose-900 border border-rose-200"}`}
-  >
+                      {item.totalScore !== null ? (
+                        <span
+                          className={`font-bold text-xs px-2.5 py-1 rounded-lg font-mono ${item.totalScore >= 9 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 8 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 5 ? "bg-emerald-100 text-emerald-900 border border-emerald-200" : "bg-rose-100 text-rose-900 border border-rose-200"}`}
+                        >
                           {item.totalScore}
-                        </span> : <span className="text-slate-300 text-[10px]">--</span>}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 text-[10px]">--</span>
+                      )}
                     </td>
 
-                    {
-    /* Status Chip */
-  }
+                    {/* Status Chip */}
                     <td className="py-3.5 px-3">
                       <span
-    className={`px-2.5 py-1 font-extrabold text-[10px] rounded-full inline-flex items-center gap-1 border ${item.status === "Ho\xE0n th\xE0nh" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : item.status === "\u0110ang ch\u1EA5m" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
-  >
+                        className={`px-2.5 py-1 font-bold text-[10px] rounded-full inline-flex items-center gap-1 border ${item.status === "Ho\xE0n th\xE0nh" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : item.status === "\u0110ang ch\u1EA5m" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
+                      >
                         <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         {item.status}
                       </span>
                     </td>
 
-                    {
-    /* Actions */
-  }
+                    {/* Actions */}
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-    onClick={() => setActiveDetailStudent(item)}
-    className="p-1.5 hover:bg-blue-100 rounded-lg text-blue-700 transition-colors"
-    title="Chi tiết sinh viên & điểm số"
-  >
+                          onClick={() => setActiveDetailStudent(item)}
+                          className="p-1.5 hover:bg-blue-100 rounded-lg text-blue-700 transition-colors"
+                          title="Chi tiết sinh viên & điểm số"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
 
                         <button
-    onClick={() => handleOpenGrading(item)}
-    className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors border border-blue-200"
-    title="Chấm điểm trực tiếp"
-  >
+                          onClick={() => handleOpenGrading(item)}
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors border border-blue-200"
+                          title="Chấm điểm trực tiếp"
+                        >
                           <Edit3 className="w-4 h-4" />
                         </button>
 
                         <button
-    onClick={() => setRubricStudent(item)}
-    className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg transition-colors border border-purple-200"
-    title="Đánh giá theo 6 tiêu chí"
-  >
+                          onClick={() => setRubricStudent(item)}
+                          className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-md transition-colors border border-slate-200"
+                          title="Đánh giá theo 6 tiêu chí"
+                        >
                           <Sliders className="w-4 h-4" />
                         </button>
 
                         <button
-    onClick={() => setActiveSheetStudent(item)}
-    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors"
-    title="Phiếu đánh giá chi tiết"
-  >
+                          onClick={() => setActiveSheetStudent(item)}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors"
+                          title="Phiếu đánh giá chi tiết"
+                        >
                           <FileText className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
-                  </tr>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
-          {
-    /* PAGINATION FOOTER */
-  }
+          {/* PAGINATION FOOTER */}
           <div className="p-3.5 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 font-semibold text-slate-600">
               <span>Hiển thị tối đa:</span>
               <select
-    value={pageSize}
-    onChange={(e) => {
-      setPageSize(Number(e.target.value));
-      setCurrentPage(1);
-    }}
-    className="px-2 py-1 bg-white border border-slate-200 rounded-lg outline-none font-bold text-slate-800"
-  >
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 bg-white border border-slate-200 rounded-lg outline-none font-bold text-slate-800"
+              >
                 <option value={10}>10 dòng/trang</option>
                 <option value={20}>20 dòng/trang</option>
                 <option value={50}>50 dòng/trang</option>
               </select>
               <span className="text-slate-400 font-normal">
-                (Hiển thị {Math.min((currentPage - 1) * pageSize + 1, filteredEvaluations.length)} - {Math.min(currentPage * pageSize, filteredEvaluations.length)} / tổng {filteredEvaluations.length} sinh viên)
+                (Hiển thị{" "}
+                {Math.min(
+                  (currentPage - 1) * pageSize + 1,
+                  filteredEvaluations.length,
+                )}{" "}
+                - {Math.min(currentPage * pageSize, filteredEvaluations.length)}{" "}
+                / tổng {filteredEvaluations.length} sinh viên)
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
-    disabled={currentPage === 1}
-    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-    className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors text-slate-700"
-  >
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors text-slate-700"
+              >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => <button
-    key={pg}
-    onClick={() => setCurrentPage(pg)}
-    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${currentPage === pg ? "bg-blue-600 text-white shadow-2xs" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"}`}
-  >
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                <button
+                  key={pg}
+                  onClick={() => setCurrentPage(pg)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${currentPage === pg ? "bg-blue-600 text-white shadow-2xs" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"}`}
+                >
                   {pg}
-                </button>)}
+                </button>
+              ))}
 
               <button
-    disabled={currentPage === totalPages}
-    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-    className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors text-slate-700"
-  >
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors text-slate-700"
+              >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        {
-    /* BOTTOM ANALYTICS ROW (Grade distribution, Top Scorers, Ungraded list in 3 columns) */
-  }
+        {/* BOTTOM ANALYTICS ROW (Grade distribution, Top Scorers, Ungraded list in 3 columns) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-          {
-    /* STATISTICS & GRADE DISTRIBUTION CARD */
-  }
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center justify-between pb-3 border-b border-slate-100">
+          {/* STATISTICS & GRADE DISTRIBUTION CARD */}
+          <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between pb-3 border-b border-slate-100">
               <span className="flex items-center gap-1.5">
                 <PieChart className="w-4 h-4 text-blue-600" />
                 Phân bố điểm
@@ -843,17 +931,22 @@ export const EvaluationDashboard = () => {
               </span>
             </h3>
 
-            {
-    /* Distribution Breakdown Bars */
-  }
+            {/* Distribution Breakdown Bars */}
             <div className="space-y-2.5 text-xs">
               <div>
                 <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-0.5">
                   <span>Xuất sắc (&gt;= 9.0)</span>
-                  <span className="text-purple-700">{distribution.excellent} SV</span>
+                  <span className="text-sky-700">
+                    {distribution.excellent} SV
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${distribution.excellent / totalStudents * 100}%` }} />
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{
+                      width: `${(distribution.excellent / totalStudents) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
 
@@ -863,287 +956,391 @@ export const EvaluationDashboard = () => {
                   <span className="text-blue-700">{distribution.good} SV</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${distribution.good / totalStudents * 100}%` }} />
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{
+                      width: `${(distribution.good / totalStudents) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-0.5">
                   <span>Khá (6.5 - 7.9)</span>
-                  <span className="text-emerald-700">{distribution.fair} SV</span>
+                  <span className="text-emerald-700">
+                    {distribution.fair} SV
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${distribution.fair / totalStudents * 100}%` }} />
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full"
+                    style={{
+                      width: `${(distribution.fair / totalStudents) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-0.5">
                   <span>Trung bình (5.0 - 6.4)</span>
-                  <span className="text-amber-700">{distribution.average} SV</span>
+                  <span className="text-amber-700">
+                    {distribution.average} SV
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${distribution.average / totalStudents * 100}%` }} />
+                  <div
+                    className="bg-amber-500 h-2 rounded-full"
+                    style={{
+                      width: `${(distribution.average / totalStudents) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-0.5">
                   <span>Không đạt (&lt; 5.0)</span>
-                  <span className="text-rose-700">{distribution.failed} SV</span>
+                  <span className="text-rose-700">
+                    {distribution.failed} SV
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-rose-500 h-2 rounded-full" style={{ width: `${distribution.failed / totalStudents * 100}%` }} />
+                  <div
+                    className="bg-rose-500 h-2 rounded-full"
+                    style={{
+                      width: `${(distribution.failed / totalStudents) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {
-    /* TOP 5 SCORERS CARD */
-  }
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
+          {/* TOP 5 SCORERS CARD */}
+          <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
               <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
               <span>Top 5 sinh viên xuất sắc</span>
             </h3>
 
             <div className="space-y-2">
-              {topScorers.map((item, idx) => <div key={item.id} className="p-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+              {topScorers.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="p-2 bg-slate-50 rounded-md border border-slate-100 flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-black text-[10px] flex items-center justify-center shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
                     <div className="truncate max-w-[120px]">
-                      <p className="font-bold text-slate-900 text-xs truncate">{item.name}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{item.company}</p>
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {item.company}
+                      </p>
                     </div>
                   </div>
 
-                  <span className="font-black text-xs px-2 py-0.5 bg-purple-100 text-purple-900 font-mono rounded-md border border-purple-200">
+                  <span className="font-bold text-xs px-2 py-0.5 bg-blue-100 text-blue-900 font-mono rounded-md border border-blue-200">
                     {item.totalScore}
                   </span>
-                </div>)}
+                </div>
+              ))}
             </div>
           </div>
 
-          {
-    /* UNGRADED STUDENTS QUICK LIST */
-  }
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
+          {/* UNGRADED STUDENTS QUICK LIST */}
+          <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
               <Clock className="w-4 h-4 text-amber-600" />
               <span>Cần chấm điểm ngay ({ungradedList.length})</span>
             </h3>
 
-            {ungradedList.length === 0 ? <p className="text-xs text-slate-400 italic">Đã hoàn thành chấm điểm toàn bộ sinh viên!</p> : <div className="space-y-2 max-h-52 overflow-y-auto">
-                {ungradedList.map((item) => <div key={item.id} className="p-2 bg-amber-50/50 rounded-xl border border-amber-200/60 flex items-center justify-between">
+            {ungradedList.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">
+                Đã hoàn thành chấm điểm toàn bộ sinh viên!
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {ungradedList.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2 bg-amber-50/50 rounded-md border border-amber-200/60 flex items-center justify-between"
+                  >
                     <div className="truncate max-w-[120px]">
-                      <p className="font-bold text-slate-900 text-xs truncate">{item.name}</p>
-                      <p className="text-[10px] text-amber-700 truncate">{item.mssv} • {item.company}</p>
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-[10px] text-amber-700 truncate">
+                        {item.mssv} • {item.company}
+                      </p>
                     </div>
 
                     <button
-    onClick={() => handleOpenGrading(item)}
-    className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] rounded-lg transition-colors shrink-0"
-  >
+                      onClick={() => handleOpenGrading(item)}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] rounded-lg transition-colors shrink-0"
+                    >
                       Chấm ngay
                     </button>
-                  </div>)}
-              </div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </Panel>
 
-      {
-    /* MODAL 1: 📝 CHẤM ĐIỂM MODAL */
-  }
-      {activeGradingStudent && <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            {
-    /* Header */
-  }
+      {/* MODAL 1: 📝 CHẤM ĐIỂM MODAL */}
+      {activeGradingStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header */}
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Edit3 className="w-5 h-5 text-blue-400" />
                 <div>
-                  <h3 className="font-extrabold text-sm">Chấm điểm kết quả thực tập</h3>
-                  <p className="text-[10px] text-slate-300">{activeGradingStudent.name} • {activeGradingStudent.mssv}</p>
+                  <h3 className="font-bold text-sm">
+                    Chấm điểm kết quả thực tập
+                  </h3>
+                  <p className="text-[10px] text-slate-300">
+                    {activeGradingStudent.name} • {activeGradingStudent.mssv}
+                  </p>
                 </div>
               </div>
               <button
-    onClick={() => setActiveGradingStudent(null)}
-    className="p-1 text-slate-400 hover:text-white rounded-lg"
-  >
+                onClick={() => setActiveGradingStudent(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {
-    /* Form Content */
-  }
+            {/* Form Content */}
             <div className="p-5 space-y-4 text-xs font-sans">
-              <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 space-y-1">
-                <p className="font-bold text-blue-900 text-xs">Doanh nghiệp thực tập: {activeGradingStudent.company}</p>
-                <p className="text-[11px] text-blue-700">Người hướng dẫn (Mentor): {activeGradingStudent.supervisor}</p>
-                <p className="text-[11px] text-blue-700">Số bài báo cáo hàng tuần: <strong>{activeGradingStudent.weeklyReportCount}</strong> bài</p>
+              <div className="bg-blue-50 p-3 rounded-md border border-blue-200 space-y-1">
+                <p className="font-bold text-blue-900 text-xs">
+                  Doanh nghiệp thực tập: {activeGradingStudent.company}
+                </p>
+                <p className="text-[11px] text-blue-700">
+                  Người hướng dẫn (Mentor): {activeGradingStudent.supervisor}
+                </p>
+                <p className="text-[11px] text-blue-700">
+                  Số bài báo cáo hàng tuần:{" "}
+                  <strong>{activeGradingStudent.weeklyReportCount}</strong> bài
+                </p>
               </div>
 
-              {
-    /* Enterprise Score */
-  }
+              {/* Enterprise Score */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-800">1. Điểm đánh giá từ Doanh nghiệp (Thang 10 - Trọng số 40%):</label>
-                  <span className="font-black text-blue-700 text-sm">{gradeInput.enterprise}</span>
+                  <label className="font-bold text-slate-800">
+                    1. Điểm đánh giá từ Doanh nghiệp (Thang 10 - Trọng số 40%):
+                  </label>
+                  <span className="font-bold text-blue-700 text-sm">
+                    {gradeInput.enterprise}
+                  </span>
                 </div>
                 <input
-    type="range"
-    min="0"
-    max="10"
-    step="0.1"
-    value={gradeInput.enterprise}
-    onChange={(e) => setGradeInput({ ...gradeInput, enterprise: parseFloat(e.target.value) })}
-    className="w-full accent-blue-600"
-  />
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={gradeInput.enterprise}
+                  onChange={(e) =>
+                    setGradeInput({
+                      ...gradeInput,
+                      enterprise: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-blue-600"
+                />
               </div>
 
-              {
-    /* Lecturer Score */
-  }
+              {/* Lecturer Score */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-800">2. Điểm Báo cáo Giảng viên chấm (Thang 10 - Trọng số 40%):</label>
-                  <span className="font-black text-blue-700 text-sm">{gradeInput.lecturer}</span>
+                  <label className="font-bold text-slate-800">
+                    2. Điểm Báo cáo Giảng viên chấm (Thang 10 - Trọng số 40%):
+                  </label>
+                  <span className="font-bold text-blue-700 text-sm">
+                    {gradeInput.lecturer}
+                  </span>
                 </div>
                 <input
-    type="range"
-    min="0"
-    max="10"
-    step="0.1"
-    value={gradeInput.lecturer}
-    onChange={(e) => setGradeInput({ ...gradeInput, lecturer: parseFloat(e.target.value) })}
-    className="w-full accent-blue-600"
-  />
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={gradeInput.lecturer}
+                  onChange={(e) =>
+                    setGradeInput({
+                      ...gradeInput,
+                      lecturer: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-blue-600"
+                />
               </div>
 
-              {
-    /* Presentation Score */
-  }
+              {/* Presentation Score */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-800">3. Điểm Bảo vệ Trước Hội đồng (Thang 10 - Trọng số 20%):</label>
-                  <span className="font-black text-blue-700 text-sm">{gradeInput.presentation}</span>
+                  <label className="font-bold text-slate-800">
+                    3. Điểm Bảo vệ Trước Hội đồng (Thang 10 - Trọng số 20%):
+                  </label>
+                  <span className="font-bold text-blue-700 text-sm">
+                    {gradeInput.presentation}
+                  </span>
                 </div>
                 <input
-    type="range"
-    min="0"
-    max="10"
-    step="0.1"
-    value={gradeInput.presentation}
-    onChange={(e) => setGradeInput({ ...gradeInput, presentation: parseFloat(e.target.value) })}
-    className="w-full accent-blue-600"
-  />
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={gradeInput.presentation}
+                  onChange={(e) =>
+                    setGradeInput({
+                      ...gradeInput,
+                      presentation: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-blue-600"
+                />
               </div>
 
-              {
-    /* Calculated Total */
-  }
-              <div className="bg-slate-100 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-                <span className="font-bold text-slate-800">Điểm tổng kết ước tính:</span>
-                <span className="font-black text-base text-blue-700">
-                  {(gradeInput.enterprise * 0.4 + gradeInput.lecturer * 0.4 + gradeInput.presentation * 0.2).toFixed(1)} / 10
+              {/* Calculated Total */}
+              <div className="bg-slate-100 p-3 rounded-md border border-slate-200 flex items-center justify-between">
+                <span className="font-bold text-slate-800">
+                  Điểm tổng kết ước tính:
+                </span>
+                <span className="font-bold text-base text-blue-700">
+                  {(
+                    gradeInput.enterprise * 0.4 +
+                    gradeInput.lecturer * 0.4 +
+                    gradeInput.presentation * 0.2
+                  ).toFixed(1)}{" "}
+                  / 10
                 </span>
               </div>
 
-              {
-    /* Lecturer Comments */
-  }
+              {/* Lecturer Comments */}
               <div>
-                <label className="block font-bold text-slate-800 mb-1">Nhận xét của Giảng viên:</label>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Nhận xét của Giảng viên:
+                </label>
                 <textarea
-    rows={3}
-    value={gradeInput.comments}
-    onChange={(e) => setGradeInput({ ...gradeInput, comments: e.target.value })}
-    placeholder="Nhập ghi chú nhận xét kết quả thực tập..."
-    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800"
-  />
+                  rows={3}
+                  value={gradeInput.comments}
+                  onChange={(e) =>
+                    setGradeInput({ ...gradeInput, comments: e.target.value })
+                  }
+                  placeholder="Nhập ghi chú nhận xét kết quả thực tập..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-medium text-slate-800"
+                />
               </div>
             </div>
 
-            {
-    /* Footer */
-  }
+            {/* Footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
               <button
-    onClick={() => setActiveGradingStudent(null)}
-    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl"
-  >
+                onClick={() => setActiveGradingStudent(null)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-md"
+              >
                 Hủy
               </button>
 
               <button
-    onClick={handleSaveGrade}
-    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5"
-  >
+                onClick={handleSaveGrade}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md flex items-center gap-1.5"
+              >
                 <Save className="w-4 h-4" />
                 <span>Lưu bảng điểm</span>
               </button>
             </div>
           </div>
-        </div>}
+        </div>
+      )}
 
-      {
-    /* MODAL 2: 📄 PHIẾU ĐÁNH GIÁ DETAILED VIEW MODAL */
-  }
-      {activeSheetStudent && <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full overflow-hidden animate-in zoom-in-95 duration-150">
+      {/* MODAL 2: 📄 PHIẾU ĐÁNH GIÁ DETAILED VIEW MODAL */}
+      {activeSheetStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-xl w-full overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-extrabold text-sm">Phiếu đánh giá chi tiết từ Doanh nghiệp</h3>
+                <h3 className="font-bold text-sm">
+                  Phiếu đánh giá chi tiết từ Doanh nghiệp
+                </h3>
               </div>
-              <button onClick={() => setActiveSheetStudent(null)} className="p-1 text-slate-400 hover:text-white">
+              <button
+                onClick={() => setActiveSheetStudent(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-4 text-xs font-sans">
               <div className="border-b pb-3">
-                <h4 className="font-extrabold text-slate-900 text-sm">{activeSheetStudent.name}</h4>
-                <p className="text-slate-500">MSSV: {activeSheetStudent.mssv} • {activeSheetStudent.major}</p>
-                <p className="text-slate-500">Doanh nghiệp: {activeSheetStudent.company} ({activeSheetStudent.supervisor})</p>
+                <h4 className="font-bold text-slate-900 text-sm">
+                  {activeSheetStudent.name}
+                </h4>
+                <p className="text-slate-500">
+                  MSSV: {activeSheetStudent.mssv} • {activeSheetStudent.major}
+                </p>
+                <p className="text-slate-500">
+                  Doanh nghiệp: {activeSheetStudent.company} (
+                  {activeSheetStudent.supervisor})
+                </p>
               </div>
 
               <div className="space-y-3">
-                <h5 className="font-bold text-slate-800 uppercase text-[11px] text-blue-700">Chi tiết ma trận tiêu chí đánh giá:</h5>
+                <h5 className="font-bold text-slate-800 uppercase text-[11px] text-blue-700">
+                  Chi tiết ma trận tiêu chí đánh giá:
+                </h5>
 
                 <div className="space-y-2">
                   <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">1. Ý thức kỷ luật &amp; Giờ giấc:</span>
+                    <span className="font-medium text-slate-700">
+                      1. Ý thức kỷ luật &amp; Giờ giấc:
+                    </span>
                     <strong className="text-emerald-600">10 / 10</strong>
                   </div>
 
                   <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">2. Năng lực chuyên môn &amp; Code Quality:</span>
+                    <span className="font-medium text-slate-700">
+                      2. Năng lực chuyên môn &amp; Code Quality:
+                    </span>
                     <strong className="text-emerald-600">9.0 / 10</strong>
                   </div>
 
                   <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">3. Kỹ năng giao tiếp &amp; Làm việc nhóm:</span>
+                    <span className="font-medium text-slate-700">
+                      3. Kỹ năng giao tiếp &amp; Làm việc nhóm:
+                    </span>
                     <strong className="text-emerald-600">9.5 / 10</strong>
                   </div>
 
                   <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">4. Mức độ hoàn thiện dự án giao:</span>
+                    <span className="font-medium text-slate-700">
+                      4. Mức độ hoàn thiện dự án giao:
+                    </span>
                     <strong className="text-emerald-600">9.0 / 10</strong>
                   </div>
                 </div>
 
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <p className="font-bold text-emerald-900 mb-1">Nhận xét từ Mentor doanh nghiệp:</p>
+                <div className="p-3 bg-emerald-50 rounded-md border border-emerald-200">
+                  <p className="font-bold text-emerald-900 mb-1">
+                    Nhận xét từ Mentor doanh nghiệp:
+                  </p>
                   <p className="text-emerald-800 italic">
-                    "Sinh viên có tư duy lập trình rất tốt, hoàn thành đúng hạn các Module API. Sẵn sàng tiếp nhận sinh viên làm nhân viên chính thức sau khi tốt nghiệp."
+                    "Sinh viên có tư duy lập trình rất tốt, hoàn thành đúng hạn
+                    các Module API. Sẵn sàng tiếp nhận sinh viên làm nhân viên
+                    chính thức sau khi tốt nghiệp."
                   </p>
                 </div>
               </div>
@@ -1151,26 +1348,31 @@ export const EvaluationDashboard = () => {
 
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
-    onClick={() => setActiveSheetStudent(null)}
-    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl"
-  >
+                onClick={() => setActiveSheetStudent(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-md"
+              >
                 Đóng
               </button>
             </div>
           </div>
-        </div>}
+        </div>
+      )}
 
-      {
-    /* MODAL 3: 👁 CHI TIẾT MODAL */
-  }
-      {activeDetailStudent && <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
+      {/* MODAL 3: 👁 CHI TIẾT MODAL */}
+      {activeDetailStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-blue-400" />
-                <h3 className="font-extrabold text-sm">Hồ sơ tổng hợp kết quả sinh viên</h3>
+                <h3 className="font-bold text-sm">
+                  Hồ sơ tổng hợp kết quả sinh viên
+                </h3>
               </div>
-              <button onClick={() => setActiveDetailStudent(null)} className="p-1 text-slate-400 hover:text-white">
+              <button
+                onClick={() => setActiveDetailStudent(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1178,229 +1380,331 @@ export const EvaluationDashboard = () => {
             <div className="p-5 space-y-4 text-xs font-sans">
               <div className="flex items-center gap-3 border-b pb-3">
                 <img
-    src={activeDetailStudent.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
-    alt={activeDetailStudent.name}
-    className="w-12 h-12 rounded-full object-cover border border-slate-200"
-  />
+                  src={
+                    activeDetailStudent.avatar ||
+                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                  }
+                  alt={activeDetailStudent.name}
+                  className="w-12 h-12 rounded-full object-cover border border-slate-200"
+                />
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-sm">{activeDetailStudent.name}</h4>
-                  <p className="text-slate-500">MSSV: {activeDetailStudent.mssv} • Lớp: {activeDetailStudent.class}</p>
-                  <p className="text-blue-600 font-bold">{activeDetailStudent.major}</p>
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    {activeDetailStudent.name}
+                  </h4>
+                  <p className="text-slate-500">
+                    MSSV: {activeDetailStudent.mssv} • Lớp:{" "}
+                    {activeDetailStudent.class}
+                  </p>
+                  <p className="text-blue-600 font-bold">
+                    {activeDetailStudent.major}
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
                   <span className="text-slate-500">Doanh nghiệp:</span>
-                  <strong className="text-slate-900">{activeDetailStudent.company}</strong>
+                  <strong className="text-slate-900">
+                    {activeDetailStudent.company}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
                   <span className="text-slate-500">Giám sát doanh nghiệp:</span>
-                  <strong className="text-slate-900">{activeDetailStudent.supervisor}</strong>
-                </div>
-
-                <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                  <span className="text-slate-500">Số bài nhật ký tuần đã nộp:</span>
-                  <strong className="text-blue-600">{activeDetailStudent.weeklyReportCount}</strong>
-                </div>
-
-                <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                  <span className="text-slate-500">Báo cáo thực tập cuối kỳ:</span>
-                  <strong className={activeDetailStudent.finalReportSubmitted ? "text-emerald-600" : "text-rose-600"}>
-                    {activeDetailStudent.finalReportSubmitted ? "\u0110\xE3 n\u1ED9p" : "Ch\u01B0a n\u1ED9p"}
+                  <strong className="text-slate-900">
+                    {activeDetailStudent.supervisor}
                   </strong>
                 </div>
 
                 <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
-                  <span className="text-slate-500">Phiếu đánh giá từ Doanh nghiệp:</span>
-                  <strong className={activeDetailStudent.enterpriseFeedbackSubmitted ? "text-emerald-600" : "text-rose-600"}>
-                    {activeDetailStudent.enterpriseFeedbackSubmitted ? "\u0110\xE3 nh\u1EADn" : "Ch\u01B0a c\xF3"}
+                  <span className="text-slate-500">
+                    Số bài nhật ký tuần đã nộp:
+                  </span>
+                  <strong className="text-blue-600">
+                    {activeDetailStudent.weeklyReportCount}
                   </strong>
                 </div>
 
-                {activeDetailStudent.lecturerComments && <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 mt-2">
-                    <p className="font-bold text-blue-900 mb-0.5">Ghi chú của Giảng viên:</p>
-                    <p className="text-blue-800">{activeDetailStudent.lecturerComments}</p>
-                  </div>}
+                <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                  <span className="text-slate-500">
+                    Báo cáo thực tập cuối kỳ:
+                  </span>
+                  <strong
+                    className={
+                      activeDetailStudent.finalReportSubmitted
+                        ? "text-emerald-600"
+                        : "text-rose-600"
+                    }
+                  >
+                    {activeDetailStudent.finalReportSubmitted
+                      ? "\u0110\xE3 n\u1ED9p"
+                      : "Ch\u01B0a n\u1ED9p"}
+                  </strong>
+                </div>
+
+                <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                  <span className="text-slate-500">
+                    Phiếu đánh giá từ Doanh nghiệp:
+                  </span>
+                  <strong
+                    className={
+                      activeDetailStudent.enterpriseFeedbackSubmitted
+                        ? "text-emerald-600"
+                        : "text-rose-600"
+                    }
+                  >
+                    {activeDetailStudent.enterpriseFeedbackSubmitted
+                      ? "\u0110\xE3 nh\u1EADn"
+                      : "Ch\u01B0a c\xF3"}
+                  </strong>
+                </div>
+
+                {activeDetailStudent.lecturerComments && (
+                  <div className="p-3 bg-blue-50/80 rounded-md border border-blue-200 mt-2">
+                    <p className="font-bold text-blue-900 mb-0.5">
+                      Ghi chú của Giảng viên:
+                    </p>
+                    <p className="text-blue-800">
+                      {activeDetailStudent.lecturerComments}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
-    onClick={() => setActiveDetailStudent(null)}
-    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl"
-  >
+                onClick={() => setActiveDetailStudent(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-md"
+              >
                 Đóng
               </button>
             </div>
           </div>
-        </div>}
+        </div>
+      )}
 
-      {
-    /* MODAL 4: 📊 XUẤT EXCEL BẢNG ĐIỂM TỔNG HỢP MODAL */
-  }
-      {showExportModal && <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            {
-    /* Modal Header */
-  }
-            <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white p-5 flex items-center justify-between">
+      {/* MODAL 4: 📊 XUẤT EXCEL BẢNG ĐIỂM TỔNG HỢP MODAL */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-2xl w-full overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="bg-white border-b border-emerald-100 p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white border border-white/20 shadow-xs">
-                  <Download className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold border border-emerald-100">
+                  <Download className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-white tracking-tight">Xuất Bảng Điểm Tổng Hợp (Excel)</h3>
-                  <p className="text-xs text-emerald-100 font-medium">
-                    Học kỳ I - Năm học 2025-2026 • Đợt thực tập tốt nghiệp Khoa CNTT
+                  <h3 className="font-bold text-base text-slate-900 tracking-tight">
+                    Xuất Bảng Điểm Tổng Hợp (Excel)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Học kỳ I - Năm học 2025-2026 • Đợt thực tập tốt nghiệp Khoa
+                    CNTT
                   </p>
                 </div>
               </div>
               <button
-    onClick={() => setShowExportModal(false)}
-    className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors"
-  >
+                onClick={() => setShowExportModal(false)}
+                className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-5 text-xs font-sans">
-              {
-    /* Scope Selection Cards */
-  }
+              {/* Scope Selection Cards */}
               <div className="space-y-2">
-                <label className="font-extrabold text-slate-800 text-xs block uppercase tracking-wider">
+                <label className="font-bold text-slate-800 text-xs block uppercase tracking-wider">
                   1. Chọn phạm vi danh sách sinh viên xuất Excel:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button
-    type="button"
-    onClick={() => setExportScope("all")}
-    className={`p-3.5 rounded-xl border text-left transition-all relative ${exportScope === "all" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
-  >
+                    type="button"
+                    onClick={() => setExportScope("all")}
+                    className={`p-3.5 rounded-md border text-left transition-all relative ${exportScope === "all" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-slate-900">Toàn bộ danh sách</span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full">
+                      <span className="font-bold text-xs text-slate-900">
+                        Toàn bộ danh sách
+                      </span>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full">
                         {evaluations.length} SV
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">Xuất tất cả sinh viên trong học kỳ hiện tại</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Xuất tất cả sinh viên trong học kỳ hiện tại
+                    </p>
                   </button>
 
                   <button
-    type="button"
-    onClick={() => setExportScope("filtered")}
-    className={`p-3.5 rounded-xl border text-left transition-all relative ${exportScope === "filtered" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
-  >
+                    type="button"
+                    onClick={() => setExportScope("filtered")}
+                    className={`p-3.5 rounded-md border text-left transition-all relative ${exportScope === "filtered" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-slate-900">Danh sách đang lọc</span>
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-extrabold text-[10px] rounded-full">
+                      <span className="font-bold text-xs text-slate-900">
+                        Danh sách đang lọc
+                      </span>
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold text-[10px] rounded-full">
                         {filteredEvaluations.length} SV
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">Theo bộ lọc tìm kiếm &amp; lớp hiện tại</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Theo bộ lọc tìm kiếm &amp; lớp hiện tại
+                    </p>
                   </button>
 
                   <button
-    type="button"
-    onClick={() => setExportScope("graded")}
-    className={`p-3.5 rounded-xl border text-left transition-all relative ${exportScope === "graded" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
-  >
+                    type="button"
+                    onClick={() => setExportScope("graded")}
+                    className={`p-3.5 rounded-md border text-left transition-all relative ${exportScope === "graded" ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"}`}
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-slate-900">Chỉ sinh viên đã chấm</span>
-                      <span className="px-2 py-0.5 bg-teal-100 text-teal-800 font-extrabold text-[10px] rounded-full">
-                        {evaluations.filter((e) => e.status === "Ho\xE0n th\xE0nh").length} SV
+                      <span className="font-bold text-xs text-slate-900">
+                        Chỉ sinh viên đã chấm
+                      </span>
+                      <span className="px-2 py-0.5 bg-teal-100 text-teal-800 font-bold text-[10px] rounded-full">
+                        {
+                          evaluations.filter(
+                            (e) => e.status === "Ho\xE0n th\xE0nh",
+                          ).length
+                        }{" "}
+                        SV
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">Chỉ gồm sinh viên đã có điểm tổng kết</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Chỉ gồm sinh viên đã có điểm tổng kết
+                    </p>
                   </button>
                 </div>
               </div>
 
-              {
-    /* Preview Table Header */
-  }
+              {/* Preview Table Header */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="font-extrabold text-slate-800 text-xs block uppercase tracking-wider">
+                  <label className="font-bold text-slate-800 text-xs block uppercase tracking-wider">
                     2. Xem trước định dạng mẫu bảng điểm Excel:
                   </label>
                   <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Định dạng chuẩn Office Excel (UTF-8 BOM)
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Định dạng chuẩn
+                    Office Excel (UTF-8 BOM)
                   </span>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-slate-50 max-h-48 overflow-y-auto">
+                <div className="border border-slate-200 rounded-md overflow-hidden shadow-xs bg-slate-50 max-h-48 overflow-y-auto">
                   <table className="w-full text-left text-[11px]">
                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold sticky top-0">
                       <tr>
-                        <th className="p-2 border-r border-slate-200 w-8 text-center">STT</th>
+                        <th className="p-2 border-r border-slate-200 w-8 text-center">
+                          STT
+                        </th>
                         <th className="p-2 border-r border-slate-200">MSSV</th>
-                        <th className="p-2 border-r border-slate-200">Họ và tên</th>
+                        <th className="p-2 border-r border-slate-200">
+                          Họ và tên
+                        </th>
                         <th className="p-2 border-r border-slate-200">Lớp</th>
-                        <th className="p-2 border-r border-slate-200">Doanh nghiệp</th>
-                        <th className="p-2 border-r border-slate-200 text-center">Điểm DN</th>
-                        <th className="p-2 border-r border-slate-200 text-center">Điểm GV</th>
-                        <th className="p-2 border-r border-slate-200 text-center font-black text-emerald-800">Điểm Tổng</th>
+                        <th className="p-2 border-r border-slate-200">
+                          Doanh nghiệp
+                        </th>
+                        <th className="p-2 border-r border-slate-200 text-center">
+                          Điểm DN
+                        </th>
+                        <th className="p-2 border-r border-slate-200 text-center">
+                          Điểm GV
+                        </th>
+                        <th className="p-2 border-r border-slate-200 text-center font-bold text-emerald-800">
+                          Điểm Tổng
+                        </th>
                         <th className="p-2">Xếp loại</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/80 bg-white">
-                      {(exportScope === "filtered" ? filteredEvaluations : exportScope === "graded" ? evaluations.filter((e) => e.status === "Ho\xE0n th\xE0nh") : evaluations).slice(0, 4).map((item, idx) => <tr key={item.id} className="hover:bg-slate-50">
-                          <td className="p-2 border-r border-slate-100 text-center text-slate-500 font-medium">{idx + 1}</td>
-                          <td className="p-2 border-r border-slate-100 font-bold text-slate-900">{item.mssv}</td>
-                          <td className="p-2 border-r border-slate-100 font-bold text-slate-800">{item.name}</td>
-                          <td className="p-2 border-r border-slate-100 text-slate-600">{item.class}</td>
-                          <td className="p-2 border-r border-slate-100 text-slate-600 truncate max-w-[120px]">{item.company}</td>
-                          <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-700">{item.enterpriseScore ?? "-"}</td>
-                          <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-700">{item.lecturerScore ?? "-"}</td>
-                          <td className="p-2 border-r border-slate-100 text-center font-black text-emerald-700 bg-emerald-50/50">
-                            {item.totalScore ?? "-"}
-                          </td>
-                          <td className="p-2 font-bold text-slate-700">{item.gradeClassification ?? "Ch\u01B0a ch\u1EA5m"}</td>
-                        </tr>)}
+                      {(exportScope === "filtered"
+                        ? filteredEvaluations
+                        : exportScope === "graded"
+                          ? evaluations.filter(
+                              (e) => e.status === "Ho\xE0n th\xE0nh",
+                            )
+                          : evaluations
+                      )
+                        .slice(0, 4)
+                        .map((item, idx) => (
+                          <tr key={item.id} className="hover:bg-slate-50">
+                            <td className="p-2 border-r border-slate-100 text-center text-slate-500 font-medium">
+                              {idx + 1}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 font-bold text-slate-900">
+                              {item.mssv}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 font-bold text-slate-800">
+                              {item.name}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-slate-600">
+                              {item.class}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-slate-600 truncate max-w-[120px]">
+                              {item.company}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-700">
+                              {item.enterpriseScore ?? "-"}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-700">
+                              {item.lecturerScore ?? "-"}
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-center font-bold text-emerald-700 bg-emerald-50/50">
+                              {item.totalScore ?? "-"}
+                            </td>
+                            <td className="p-2 font-bold text-slate-700">
+                              {item.gradeClassification ??
+                                "Ch\u01B0a ch\u1EA5m"}
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {
-    /* Information / File Summary */
-  }
-              <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80 flex items-start gap-3">
+              {/* Information / File Summary */}
+              <div className="p-3.5 bg-emerald-50/70 rounded-md border border-emerald-200/80 flex items-start gap-3">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-[11px] text-emerald-900 space-y-0.5">
-                  <p className="font-extrabold">Tệp Excel bao gồm đầy đủ 15 cột thông tin:</p>
+                  <p className="font-bold">
+                    Tệp Excel bao gồm đầy đủ 15 cột thông tin:
+                  </p>
                   <p className="text-emerald-800">
-                    STT, MSSV, Họ tên, Lớp, Ngành, Doanh nghiệp, GVHD, Số báo cáo tuần, Điểm Doanh nghiệp (40%), Điểm Giảng viên (40%), Điểm Bảo vệ (20%), Điểm Tổng kết, Xếp loại, Trạng thái &amp; Nhận xét chi tiết.
+                    STT, MSSV, Họ tên, Lớp, Ngành, Doanh nghiệp, GVHD, Số báo
+                    cáo tuần, Điểm Doanh nghiệp (40%), Điểm Giảng viên (40%),
+                    Điểm Bảo vệ (20%), Điểm Tổng kết, Xếp loại, Trạng thái &amp;
+                    Nhận xét chi tiết.
                   </p>
                 </div>
               </div>
             </div>
 
-            {
-    /* Modal Footer */
-  }
+            {/* Modal Footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
               <button
-    type="button"
-    onClick={() => setShowExportModal(false)}
-    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-colors"
-  >
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-md transition-colors"
+              >
                 Hủy bỏ
               </button>
 
               <button
-    type="button"
-    onClick={handleConfirmDownloadExcel}
-    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
-  >
+                type="button"
+                onClick={handleConfirmDownloadExcel}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
+              >
                 <Download className="w-4 h-4" />
                 <span>Tải File Excel Ngay (.csv)</span>
               </button>
             </div>
           </div>
-        </div>}
-    </div>;
+        </div>
+      )}
+    </div>
+  );
 };

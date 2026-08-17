@@ -152,6 +152,38 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(evaluation);
     }
 
+    public async Task<EvaluationDetailDto?> GetEvaluationByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Company)
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(e => e.EvaluatedBy)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+
+        if (evaluation == null)
+            return null;
+
+        var ownsInternship = evaluation.Internship?.Student?.UserId == userId;
+        var isAssignedLecturer = evaluation.Internship?.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this evaluation");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this evaluation");
+        }
+
+        return MapToDetailDto(evaluation);
+    }
+
     public async Task<EvaluationDetailDto?> GetEvaluationByInternshipAsync(Guid internshipId)
     {
         var evaluation = await _db.Evaluations

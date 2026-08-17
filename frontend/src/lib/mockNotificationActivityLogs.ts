@@ -1,0 +1,42 @@
+export const MOCK_NOTIFICATION_ACTIVITY_LOGS = [
+  {
+    id: "nlog-1",
+    notificationId: "TB-2026-089",
+    title: "Khẩn: Yêu cầu cập nhật Báo cáo...",
+    action: "Sinh viên Trần Văn Nam (20110201) đã mở đọc",
+    timestamp: "02/08/2026 09:12",
+    type: "read" as const,
+  },
+  {
+    id: "nlog-2",
+    notificationId: "TB-2026-089",
+    title: "Khẩn: Yêu cầu cập nhật Báo cáo...",
+    action: "Đã phát hành thông báo đến 1,280 sinh viên",
+    timestamp: "02/08/2026 08:30",
+    type: "sent" as const,
+  },
+  {
+    id: "nlog-3",
+    notificationId: "TB-2026-088",
+    title: "Lịch họp Hội đồng Đánh giá...",
+    action: "TS. Nguyễn Văn Phước (GV001) đã xác nhận tham dự",
+    timestamp: "01/08/2026 16:05",
+    type: "confirmed" as const,
+  },
+  {
+    id: "nlog-4",
+    notificationId: "TB-2026-087",
+    title: "Nhắc nhở Đăng ký Nguyện vọng...",
+    action: "Đã lên lịch gửi lúc 07:00 ngày 03/08/2026",
+    timestamp: "01/08/2026 16:45",
+    type: "scheduled" as const,
+  },
+  {
+    id: "nlog-5",
+    notificationId: "TB-2026-086",
+    title: "Cập nhật Quy chế Đánh giá...",
+    action: "1,285 người dùng đã hoàn thành việc đọc quy chế",
+    timestamp: "31/07/2026 11:30",
+    type: "read" as const,
+  },
+];

@@ -81,8 +81,10 @@ public class LecturerProfileServiceTests
                 r.ToEmail == "c@uni.edu.vn" &&
                 r.Username == "gv.levanc" &&
                 r.Role == InvitationRole.Lecturer &&
-                r.TemporaryPassword == SeedData.DefaultPassword),
+                r.TemporaryPassword.Length == 8),
             It.IsAny<CancellationToken>()), Times.Once);
+        var user = await db.Users.FirstAsync(u => u.Username == "gv.levanc");
+        user.MustChangePassword.Should().BeTrue();
     }
 
     [Fact]
@@ -119,7 +121,7 @@ public class LecturerProfileServiceTests
         result.SuccessCount.Should().Be(1);
         result.EmailSentCount.Should().Be(1);
         result.EmailFailedCount.Should().Be(0);
-        result.DefaultPassword.Should().Be(SeedData.DefaultPassword);
+        result.DefaultPassword.Should().Be(LecturerProfileService.TemporaryPasswordPolicyDescription);
         var lecturer = await db.Lecturers.FirstAsync();
         lecturer.UserId.Should().NotBeNull();
         (await db.Users.CountAsync(u => u.Role == Role.Lecturer)).Should().Be(1);
@@ -142,6 +144,36 @@ public class LecturerProfileServiceTests
         result.EmailErrors.Should().ContainSingle(e => e.Message.Contains("no email", StringComparison.OrdinalIgnoreCase));
         email.Verify(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         (await db.Users.CountAsync(u => u.Username == "gv.nomail")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_WithExistingLecturer_ShouldUpdateAndNotReportDuplicateError()
+    {
+        var db = GetDb();
+        var email = new Mock<IEmailService>();
+        var service = CreateService(db, email.Object);
+
+        var existingLecturer = new Lecturer
+        {
+            Id = Guid.NewGuid(),
+            StaffCode = "GV002",
+            FullName = "Tran Van B (Old)",
+            Department = "Toan",
+            CreatedAt = DateTime.UtcNow.AddMonths(-6)
+        };
+        db.Lecturers.Add(existingLecturer);
+        await db.SaveChangesAsync();
+
+        using var stream = CreateExcel(("GV002", "Tran Van B", "b@uni.edu.vn", "0909999999", "CNTT", null));
+        var result = await service.ImportFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var updated = await db.Lecturers.FindAsync(existingLecturer.Id);
+        updated!.FullName.Should().Be("Tran Van B");
+        updated.Department.Should().Be("CNTT");
+        updated.Phone.Should().Be("0909999999");
     }
 
     [Fact]

@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Student> Students { get; set; } = null!;
     public DbSet<Lecturer> Lecturers { get; set; } = null!;
     public DbSet<Company> Companies { get; set; } = null!;
+    public DbSet<Semester> Semesters { get; set; } = null!;
     public DbSet<Internship> Internships { get; set; } = null!;
     public DbSet<Submission> Submissions { get; set; } = null!;
     public DbSet<Feedback> Feedbacks { get; set; } = null!;
@@ -53,7 +54,8 @@ public class AppDbContext : DbContext
             b.Property(x => x.Email).HasMaxLength(200);
             b.Property(x => x.Phone).HasMaxLength(50);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            b.HasOne(x => x.Internship).WithOne(x => x.Student).HasForeignKey<Internship>(x => x.StudentId);
+            // Changed: 1:N relationship to support multi-semester internships
+            b.HasMany(x => x.Internships).WithOne(x => x.Student).HasForeignKey(x => x.StudentId);
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
             b.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
         });
@@ -90,6 +92,20 @@ public class AppDbContext : DbContext
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
         });
 
+        modelBuilder.Entity<Semester>(b =>
+        {
+            b.ToTable("Semesters");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("SemesterId");
+            b.Property(x => x.Name).IsRequired().HasMaxLength(250);
+            b.Property(x => x.Term).IsRequired().HasMaxLength(100);
+            b.Property(x => x.AcademicYear).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Status).HasDefaultValue(SemesterStatus.Upcoming);
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.MaxStudentsPerLecturer).HasDefaultValue(30);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+        });
+
         modelBuilder.Entity<Internship>(b =>
         {
             b.ToTable("Internships");
@@ -99,9 +115,15 @@ public class AppDbContext : DbContext
             b.Property(x => x.SupervisorName).HasMaxLength(200);
             b.Property(x => x.Status).HasDefaultValue(InternshipStatus.NotStarted);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            b.HasOne(x => x.Student).WithOne(x => x.Internship).HasForeignKey<Internship>(x => x.StudentId);
-            b.HasOne(x => x.Company).WithMany(x => x.Internships).HasForeignKey(x => x.CompanyId);
+            // NOTE: Student.Internship relationship configured in Student modelBuilder (1:N)
+            // Changed: CompanyId now nullable (assigned later by lecturer)
+            b.HasOne(x => x.Company).WithMany(x => x.Internships).HasForeignKey(x => x.CompanyId).IsRequired(false);
             b.HasOne(x => x.Lecturer).WithMany(x => x.Internships).HasForeignKey(x => x.LecturerId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(x => x.Semester).WithMany(x => x.Internships).HasForeignKey(x => x.SemesterId).OnDelete(DeleteBehavior.SetNull);
+            // Added: unique constraint to ensure one internship per student per semester
+            b.HasIndex(x => new { x.StudentId, x.SemesterId }).IsUnique();
+            // Added: document collection for CV and other files
+            b.HasMany(x => x.Documents).WithOne(x => x.Internship).HasForeignKey(x => x.InternshipId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Submission>(b =>
@@ -144,9 +166,10 @@ public class AppDbContext : DbContext
             b.Property(x => x.MimeType).IsRequired().HasMaxLength(100);
             b.Property(x => x.UploadedAt).HasDefaultValueSql("GETUTCDATE()");
             b.Property(x => x.IsRequired).HasDefaultValue(false);
+            // Category used to filter documents (e.g., "CV", "Form", "Report")
             b.Property(x => x.Category).HasMaxLength(100);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            b.HasOne(x => x.Internship).WithMany().HasForeignKey(x => x.InternshipId);
+            b.HasOne(x => x.Internship).WithMany(x => x.Documents).HasForeignKey(x => x.InternshipId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.UploadedBy).WithMany().HasForeignKey(x => x.UploadedById).OnDelete(DeleteBehavior.SetNull);
         });
 

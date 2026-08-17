@@ -9,6 +9,7 @@ public class CreateLecturerRequest
     public string? Department { get; set; }
     public Guid? UserId { get; set; }
     public string? Username { get; set; }
+    public bool GrantAccount { get; set; }
 }
 
 public class UpdateLecturerRequest
@@ -18,6 +19,14 @@ public class UpdateLecturerRequest
     public string? Phone { get; set; }
     public string? Department { get; set; }
     public Guid? UserId { get; set; }
+    /// <summary>
+    /// Optional login username. Defaults to StaffCode when GrantAccount is true.
+    /// </summary>
+    public string? Username { get; set; }
+    /// <summary>
+    /// Grant login account when lecturer has no linked user yet.
+    /// </summary>
+    public bool GrantAccount { get; set; }
 }
 
 public class LecturerDto

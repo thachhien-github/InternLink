@@ -22,11 +22,23 @@ public class SubmissionController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var submission = await _submissionService.GetByIdAsync(id);
-        if (submission == null)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return Ok(ApiResponse<SubmissionDto>.Ok(submission));
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var submission = await _submissionService.GetByIdAsync(id, userId.Value, isLecturerOrAdmin);
+            if (submission == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+
+            return Ok(ApiResponse<SubmissionDto>.Ok(submission));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("internship/{internshipId:guid}")]
@@ -72,6 +84,47 @@ public class SubmissionController : ControllerBase
         }
     }
 
+    [HttpPost("upload")]
+    [Authorize(Policy = "RequireStudent")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Upload([FromForm] UploadSubmissionFormRequest form)
+    {
+        try
+        {
+            if (form.File == null || form.File.Length == 0)
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
+
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var createRequest = new CreateSubmissionRequest
+            {
+                InternshipId = form.InternshipId,
+                Type = form.Type,
+                Title = form.Title,
+                Description = form.Description,
+            };
+
+            await using var stream = form.File.OpenReadStream();
+            var submission = await _submissionService.CreateWithFileAsync(
+                userId.Value,
+                createRequest,
+                stream,
+                form.File.FileName);
+
+            return CreatedAtAction(nameof(GetById), new { id = submission.Id }, ApiResponse<SubmissionDto>.Ok(submission));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
     [HttpPost("{id:guid}/resubmit")]
     [Authorize(Policy = "RequireStudent")]
     public async Task<IActionResult> Resubmit(Guid id, [FromBody] ResubmitRequest request)
@@ -95,6 +148,71 @@ public class SubmissionController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpPost("{id:guid}/resubmit-upload")]
+    [Authorize(Policy = "RequireStudent")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ResubmitUpload(Guid id, [FromForm] ResubmitSubmissionFormRequest form)
+    {
+        try
+        {
+            if (form.File == null || form.File.Length == 0)
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
+
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var resubmitRequest = new ResubmitRequest
+            {
+                Title = form.Title,
+                Description = form.Description,
+            };
+
+            await using var stream = form.File.OpenReadStream();
+            var submission = await _submissionService.ResubmitWithFileAsync(
+                id,
+                userId.Value,
+                resubmitRequest,
+                stream,
+                form.File.FileName);
+
+            if (submission == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+
+            return Ok(ApiResponse<SubmissionDto>.Ok(submission));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> Download(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var file = await _submissionService.DownloadFileAsync(id, userId.Value, isLecturerOrAdmin);
+            if (file == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "File not found" }));
+
+            return File(file.FileContent, file.MimeType, file.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
     }
 

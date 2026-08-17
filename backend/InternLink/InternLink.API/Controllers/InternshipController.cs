@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Shared.Responses;
@@ -69,11 +70,20 @@ public class InternshipController : ControllerBase
     {
         try
         {
-            var internship = await _internshipService.GetInternshipByIdAsync(id);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var internship = await _internshipService.GetInternshipByIdAsync(id, userId.Value, isLecturerOrAdmin);
             if (internship == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Internship not found" }));
 
             return Ok(ApiResponse<InternshipDetailFullDto>.Ok(internship));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {

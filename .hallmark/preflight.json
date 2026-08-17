@@ -1,0 +1,11 @@
+{
+  "project": "InternLink",
+  "scope": "frontend app chrome (Admin / Lecturer / Student)",
+  "framework": "React 19 + Vite + Tailwind 4",
+  "existingTokens": "frontend/src/styles/designTokens.css",
+  "designLock": "frontend/design.md",
+  "genre": "utilitarian-editorial",
+  "themeRoute": "custom (navy + single blue)",
+  "microinteraction": "subtle, no card lift",
+  "notes": "F0 tokens already present; Hallmark pass removes gradient KPI, purple accents, dark sidebar widgets"
+}

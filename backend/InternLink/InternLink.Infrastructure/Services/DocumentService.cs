@@ -101,6 +101,40 @@ public class DocumentService : IDocumentService
         return document != null ? _mapper.Map<DocumentDetailDto>(document) : null;
     }
 
+    public async Task<DocumentDetailDto?> GetDocumentByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var document = await _db.Documents
+            .Include(d => d.UploadedBy)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+
+        if (document == null)
+            return null;
+
+        if (document.InternshipId == Guid.Empty || document.Internship == null)
+            return _mapper.Map<DocumentDetailDto>(document);
+
+        var ownsInternship = document.Internship?.Student?.UserId == userId;
+        var isAssignedLecturer = document.Internship?.Lecturer?.UserId == userId;
+        var isUploader = document.UploadedBy?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this document");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !isUploader && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this document");
+        }
+
+        return _mapper.Map<DocumentDetailDto>(document);
+    }
+
     public async Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100)
     {
         var documents = await _db.Documents
@@ -218,7 +252,7 @@ public class DocumentService : IDocumentService
         if (document == null)
             return null;
 
-        var fullPath = Path.Combine(_env.WebRootPath, document.FilePath);
+        var fullPath = Path.Combine(GetUploadRoot(), document.FilePath);
 
         if (!File.Exists(fullPath))
             return null;
@@ -257,7 +291,7 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException($"File type '{extension}' is not allowed");
 
         // Create upload directory
-        var uploadPath = Path.Combine(_env.WebRootPath, UploadFolder, internshipId.ToString());
+        var uploadPath = Path.Combine(GetUploadRoot(), UploadFolder, internshipId.ToString());
         Directory.CreateDirectory(uploadPath);
 
         // Generate unique filename
@@ -286,7 +320,7 @@ public class DocumentService : IDocumentService
 
         try
         {
-            var fullPath = Path.Combine(_env.WebRootPath, filePath);
+            var fullPath = Path.Combine(GetUploadRoot(), filePath);
             if (File.Exists(fullPath))
             {
                 File.Delete(fullPath);
@@ -317,6 +351,9 @@ public class DocumentService : IDocumentService
             _ => isDescending ? query.OrderByDescending(d => d.UploadedAt) : query.OrderBy(d => d.UploadedAt)
         };
     }
+
+    private string GetUploadRoot() =>
+        string.IsNullOrEmpty(_env.WebRootPath) ? _env.ContentRootPath : _env.WebRootPath;
 
     private string GetMimeType(string extension)
     {

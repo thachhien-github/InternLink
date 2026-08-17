@@ -1,13 +1,31 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Lock, Eye, EyeOff, CheckCircle2, AlertCircle,
-  X, KeyRound, Shield, Send, Loader2, GraduationCap, UserCheck, ArrowRight, User
-} from 'lucide-react';
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  X,
+  Shield,
+  Loader2,
+  GraduationCap,
+  UserCheck,
+  ArrowRight,
+  User,
+} from "lucide-react";
+import { USE_MOCK } from "../../config/env";
+import { getApiErrorMessage } from "../../lib/apiClient";
+import { mapBackendRole } from "../../lib/roleMap";
+import { authService } from "../../services/auth.service";
+import type { UserRole } from "../../contexts/AuthContext";
 
 interface LoginUser {
   username: string;
-  role: string;
+  role: UserRole;
   name: string;
+  mustChangePassword?: boolean;
+  token?: string;
+  id?: string;
 }
 
 interface LoginPortalProps {
@@ -15,32 +33,28 @@ interface LoginPortalProps {
 }
 
 export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotId, setForgotId] = useState('');
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotReason, setForgotReason] = useState('');
-  const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (usernameInputRef.current) {
       usernameInputRef.current.focus();
     }
-    const savedUser = localStorage.getItem('internlink_remembered_username');
+    const savedUser = localStorage.getItem("internlink_remembered_username");
     if (savedUser) {
       setUsername(savedUser);
     }
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.getModifierState('CapsLock')) {
+    if (e.getModifierState("CapsLock")) {
       setCapsLockOn(true);
     } else {
       setCapsLockOn(false);
@@ -49,114 +63,166 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
   const determineRole = (inputName: string): string => {
     const clean = inputName.trim().toLowerCase();
-    if (clean === 'admin' || clean === 'superadmin' || clean.includes('admin@') || clean === 'admin123') {
-      return 'admin';
+    if (
+      clean === "admin" ||
+      clean === "superadmin" ||
+      clean.includes("admin@") ||
+      clean === "admin123"
+    ) {
+      return "admin";
     }
-    if (clean.startsWith('gv') || clean.startsWith('msgv') || clean.includes('phuoc') || clean.includes('giangvien') || clean.includes('lecturer')) {
-      return 'lecturer';
+    if (
+      clean.startsWith("gv") ||
+      clean.startsWith("msgv") ||
+      clean.includes("phuoc") ||
+      clean.includes("giangvien") ||
+      clean.includes("lecturer")
+    ) {
+      return "lecturer";
     }
-    return 'student';
+    return "student";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     if (!username.trim()) {
-      setErrorMessage('Vui lòng nhập Tên đăng nhập / MSGV / MSSV.');
+      setErrorMessage("Vui lòng nhập Tên đăng nhập / MSGV / MSSV.");
       return;
     }
     if (!password) {
-      setErrorMessage('Vui lòng nhập mật khẩu truy cập.');
+      setErrorMessage("Vui lòng nhập mật khẩu truy cập.");
       return;
     }
     if (isLoading) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      const trimmedUser = username.trim();
-      if (password === 'wrong') {
-        setErrorMessage('Mật khẩu không chính xác. Vui lòng kiểm tra lại.');
+
+    const trimmedUser = username.trim();
+
+    try {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 600));
+        if (password === "wrong") {
+          setErrorMessage("Mật khẩu không chính xác. Vui lòng kiểm tra lại.");
+          return;
+        }
+        if (password === "locked") {
+          setErrorMessage(
+            "Tài khoản đã bị tạm khóa. Vui lòng liên hệ Văn phòng Khoa.",
+          );
+          return;
+        }
+        if (password === "inactive") {
+          setErrorMessage(
+            "Tài khoản chưa được kích hoạt trong đợt thực tập này.",
+          );
+          return;
+        }
+        if (rememberMe) {
+          localStorage.setItem("internlink_remembered_username", trimmedUser);
+        } else {
+          localStorage.removeItem("internlink_remembered_username");
+        }
+        const role = determineRole(trimmedUser) as UserRole;
+        let displayName = "Người dùng InternLink";
+        if (role === "admin") {
+          displayName = "Quản trị viên Hệ thống (Super Admin)";
+        } else if (role === "lecturer") {
+          displayName = "ThS. Nguyễn Văn Phước (Giảng viên)";
+        } else {
+          displayName = "Trần Thị Thu Thảo (Sinh viên)";
+        }
+        onLoginSuccess({
+          username: trimmedUser,
+          role,
+          name: displayName,
+          mustChangePassword: password === "changeme",
+        });
         return;
       }
-      if (password === 'locked') {
-        setErrorMessage('Tài khoản đã bị tạm khóa. Vui lòng liên hệ Văn phòng Khoa.');
-        return;
-      }
-      if (password === 'inactive') {
-        setErrorMessage('Tài khoản chưa được kích hoạt trong đợt thực tập này.');
+
+      const loginRes = await authService.login({
+        username: trimmedUser,
+        password,
+      });
+      const me = await authService.getMe();
+      const role = mapBackendRole(loginRes.role);
+      if (!role) {
+        setErrorMessage("Tài khoản không có quyền truy cập portal này.");
         return;
       }
       if (rememberMe) {
-        localStorage.setItem('internlink_remembered_username', trimmedUser);
+        localStorage.setItem("internlink_remembered_username", trimmedUser);
       } else {
-        localStorage.removeItem('internlink_remembered_username');
+        localStorage.removeItem("internlink_remembered_username");
       }
-      const role = determineRole(trimmedUser);
-      let displayName = 'Người dùng InternLink';
-      if (role === 'admin') {
-        displayName = 'Quản trị viên Hệ thống (Super Admin)';
-      } else if (role === 'lecturer') {
-        displayName = 'ThS. Nguyễn Văn Phước (Giảng viên)';
-      } else {
-        displayName = 'Trần Thị Thu Thảo (Sinh viên)';
-      }
-      onLoginSuccess({ username: trimmedUser, role, name: displayName });
-    }, 900);
+      onLoginSuccess({
+        username: me.username,
+        id: me.id,
+        role,
+        name: me.fullName?.trim() || me.username,
+        mustChangePassword: loginRes.mustChangePassword,
+        token: loginRes.token,
+      });
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAutoFill = (demoType: string) => {
     setErrorMessage(null);
-    if (demoType === 'student') {
-      setUsername('SV2026001');
-      setPassword('123456');
-    } else if (demoType === 'lecturer') {
-      setUsername('GV001');
-      setPassword('123456');
+    if (USE_MOCK) {
+      if (demoType === "student") {
+        setUsername("SV2026001");
+        setPassword("123456");
+      } else if (demoType === "lecturer") {
+        setUsername("GV001");
+        setPassword("123456");
+      } else {
+        setUsername("admin");
+        setPassword("admin123");
+      }
     } else {
-      setUsername('admin');
-      setPassword('admin123');
+      if (demoType === "student") {
+        setUsername("student1");
+        setPassword("Password123!");
+      } else if (demoType === "lecturer") {
+        setUsername("lecturer1");
+        setPassword("Password123!");
+      } else {
+        setUsername("superadmin");
+        setPassword("Password123!");
+      }
     }
   };
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotId || !forgotEmail) return;
-    setForgotSubmitted(true);
-    setTimeout(() => {
-      setForgotSubmitted(false);
-      setShowForgotModal(false);
-      setForgotId('');
-      setForgotEmail('');
-      setForgotReason('');
-    }, 2000);
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[#f8f9ff] text-[#0b1c30] font-sans antialiased selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[var(--il-surface-bg)] text-[#0b1c30] font-sans antialiased selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden">
       {/* Subtle Soft Ambient Background Lighting */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#0058be]/10 rounded-full blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-[450px] h-[450px] bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#1d4ed8]/8 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-[320px] h-[320px] bg-slate-400/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* FLOATING CENTERED WINDOW CARD (Splits 65/35 inside floating card) */}
-      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12),0_10px_20px_-5px_rgba(0,0,0,0.06)] border border-slate-200/80 overflow-hidden flex flex-col lg:flex-row min-h-[580px] z-10 my-auto il-animate-up">
-        
+      <div className="w-full max-w-5xl bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden flex flex-col lg:flex-row min-h-[580px] z-10 my-auto il-animate-up">
         {/* LEFT HERO PANEL INSIDE FLOATING CARD (LF - 62% Width Desktop) */}
         <div className="relative w-full lg:w-[62%] min-h-[300px] lg:min-h-full flex flex-col justify-end p-8 lg:p-12 bg-[#040d2a] overflow-hidden select-none">
           {/* Architectural Background Image with Subtle Gradient Overlay */}
           <div
             className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat transition-all duration-500"
             style={{
-              backgroundImage: `linear-gradient(to top, rgba(4, 13, 42, 0.75) 0%, rgba(4, 13, 42, 0.2) 45%, rgba(4, 13, 42, 0.05) 100%), url('https://thongtindaotao.hcmct.edu.vn/static/media/br_login.c3b60201.jpg')`
+              backgroundImage: `linear-gradient(to top, rgba(4, 13, 42, 0.75) 0%, rgba(4, 13, 42, 0.2) 45%, rgba(4, 13, 42, 0.05) 100%), url('https://thongtindaotao.hcmct.edu.vn/static/media/br_login.c3b60201.jpg')`,
             }}
           />
 
           {/* Glassmorphic Decorative Lights */}
           <div className="absolute top-1/4 left-1/4 w-[30vw] h-[30vw] rounded-full bg-[#0058be] opacity-20 blur-[100px] mix-blend-screen pointer-events-none" />
-          <div className="absolute bottom-1/4 right-1/4 w-[25vw] h-[25vw] rounded-full bg-indigo-500 opacity-15 blur-[90px] mix-blend-screen pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/4 w-[25vw] h-[25vw] rounded-full bg-blue-500 opacity-15 blur-[90px] mix-blend-screen pointer-events-none" />
 
           {/* Hero Slogan Content Overlay (Compact Small Size with Smooth Gradient) */}
-          <div className="relative z-10 w-full max-w-xs bg-gradient-to-r from-[#040d2a]/70 via-[#040d2a]/35 to-transparent backdrop-blur-xs p-3.5 lg:p-4 rounded-2xl border border-white/10 shadow-lg text-left">
-            <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/15 shadow-xs">
+          <div className="relative z-10 w-full max-w-xs bg-gradient-to-r from-[#040d2a]/70 via-[#040d2a]/35 to-transparent p-3.5 lg:p-4 rounded-lg border border-white/10 shadow-sm text-left">
+            <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-white/10 text-white border border-white/15 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-[#d8e2ff]" />
               <span className="text-[10px] font-bold tracking-wider uppercase text-white font-display">
                 HỆ THỐNG THỰC TẬP SINH
@@ -164,12 +230,14 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             </div>
 
             <h2 className="text-xs lg:text-sm text-white font-bold tracking-tight mb-1.5 leading-snug font-display">
-              Kết nối tài năng,<br />
+              Kết nối tài năng,
+              <br />
               <span className="text-[#bdc5ea]">bứt phá sự nghiệp.</span>
             </h2>
 
             <p className="text-[11px] text-white/85 font-medium leading-relaxed">
-              Nền tảng kết nối sinh viên và doanh nghiệp, tối ưu hóa quy trình quản lý thực tập với công nghệ hiện đại.
+              Nền tảng kết nối sinh viên và doanh nghiệp, tối ưu hóa quy trình
+              quản lý thực tập với công nghệ hiện đại.
             </p>
           </div>
 
@@ -185,26 +253,41 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
               <img
                 src="/logo/logo_internlink-01.png"
                 alt="InternLink Logo"
-                className="w-auto object-contain h-16 lg:h-20 hover:scale-105 transition-transform duration-300"
+                className="w-auto object-contain h-16 lg:h-20 transition-transform duration-300"
               />
             </div>
 
             {/* Form Container */}
             <div className="w-full">
               <div className="flex flex-col gap-1 mb-5 text-left">
-                <h2 className="text-xl lg:text-2xl font-bold text-[#0b1c30] tracking-tight font-display">Đăng nhập</h2>
-                <p className="text-xs text-slate-500 font-medium">Vui lòng nhập thông tin tài khoản của bạn.</p>
+                <h2 className="text-xl lg:text-2xl font-bold text-[#0b1c30] tracking-tight font-display">
+                  Đăng nhập
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Vui lòng nhập thông tin tài khoản của bạn.
+                </p>
               </div>
 
               {errorMessage && (
-                <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-start gap-2 animate-in fade-in duration-200">
+                <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-md flex items-start gap-2 animate-in fade-in duration-200">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="flex-1"><span>{errorMessage}</span></div>
-                  <button type="button" onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-800 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                  <div className="flex-1">
+                    <span>{errorMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMessage(null)}
+                    className="text-rose-500 hover:text-rose-800 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col gap-4 text-left"
+              >
                 {/* Username Input */}
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#0058be] transition-colors">
@@ -219,9 +302,9 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                     placeholder="Tên đăng nhập / MSGV / MSSV"
                     autoComplete="username"
                     required
-                    className="w-full pl-11 pr-4 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-xl transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
+                    className="w-full pl-11 pr-4 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-md transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
                   />
-                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-xl" />
+                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-md" />
                 </div>
 
                 {/* Password Input */}
@@ -230,24 +313,28 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Mật khẩu"
                     autoComplete="current-password"
                     required
-                    className="w-full pl-11 pr-11 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-xl transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
+                    className="w-full pl-11 pr-11 py-3 bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium rounded-md transition-all duration-300 focus:bg-white focus:shadow-[0_4px_24px_-8px_rgba(0,88,190,0.2)] outline-none border border-transparent focus:border-[#0058be]/30 placeholder:text-slate-400"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                    title={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
+                    title={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
-                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-xl" />
+                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-transparent to-transparent group-focus-within:from-[#0058be] group-focus-within:via-[#0058be]/80 group-focus-within:to-transparent transition-all duration-500 rounded-b-md" />
                 </div>
 
                 {capsLockOn && (
@@ -266,11 +353,13 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-300 text-[#0058be] focus:ring-[#0058be] cursor-pointer"
                     />
-                    <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">Ghi nhớ đăng nhập</span>
+                    <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">
+                      Ghi nhớ đăng nhập
+                    </span>
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowForgotModal(true)}
+                    onClick={() => navigate("/forgot-password")}
                     className="text-xs font-semibold text-[#0058be] hover:text-[#004395] transition-colors cursor-pointer"
                   >
                     Quên mật khẩu?
@@ -281,11 +370,14 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="relative w-full py-3.5 bg-[#0058be] text-white font-semibold text-xs rounded-xl shadow-[0_4px_16px_rgba(0,88,190,0.25)] hover:shadow-[0_8px_24px_rgba(0,88,190,0.4)] transition-all duration-300 overflow-hidden group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                  className="relative w-full py-3.5 bg-[#0058be] text-white font-semibold text-xs rounded-md shadow-[0_4px_16px_rgba(0,88,190,0.25)] hover:shadow-[0_8px_24px_rgba(0,88,190,0.4)] transition-all duration-300 overflow-hidden group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-1"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {isLoading ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Đang xử lý...</span></>
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang xử lý...</span>
+                      </>
                     ) : (
                       <>
                         <span>Đăng nhập hệ thống</span>
@@ -299,30 +391,32 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
               {/* QUICK PRESETS FOR DEMO TESTING */}
               <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center font-display">Chế độ xem demo nhanh:</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center font-display">
+                  Chế độ xem demo nhanh:
+                </span>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => handleAutoFill('student')}
-                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-[#0058be] rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                    onClick={() => handleAutoFill("student")}
+                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-[#0058be] rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
                   >
-                    <GraduationCap className="w-3.5 h-3.5 text-[#0058be] group-hover:scale-110 transition-transform" />
+                    <GraduationCap className="w-3.5 h-3.5 text-[#0058be] transition-transform" />
                     <span>Sinh viên</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleAutoFill('lecturer')}
-                    className="p-2 bg-[#f8f9ff] hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200/60 text-slate-700 hover:text-indigo-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                    onClick={() => handleAutoFill("lecturer")}
+                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-blue-900 rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
                   >
-                    <UserCheck className="w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform" />
+                    <UserCheck className="w-3.5 h-3.5 text-blue-600 transition-transform" />
                     <span>Giảng viên</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleAutoFill('admin')}
-                    className="p-2 bg-[#f8f9ff] hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/60 text-slate-700 hover:text-emerald-900 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
+                    onClick={() => handleAutoFill("admin")}
+                    className="p-2 bg-[#f8f9ff] hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/60 text-slate-700 hover:text-emerald-900 rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
                   >
-                    <Shield className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                    <Shield className="w-3.5 h-3.5 text-emerald-600 transition-transform" />
                     <span>Quản trị</span>
                   </button>
                 </div>
@@ -334,65 +428,32 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
           <div className="w-full pt-4 flex flex-row justify-between items-center gap-2 text-slate-400 font-medium text-[10px] border-t border-slate-100">
             <p className="whitespace-nowrap">© 2026 InternLink</p>
             <div className="flex gap-3 whitespace-nowrap">
-              <a href="#" onClick={(e) => { e.preventDefault(); alert("Liên hệ hỗ trợ: support@internlink.edu.vn - Hotline: 024.3754.7506"); }} className="hover:text-[#0058be] transition-colors">Hỗ trợ</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert("Quy chế thực tập Khoa CNTT - Học kỳ I 2026-2027."); }} className="hover:text-[#0058be] transition-colors">Quy chế</a>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert(
+                    "Liên hệ hỗ trợ: support@internlink.edu.vn - Hotline: 024.3754.7506",
+                  );
+                }}
+                className="hover:text-[#0058be] transition-colors"
+              >
+                Hỗ trợ
+              </a>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert("Quy chế thực tập Khoa CNTT - Học kỳ I 2026-2027.");
+                }}
+                className="hover:text-[#0058be] transition-colors"
+              >
+                Quy chế
+              </a>
             </div>
           </div>
         </div>
       </div>
-
-      {/* FORGOT PASSWORD MODAL */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 space-y-5 text-left relative">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-50 text-[#0058be] rounded-xl border border-blue-100">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#0b1c30] font-display">Yêu cầu khôi phục mật khẩu</h3>
-                  <p className="text-xs text-slate-500">Gửi thông tin xác minh tới Văn phòng Khoa</p>
-                </div>
-              </div>
-              <button type="button" onClick={() => setShowForgotModal(false)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {forgotSubmitted ? (
-              <div className="p-6 text-center space-y-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 animate-in zoom-in-95">
-                <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-600" />
-                <h4 className="font-bold text-sm text-slate-900 font-display">Yêu cầu đã được gửi thành công!</h4>
-                <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                  Thông tin khôi phục cho mã <strong>{forgotId}</strong> đã ghi nhận. Quản trị viên sẽ phản hồi tới <strong>{forgotEmail}</strong>.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Mã số (MSGV / MSSV) <span className="text-rose-500">*</span></label>
-                  <input type="text" required value={forgotId} onChange={(e) => setForgotId(e.target.value)} placeholder="GV001 hoặc SV2026001" className="w-full px-3.5 py-2.5 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white transition-all" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Email phản hồi <span className="text-rose-500">*</span></label>
-                  <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="Nhập email trường cấp" className="w-full px-3.5 py-2.5 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white transition-all" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Ghi chú bổ sung</label>
-                  <textarea rows={2} value={forgotReason} onChange={(e) => setForgotReason(e.target.value)} placeholder="Mô tả sự cố gặp phải..." className="w-full px-3.5 py-2 bg-[#f8f9ff] border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0058be] focus:bg-white resize-none transition-all" />
-                </div>
-                <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                  <button type="button" onClick={() => setShowForgotModal(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors">Hủy bỏ</button>
-                  <button type="submit" className="px-4 py-2 bg-[#0058be] hover:bg-[#004395] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20 transition-all">
-                    <Send className="w-3.5 h-3.5" /><span>Gửi xác thực</span>
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

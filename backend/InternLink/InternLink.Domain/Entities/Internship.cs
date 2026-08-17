@@ -7,11 +7,17 @@ public class Internship : BaseEntity
     public Guid StudentId { get; set; }
     public Student Student { get; set; } = null!;
 
-    public Guid CompanyId { get; set; }
-    public Company Company { get; set; } = null!;
+    /// <summary>
+    /// Company can be null initially (assigned later by lecturer)
+    /// </summary>
+    public Guid? CompanyId { get; set; }
+    public Company? Company { get; set; }
 
     public Guid? LecturerId { get; set; }
     public Lecturer? Lecturer { get; set; }
+
+    public Guid? SemesterId { get; set; }
+    public Semester? Semester { get; set; }
 
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -22,4 +28,5 @@ public class Internship : BaseEntity
 
     public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
     public ICollection<WeeklyReport> WeeklyReports { get; set; } = new List<WeeklyReport>();
+    public ICollection<Document> Documents { get; set; } = new List<Document>();
 }

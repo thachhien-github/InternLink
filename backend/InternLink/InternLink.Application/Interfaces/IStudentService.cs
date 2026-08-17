@@ -10,27 +10,32 @@ public interface IStudentService
     /// <summary>
     /// Get all students with optional pagination
     /// </summary>
-    Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100);
+    Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100, Guid? lecturerId = null);
 
     /// <summary>
     /// Get students with filtering and pagination
     /// </summary>
-    Task<PaginatedResponse<StudentDto>> GetStudentsWithFilterAsync(StudentFilterRequest filter);
+    Task<PaginatedResponse<StudentDto>> GetStudentsWithFilterAsync(StudentFilterRequest filter, Guid? lecturerId = null);
 
     /// <summary>
     /// Get a student by ID
     /// </summary>
-    Task<StudentDto?> GetStudentByIdAsync(Guid id);
+    Task<StudentDto?> GetStudentByIdAsync(Guid id, Guid? lecturerId = null);
 
     /// <summary>
     /// Get a student by student number
     /// </summary>
-    Task<StudentDto?> GetStudentByCodeAsync(string studentCode);
+    Task<StudentDto?> GetStudentByCodeAsync(string studentCode, Guid? lecturerId = null);
 
     /// <summary>
     /// Get a student profile linked to a login user
     /// </summary>
     Task<StudentDto?> GetStudentByUserIdAsync(Guid userId);
+
+    /// <summary>
+    /// Student portal: profile + active internship for the logged-in student.
+    /// </summary>
+    Task<StudentPortalProfileDto?> GetPortalProfileByUserIdAsync(Guid userId);
 
     /// <summary>
     /// Create a new student
@@ -55,7 +60,7 @@ public interface IStudentService
     /// <summary>
     /// Import students from an Excel (.xlsx) stream. Row 1 = headers.
     /// </summary>
-    Task<StudentImportResultDto> ImportStudentsFromExcelAsync(Stream excelStream);
+    Task<StudentImportResultDto> ImportStudentsFromExcelAsync(Stream excelStream, Guid? semesterId = null);
 
     /// <summary>
     /// Build a blank Excel template for student import.

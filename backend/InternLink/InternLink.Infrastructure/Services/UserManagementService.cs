@@ -90,7 +90,7 @@ public class UserManagementService : IUserManagementService
                 throw new InvalidOperationException($"Email '{request.Email}' already exists");
         }
 
-        var tempPassword = PasswordGenerator.GenerateTemporaryPassword();
+        var tempPassword = PasswordGenerator.GenerateTemporaryPassword(8);
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -165,7 +165,7 @@ public class UserManagementService : IUserManagementService
         if (user.Role == Role.SuperAdmin)
             throw new InvalidOperationException("Cannot reset SuperAdmin password through this endpoint");
 
-        var newPassword = PasswordGenerator.GenerateTemporaryPassword();
+        var newPassword = PasswordGenerator.GenerateTemporaryPassword(8);
         user.PasswordHash = _hasher.HashPassword(user, newPassword);
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;

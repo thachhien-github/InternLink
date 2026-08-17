@@ -1,257 +1,199 @@
-import { useState } from 'react';
-import { UserPlus, X, Save, Sparkles } from 'lucide-react';
+import { useState } from "react";
+import { UserPlus, X, Save } from "lucide-react";
+
+export interface CreateLecturerFormPayload {
+  staffCode: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  department?: string;
+  grantAccount?: boolean;
+}
+
+const emptyForm: CreateLecturerFormPayload = {
+  staffCode: "",
+  fullName: "",
+  email: "",
+  phone: "",
+  department: "",
+  grantAccount: false,
+};
+
+interface CreateLecturerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onShowToast: (msg: string) => void;
+  onAddLecturer?: (payload: CreateLecturerFormPayload) => void | Promise<void>;
+}
+
 export const CreateLecturerModal = ({
   isOpen,
   onClose,
   onShowToast,
-  onAddLecturer
-}) => {
-  const [formData, setFormData] = useState({
-    employeeId: "GV" + Math.floor(100 + Math.random() * 900),
-    fullName: "",
-    academicDegree: "TS",
-    faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-    department: "C\xF4ng ngh\u1EC7 Ph\u1EA7n m\u1EC1m",
-    email: "",
-    phone: "",
-    maxCapacity: 40,
-    createAccountImmediately: true
-  });
+  onAddLecturer,
+}: CreateLecturerModalProps) => {
+  const [form, setForm] = useState(emptyForm);
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isOpen) return null;
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.fullName.trim()) {
-      onShowToast("Vui l\xF2ng nh\u1EADp h\u1ECD v\xE0 t\xEAn gi\u1EA3ng vi\xEAn!");
-      return;
-    }
-    if (!formData.email.trim()) {
-      onShowToast("Vui l\xF2ng nh\u1EADp email c\xF4ng v\u1EE5!");
-      return;
-    }
-    const newLecturer = {
-      id: "lec-" + Date.now(),
-      employeeId: formData.employeeId,
-      fullName: `${formData.academicDegree}. ${formData.fullName}`,
-      academicDegree: formData.academicDegree,
-      faculty: formData.faculty,
-      department: formData.department,
-      email: formData.email,
-      phone: formData.phone || "0901 234 567",
-      currentCount: 0,
-      maxCapacity: formData.maxCapacity,
-      accountStatus: formData.createAccountImmediately ? "active" : "pending",
-      guidanceStatus: "available",
-      lastLogin: formData.createAccountImmediately ? "Ch\u01B0a t\u1EEBng \u0111\u0103ng nh\u1EADp" : "Ch\u01B0a c\u1EA5p t\xE0i kho\u1EA3n"
-    };
-    if (onAddLecturer) {
-      onAddLecturer(newLecturer);
-    }
-    onShowToast(`Th\xEAm th\xE0nh c\xF4ng gi\u1EA3ng vi\xEAn ${newLecturer.fullName} (${newLecturer.employeeId})`);
-    onClose();
+
+  const setField = (key: keyof CreateLecturerFormPayload, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
-  return <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95">
-        
-        {
-    /* Header */
-  }
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const staffCode = form.staffCode.trim();
+    const fullName = form.fullName.trim();
+
+    if (!staffCode) {
+      onShowToast("Vui lòng nhập mã giảng viên (MaGV)!");
+      return;
+    }
+    if (!fullName) {
+      onShowToast("Vui lòng nhập họ và tên giảng viên!");
+      return;
+    }
+
+    const payload: CreateLecturerFormPayload = {
+      staffCode,
+      fullName,
+      email: form.email?.trim() || undefined,
+      phone: form.phone?.trim() || undefined,
+      department: form.department?.trim() || undefined,
+      grantAccount: form.grantAccount,
+    };
+
+    setIsSaving(true);
+    try {
+      if (onAddLecturer) await onAddLecturer(payload);
+      onShowToast(`Đã thêm giảng viên ${fullName} (${staffCode})`);
+      setForm(emptyForm);
+      onClose();
+    } catch {
+      /* parent shows API error */
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-md border border-blue-100">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base">Thêm Giảng viên Mới</h3>
-              <p className="text-xs text-slate-500 font-medium">Nhập thông tin hồ sơ giảng viên hướng dẫn thực tập</p>
+              <h3 className="font-bold text-slate-900 text-sm">Thêm giảng viên</h3>
+              <p className="text-[11px] text-slate-500">
+                Cùng cột với file mẫu import Excel
+              </p>
             </div>
           </div>
           <button
-    onClick={onClose}
-    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
-  >
+            type="button"
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {
-    /* Form Body */
-  }
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          
-          <div className="grid grid-cols-2 gap-3">
-            {
-    /* Employee ID */
-  }
+        <form onSubmit={(e) => void handleSubmit(e)} className="p-5 space-y-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Mã số giảng viên (MSGV) *</label>
+              <label className="block font-bold text-slate-700 mb-1">
+                MaGV <span className="text-rose-500">*</span>
+              </label>
               <input
-    type="text"
-    required
-    value={formData.employeeId}
-    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
-  />
+                type="text"
+                required
+                value={form.staffCode}
+                onChange={(e) => setField("staffCode", e.target.value)}
+                placeholder="GV001"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-mono font-bold outline-none focus:bg-white focus:border-blue-500"
+              />
             </div>
-
-            {
-    /* Academic Degree */
-  }
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Học hàm / Học vị</label>
-              <select
-    value={formData.academicDegree}
-    onChange={(e) => setFormData({ ...formData, academicDegree: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-  >
-                <option value="ThS">Thạc sĩ (ThS)</option>
-                <option value="TS">Tiến sĩ (TS)</option>
-                <option value="PGS.TS">Phó Giáo sư, Tiến sĩ (PGS.TS)</option>
-                <option value="GS.TS">Giáo sư, Tiến sĩ (GS.TS)</option>
-              </select>
-            </div>
-          </div>
-
-          {
-    /* Full Name */
-  }
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Họ và tên giảng viên *</label>
-            <input
-    type="text"
-    required
-    placeholder="Ví dụ: Nguyễn Văn Phước"
-    value={formData.fullName}
-    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
-  />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {
-    /* Faculty */
-  }
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Khoa / Trường *</label>
-              <select
-    value={formData.faculty}
-    onChange={(e) => setFormData({ ...formData, faculty: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-  >
-                <option value="Công nghệ Thông tin">Khoa Công nghệ Thông tin</option>
-                <option value="Điện - Điện tử">Khoa Điện - Điện tử</option>
-                <option value="Cơ khí">Khoa Cơ khí</option>
-              </select>
-            </div>
-
-            {
-    /* Department */
-  }
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Bộ môn trực thuộc *</label>
-              <select
-    value={formData.department}
-    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-  >
-                <option value="Công nghệ Phần mềm">Bộ môn Công nghệ Phần mềm</option>
-                <option value="Mạng máy tính & TTTT">Bộ môn Mạng máy tính & TTTT</option>
-                <option value="Hệ thống Thông tin">Bộ môn Hệ thống Thông tin</option>
-                <option value="Khoa học Máy tính">Bộ môn Khoa học Máy tính</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {
-    /* Email */
-  }
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Email công vụ (@fit.edu.vn) *</label>
+            <div className="sm:col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">
+                Họ tên <span className="text-rose-500">*</span>
+              </label>
               <input
-    type="email"
-    required
-    placeholder="ten.nguyenvan@fit.edu.vn"
-    value={formData.email}
-    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
-  />
+                type="text"
+                required
+                value={form.fullName}
+                onChange={(e) => setField("fullName", e.target.value)}
+                placeholder="Nguyễn Văn A"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold outline-none focus:bg-white focus:border-blue-500"
+              />
             </div>
-
-            {
-    /* Phone */
-  }
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ</label>
+              <label className="block font-bold text-slate-700 mb-1">Email</label>
               <input
-    type="text"
-    placeholder="0908 123 456"
-    value={formData.phone}
-    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
-  />
+                type="email"
+                value={form.email}
+                onChange={(e) => setField("email", e.target.value)}
+                placeholder="nguyenvana@university.edu.vn"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">SDT</label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={(e) => setField("phone", e.target.value)}
+                placeholder="0901234567"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Bộ môn</label>
+              <input
+                type="text"
+                value={form.department}
+                onChange={(e) => setField("department", e.target.value)}
+                placeholder="CNTT"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md outline-none focus:bg-white focus:border-blue-500"
+              />
             </div>
           </div>
 
-          {
-    /* Max Capacity */
-  }
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Chỉ tiêu hướng dẫn tối đa (Sức chứa SV)
-            </label>
+          <label className="flex items-start gap-2.5 p-3 bg-emerald-50 border border-emerald-100 rounded-md cursor-pointer">
             <input
-    type="number"
-    min={10}
-    max={60}
-    value={formData.maxCapacity}
-    onChange={(e) => setFormData({ ...formData, maxCapacity: parseInt(e.target.value) || 40 })}
-    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
-  />
-          </div>
+              type="checkbox"
+              checked={Boolean(form.grantAccount)}
+              onChange={(e) => setField("grantAccount", e.target.checked)}
+              className="mt-0.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-[11px] text-emerald-900 leading-relaxed">
+              <strong>Cấp tài khoản ngay</strong> — Username = MaGV, mật khẩu tạm 8 ký
+              tự ngẫu nhiên. Gửi email nếu có địa chỉ. Lần đăng nhập đầu bắt buộc đổi
+              mật khẩu.
+            </span>
+          </label>
 
-          {
-    /* Immediate Account Generation */
-  }
-          <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between">
-            <div className="space-y-0.5">
-              <p className="font-extrabold text-indigo-950 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                Cấp tài khoản đăng nhập ngay
-              </p>
-              <p className="text-[10px] text-slate-500">
-                Tài khoản MSGV sẽ được kích hoạt với mật khẩu mặc định (Fit@2026!)
-              </p>
-            </div>
-            <input
-    type="checkbox"
-    checked={formData.createAccountImmediately}
-    onChange={(e) => setFormData({ ...formData, createAccountImmediately: e.target.checked })}
-    className="w-4 h-4 text-indigo-600 rounded cursor-pointer accent-indigo-600"
-  />
-          </div>
-
-          {
-    /* Buttons */
-  }
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
-    type="button"
-    onClick={onClose}
-    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-colors"
-  >
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md"
+            >
               Hủy
             </button>
-
             <button
-    type="submit"
-    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-  >
+              type="submit"
+              disabled={isSaving}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-md flex items-center gap-1.5"
+            >
               <Save className="w-4 h-4" />
-              <span>Lưu hồ sơ giảng viên</span>
+              {isSaving ? "Đang lưu…" : "Lưu giảng viên"}
             </button>
           </div>
-
         </form>
       </div>
-    </div>;
+    </div>
+  );
 };

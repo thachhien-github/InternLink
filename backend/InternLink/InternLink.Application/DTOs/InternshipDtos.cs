@@ -6,7 +6,7 @@ namespace InternLink.Application.DTOs;
 public class CreateInternshipRequest
 {
     public Guid StudentId { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid? CompanyId { get; set; } // Changed: nullable for initial enrollment (company assigned later)
     public Guid? LecturerId { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -52,7 +52,7 @@ public class InternshipDetailFullDto
 {
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid? CompanyId { get; set; } // Changed: nullable because company assigned later
     public Guid? LecturerId { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -94,7 +94,7 @@ public class InternshipListItemDto
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
     public string? StudentName { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid? CompanyId { get; set; } // Changed: nullable because company assigned later
     public string? CompanyName { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }

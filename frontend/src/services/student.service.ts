@@ -1,11 +1,11 @@
-import type { Student } from '../types/student';
-import { INITIAL_STUDENTS } from '../data/mockData';
+import type { Student } from "../types/student";
+import { INITIAL_STUDENTS } from "../data/mockData";
 
 let studentsData: Student[] = [...INITIAL_STUDENTS];
 
 export const studentService = {
   async getStudents(lecturerFilter?: string): Promise<Student[]> {
-    if (!lecturerFilter || lecturerFilter === 'Tất cả') {
+    if (!lecturerFilter || lecturerFilter === "Tất cả") {
       return [...studentsData];
     }
     return studentsData.filter((s) => s.lecturer === lecturerFilter);
@@ -20,10 +20,13 @@ export const studentService = {
     return newStudent;
   },
 
-  async updateStudent(id: string, updates: Partial<Student>): Promise<Student | null> {
+  async updateStudent(
+    id: string,
+    updates: Partial<Student>,
+  ): Promise<Student | null> {
     const idx = studentsData.findIndex((s) => s.id === id);
     if (idx === -1) return null;
     studentsData[idx] = { ...studentsData[idx], ...updates };
     return studentsData[idx];
-  }
+  },
 };

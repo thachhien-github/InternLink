@@ -22,11 +22,23 @@ public class WeeklyReportController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var report = await _weeklyReportService.GetByIdAsync(id);
-        if (report == null)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Weekly report not found" }));
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return Ok(ApiResponse<WeeklyReportDto>.Ok(report));
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var report = await _weeklyReportService.GetByIdAsync(id, userId.Value, isLecturerOrAdmin);
+            if (report == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Weekly report not found" }));
+
+            return Ok(ApiResponse<WeeklyReportDto>.Ok(report));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("mine")]

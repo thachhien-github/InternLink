@@ -64,4 +64,33 @@ public class AdminAssignmentsController : ControllerBase
 
         return Ok(ApiResponse<object>.Ok(null));
     }
+
+    [HttpGet("history")]
+    public async Task<IActionResult> GetHistory([FromQuery] int limit = 50)
+    {
+        var items = await _assignmentService.GetHistoryAsync(Math.Clamp(limit, 1, 200));
+        return Ok(ApiResponse<IReadOnlyList<AssignmentHistoryItemDto>>.Ok(items));
+    }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportExcel()
+    {
+        var bytes = await _assignmentService.ExportExcelAsync();
+        var fileName = $"phan-cong-huong-dan-{DateTime.UtcNow:yyyyMMdd}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    [HttpPost("auto")]
+    public async Task<IActionResult> AutoAssign([FromBody] AutoAssignRequest request)
+    {
+        try
+        {
+            var result = await _assignmentService.AutoAssignAsync(request);
+            return Ok(ApiResponse<AutoAssignResultDto>.Ok(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
 }

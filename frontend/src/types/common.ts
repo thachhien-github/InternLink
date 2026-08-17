@@ -1,6 +1,6 @@
 // Common shared type definitions
 
-export type UserRole = 'admin' | 'lecturer' | 'student';
+export type UserRole = "admin" | "lecturer" | "student";
 
 export interface AuthenticatedUser {
   username: string;
@@ -15,7 +15,7 @@ export interface ActionItem {
   type: string;
   priority?: string;
   count: number;
-  buttonText: string;
+  buttonText?: string;
 }
 
 export interface Deadline {

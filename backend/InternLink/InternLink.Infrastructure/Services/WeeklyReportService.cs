@@ -29,6 +29,35 @@ public class WeeklyReportService : IWeeklyReportService
         return report == null ? null : _mapper.Map<WeeklyReportDto>(report);
     }
 
+    public async Task<WeeklyReportDto?> GetByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+        if (report == null)
+            return null;
+
+        var ownsInternship = report.Internship?.Student?.UserId == userId;
+        var isAssignedLecturer = report.Internship?.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this weekly report");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this weekly report");
+        }
+
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
     public async Task<IEnumerable<WeeklyReportDto>> GetMineAsync(Guid userId)
     {
         var internship = await GetStudentInternshipAsync(userId);
@@ -45,6 +74,14 @@ public class WeeklyReportService : IWeeklyReportService
 
     public async Task<IEnumerable<WeeklyReportDto>> GetByInternshipAsync(Guid internshipId)
     {
+        return await GetByInternshipAsync(internshipId, Guid.Empty, isLecturerOrAdmin: true);
+    }
+
+    public async Task<IEnumerable<WeeklyReportDto>> GetByInternshipAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
+    {
+        if (userId != Guid.Empty)
+            await EnsureInternshipAccessAsync(internshipId, userId, isLecturerOrAdmin);
+
         var reports = await _db.WeeklyReports
             .Where(r => r.InternshipId == internshipId && !r.IsDeleted)
             .OrderByDescending(r => r.WeekNumber)
@@ -130,13 +167,32 @@ public class WeeklyReportService : IWeeklyReportService
 
     public async Task<WeeklyReportDto?> ReviewAsync(Guid id, ReviewWeeklyReportRequest request)
     {
+        return await ReviewAsync(id, Guid.Empty, request);
+    }
+
+    public async Task<WeeklyReportDto?> ReviewAsync(Guid id, Guid userId, ReviewWeeklyReportRequest request)
+    {
         var report = await _db.WeeklyReports
             .Include(r => r.Internship)
                 .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
             .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
 
         if (report == null)
             return null;
+
+        if (userId != Guid.Empty)
+        {
+            var isAssigned = report.Internship?.Lecturer?.UserId == userId;
+            if (!isAssigned)
+            {
+                var isSuperAdmin = await _db.Users
+                    .AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+                if (!isSuperAdmin)
+                    throw new UnauthorizedAccessException("You do not have access to this weekly report");
+            }
+        }
 
         if (!Enum.TryParse<WeeklyReportStatus>(request.Status, true, out var status))
             throw new InvalidOperationException($"Invalid status: {request.Status}");
@@ -193,6 +249,31 @@ public class WeeklyReportService : IWeeklyReportService
             throw new UnauthorizedAccessException("Weekly report does not belong to the current student");
 
         return report;
+    }
+
+    private async Task EnsureInternshipAccessAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
+    {
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .Include(i => i.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted);
+
+        if (internship == null)
+            throw new UnauthorizedAccessException("You do not have access to this weekly report");
+
+        var ownsInternship = internship.Student?.UserId == userId;
+        var isAssignedLecturer = internship.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this weekly report");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this weekly report");
+        }
     }
 
     private async Task<Internship?> GetStudentInternshipAsync(Guid userId)

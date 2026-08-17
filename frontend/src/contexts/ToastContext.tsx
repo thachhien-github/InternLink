@@ -1,6 +1,6 @@
-import { createContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useState, useCallback, ReactNode } from "react";
 
-export type ToastType = 'success' | 'warning' | 'danger' | 'info';
+export type ToastType = "success" | "warning" | "danger" | "info";
 
 export interface ToastContextType {
   message: string | null;

@@ -1,3 +1,4 @@
+using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -73,11 +74,20 @@ public class EvaluationController : ControllerBase
     {
         try
         {
-            var evaluation = await _evaluationService.GetEvaluationByIdAsync(id);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var evaluation = await _evaluationService.GetEvaluationByIdAsync(id, userId.Value, isLecturerOrAdmin);
             if (evaluation == null)
                 return NotFound(new { message = "Evaluation not found" });
 
             return Ok(evaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {

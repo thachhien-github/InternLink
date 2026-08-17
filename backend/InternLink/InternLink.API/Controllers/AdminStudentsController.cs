@@ -142,7 +142,7 @@ public class AdminStudentsController : ControllerBase
     [HttpPost("import")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> Import(IFormFile file)
+    public async Task<IActionResult> Import(IFormFile file, [FromQuery] Guid? semesterId = null)
     {
         try
         {
@@ -153,7 +153,7 @@ public class AdminStudentsController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Only .xlsx files are supported" }));
 
             await using var stream = file.OpenReadStream();
-            var result = await _studentService.ImportStudentsFromExcelAsync(stream);
+            var result = await _studentService.ImportStudentsFromExcelAsync(stream, semesterId);
             return Ok(ApiResponse<StudentImportResultDto>.Ok(result));
         }
         catch (InvalidOperationException ex)

@@ -1,5 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bot, X, Send, Minimize2, ChevronRight, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import {
+  Bot,
+  X,
+  Send,
+  Minimize2,
+  ChevronRight,
+  ShieldCheck,
+} from "lucide-react";
 
 interface FloatingAiAssistantProps {
   activeTab: string;
@@ -14,7 +21,7 @@ interface MessageAction {
 
 interface Message {
   id: string;
-  sender: 'ai' | 'user';
+  sender: "ai" | "user";
   text: string;
   timestamp: string;
   actions?: MessageAction[];
@@ -23,7 +30,7 @@ interface Message {
 export const FloatingAiAssistant = ({
   activeTab,
   onNavigateTab,
-  onOpenAction
+  onOpenAction,
 }: FloatingAiAssistantProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showReminder, setShowReminder] = useState(true);
@@ -39,43 +46,58 @@ export const FloatingAiAssistant = ({
       text: "Xin chào Thầy Phước! Tôi là **Trợ lý AI InternLink**. Tôi có thể hỗ trợ Thầy phân tích tiến độ sinh viên, tổng hợp tương tác doanh nghiệp, hoặc khởi tạo thông báo đôn đốc.",
       timestamp: "Vừa xong",
       actions: [
-        { label: "Sinh viên có nguy cơ trượt tiến độ", actionKey: "risk_students" },
-        { label: "Doanh nghiệp chưa phản hồi", actionKey: "inactive_enterprises" },
-        { label: "Soạn thông báo nộp báo cáo", actionKey: "compose_notice" }
-      ]
-    }
+        {
+          label: "Sinh viên có nguy cơ trượt tiến độ",
+          actionKey: "risk_students",
+        },
+        {
+          label: "Doanh nghiệp chưa phản hồi",
+          actionKey: "inactive_enterprises",
+        },
+        { label: "Soạn thông báo nộp báo cáo", actionKey: "compose_notice" },
+      ],
+    },
   ]);
 
   useEffect(() => {
     let msg = "";
     switch (activeTab) {
       case "dashboard":
-        msg = "Hệ thống AI: Đã phát hiện 5 sinh viên cần lưu ý tiến độ & 4 doanh nghiệp chưa tương tác tuần này.";
+        msg =
+          "Hệ thống AI: Đã phát hiện 5 sinh viên cần lưu ý tiến độ & 4 doanh nghiệp chưa tương tác tuần này.";
         break;
       case "students":
-        msg = "Hệ thống AI: Đề xuất hỗ trợ lọc nhanh sinh viên theo tiêu chí điểm số hoặc tình trạng nộp báo cáo.";
+        msg =
+          "Hệ thống AI: Đề xuất hỗ trợ lọc nhanh sinh viên theo tiêu chí điểm số hoặc tình trạng nộp báo cáo.";
         break;
       case "enterprises":
-        msg = "Hệ thống AI: Đã tổng hợp 4 doanh nghiệp chưa cập nhật phản hồi đánh giá thực tập sinh.";
+        msg =
+          "Hệ thống AI: Đã tổng hợp 4 doanh nghiệp chưa cập nhật phản hồi đánh giá thực tập sinh.";
         break;
       case "internships":
-        msg = "Hệ thống AI: Hỗ trợ kiểm tra tiến độ nộp nhật ký và báo cáo định kỳ của sinh viên.";
+        msg =
+          "Hệ thống AI: Hỗ trợ kiểm tra tiến độ nộp nhật ký và báo cáo định kỳ của sinh viên.";
         break;
       case "evaluations":
-        msg = "Hệ thống AI: Đã xác định 5 sinh viên đủ điều kiện tổng hợp điểm môn Thực tập.";
+        msg =
+          "Hệ thống AI: Đã xác định 5 sinh viên đủ điều kiện tổng hợp điểm môn Thực tập.";
         break;
       case "reports":
       case "analytics":
-        msg = "Hệ thống AI: Đã tổng hợp dữ liệu thống kê phân bố GPA và xếp loại thực tập đợt này.";
+        msg =
+          "Hệ thống AI: Đã tổng hợp dữ liệu thống kê phân bố GPA và xếp loại thực tập đợt này.";
         break;
       case "notifications":
-        msg = "Hệ thống AI: Có 2 gợi ý nội dung thông báo đôn đốc tự động cho báo cáo chưa nộp.";
+        msg =
+          "Hệ thống AI: Có 2 gợi ý nội dung thông báo đôn đốc tự động cho báo cáo chưa nộp.";
         break;
       case "templates":
-        msg = "Hệ thống AI: Hỗ trợ tạo và quản lý mẫu công văn xác nhận thực tập.";
+        msg =
+          "Hệ thống AI: Hỗ trợ tạo và quản lý mẫu công văn xác nhận thực tập.";
         break;
       case "account":
-        msg = "Hệ thống AI: Thông tin tài khoản Giảng viên đã được bảo mật & đồng bộ.";
+        msg =
+          "Hệ thống AI: Thông tin tài khoản Giảng viên đã được bảo mật & đồng bộ.";
         break;
       default:
         msg = "Trợ lý AI InternLink đã sẵn sàng hỗ trợ bạn.";
@@ -104,7 +126,10 @@ export const FloatingAiAssistant = ({
       id: `u-${Date.now()}`,
       sender: "user",
       text,
-      timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      timestamp: new Date().toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -116,33 +141,47 @@ export const FloatingAiAssistant = ({
       let actions: MessageAction[] | undefined = undefined;
       const query = text.toLowerCase();
 
-      if (query.includes("nguy cơ") || query.includes("rủi ro") || query.includes("trượt")) {
-        aiText = "Dựa trên dữ liệu hệ thống: Hiện có **5 sinh viên** chậm nộp báo cáo tuần quá 3 ngày (Nguyễn Văn An, Lê Hoàng Nam, Phạm Quốc Bảo...). Hệ thống đề xuất khởi tạo thông báo nhắc nhở.";
+      if (
+        query.includes("nguy cơ") ||
+        query.includes("rủi ro") ||
+        query.includes("trượt")
+      ) {
+        aiText =
+          "Dựa trên dữ liệu hệ thống: Hiện có **5 sinh viên** chậm nộp báo cáo tuần quá 3 ngày (Nguyễn Văn An, Lê Hoàng Nam, Phạm Quốc Bảo...). Hệ thống đề xuất khởi tạo thông báo nhắc nhở.";
         actions = [
           { label: "Gửi email nhắc nhở", actionKey: "send_risk_email" },
-          { label: "Xem danh sách sinh viên", actionKey: "view_students" }
+          { label: "Xem danh sách sinh viên", actionKey: "view_students" },
         ];
       } else if (query.includes("doanh nghiệp") || query.includes("dn")) {
-        aiText = "Hiện có **4 doanh nghiệp** (FPT Software, Viettel Telecom, KMS Solutions...) chưa phản hồi đánh giá tuần 5. Hệ thống hỗ trợ soạn mẫu văn bản đôn đốc.";
+        aiText =
+          "Hiện có **4 doanh nghiệp** (FPT Software, Viettel Telecom, KMS Solutions...) chưa phản hồi đánh giá tuần 5. Hệ thống hỗ trợ soạn mẫu văn bản đôn đốc.";
         actions = [
-          { label: "Xem danh sách Doanh nghiệp", actionKey: "view_enterprises" },
-          { label: "Tạo văn bản đôn đốc", actionKey: "compose_enterprise_notice" }
+          {
+            label: "Xem danh sách Doanh nghiệp",
+            actionKey: "view_enterprises",
+          },
+          {
+            label: "Tạo văn bản đôn đốc",
+            actionKey: "compose_enterprise_notice",
+          },
         ];
       } else if (query.includes("chấm điểm") || query.includes("đánh giá")) {
-        aiText = "Đã có **5 sinh viên** nộp đủ Báo cáo giữa kỳ và đạt điểm Doanh nghiệp >= 8.0. Thầy có thể mở mục **Đánh giá** để phê duyệt điểm tổng kết.";
+        aiText =
+          "Đã có **5 sinh viên** nộp đủ Báo cáo giữa kỳ và đạt điểm Doanh nghiệp >= 8.0. Thầy có thể mở mục **Đánh giá** để phê duyệt điểm tổng kết.";
         actions = [
-          { label: "Mở phân hệ Đánh giá", actionKey: "view_evaluations" }
+          { label: "Mở phân hệ Đánh giá", actionKey: "view_evaluations" },
         ];
       } else if (query.includes("báo cáo") || query.includes("thống kê")) {
-        aiText = "Tỷ lệ hoàn thành đợt thực tập HK1-2026 đạt **82.5%**. Điểm đánh giá trung bình từ doanh nghiệp đạt **3.42/4.0**. Thầy có thể trích xuất báo cáo chi tiết.";
+        aiText =
+          "Tỷ lệ hoàn thành đợt thực tập HK1-2026 đạt **82.5%**. Điểm đánh giá trung bình từ doanh nghiệp đạt **3.42/4.0**. Thầy có thể trích xuất báo cáo chi tiết.";
         actions = [
-          { label: "Xem Báo cáo chi tiết", actionKey: "view_reports" }
+          { label: "Xem Báo cáo chi tiết", actionKey: "view_reports" },
         ];
       } else {
         aiText = `Đã tiếp nhận yêu cầu: "${text}". Hệ thống AI InternLink đang tổng hợp dữ liệu để hỗ trợ theo quy trình quản lý thực tập.`;
         actions = [
           { label: "Danh sách sinh viên", actionKey: "view_students" },
-          { label: "Soạn thông báo chung", actionKey: "compose_notice" }
+          { label: "Soạn thông báo chung", actionKey: "compose_notice" },
         ];
       }
 
@@ -150,8 +189,11 @@ export const FloatingAiAssistant = ({
         id: `ai-${Date.now()}`,
         sender: "ai",
         text: aiText,
-        timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-        actions
+        timestamp: new Date().toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        actions,
       };
 
       setMessages((prev) => [...prev, aiMsg]);
@@ -191,7 +233,7 @@ export const FloatingAiAssistant = ({
       {showReminder && !isOpen && (
         <div
           onClick={() => setIsOpen(true)}
-          className="pointer-events-auto mb-3 max-w-xs md:max-w-sm bg-slate-900 text-white p-3 rounded-2xl shadow-xl border border-slate-700/80 backdrop-blur-md cursor-pointer transition-all duration-200 animate-in slide-in-from-bottom-3 fade-in group relative"
+          className="pointer-events-auto mb-3 max-w-xs md:max-w-sm bg-slate-900 text-white p-3 rounded-lg shadow-md border border-slate-700/80 cursor-pointer transition-all duration-200 animate-in slide-in-from-bottom-3 fade-in group relative"
         >
           <button
             onClick={(e) => {
@@ -205,7 +247,7 @@ export const FloatingAiAssistant = ({
           </button>
 
           <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+            <div className="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 min-w-0 space-y-1">
@@ -226,31 +268,39 @@ export const FloatingAiAssistant = ({
 
       {/* 2. EXPANDED FLOATING CHAT WINDOW */}
       {isOpen && (
-        <div className="pointer-events-auto mb-3 w-[350px] sm:w-[390px] h-[520px] bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+        <div className="pointer-events-auto mb-3 w-[350px] sm:w-[390px] h-[520px] bg-slate-900 text-white rounded-lg shadow-md border border-slate-700/80 flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200">
           {/* Header */}
           <div className="p-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-md">
-                  <img src="/logo/logo_internlink-02.png" alt="InternLink AI" className="w-full h-full object-contain" />
+                <div className="w-9 h-9 rounded-md bg-white p-1 flex items-center justify-center shadow-md">
+                  <img
+                    src="/logo/logo_internlink-02.png"
+                    alt="InternLink AI"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-sm text-white tracking-tight">Trợ lý AI InternLink</h3>
+                  <h3 className="font-bold text-sm text-white tracking-tight">
+                    Trợ lý AI InternLink
+                  </h3>
                   <span className="px-2 py-0.5 bg-blue-900/80 text-blue-200 text-[10px] font-semibold rounded-md border border-blue-700/60">
                     Hệ thống AI
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400">Hỗ trợ công tác quản lý thực tập Doanh nghiệp</p>
+                <p className="text-[10px] text-slate-400">
+                  Hỗ trợ công tác quản lý thực tập Doanh nghiệp
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
                 title="Thu gọn khung chat"
               >
                 <Minimize2 className="w-4 h-4" />
@@ -262,9 +312,12 @@ export const FloatingAiAssistant = ({
           <div className="px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px] text-slate-300 flex items-center justify-between shrink-0">
             <span className="truncate font-medium flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              Đang làm việc tại: <strong className="text-white capitalize">{activeTab}</strong>
+              Đang làm việc tại:{" "}
+              <strong className="text-white capitalize">{activeTab}</strong>
             </span>
-            <span className="text-[10px] text-emerald-400 font-semibold shrink-0">Sẵn sàng</span>
+            <span className="text-[10px] text-emerald-400 font-semibold shrink-0">
+              Sẵn sàng
+            </span>
           </div>
 
           {/* Chat Messages Body */}
@@ -275,7 +328,7 @@ export const FloatingAiAssistant = ({
                 className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.sender === "user" ? "bg-blue-600 text-white rounded-tr-xs" : "bg-slate-800 text-slate-100 border border-slate-700/80 rounded-tl-xs space-y-2"}`}
+                  className={`max-w-[85%] p-3 rounded-lg text-xs leading-relaxed ${msg.sender === "user" ? "bg-blue-600 text-white rounded-tr-xs" : "bg-slate-800 text-slate-100 border border-slate-700/80 rounded-tl-xs space-y-2"}`}
                 >
                   <p className="whitespace-pre-line">{msg.text}</p>
 
@@ -295,14 +348,18 @@ export const FloatingAiAssistant = ({
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-slate-400 px-1 mt-0.5">{msg.timestamp}</span>
+                <span className="text-[9px] text-slate-400 px-1 mt-0.5">
+                  {msg.timestamp}
+                </span>
               </div>
             ))}
 
             {isTyping && (
-              <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-2xl w-36 border border-slate-700/60">
+              <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-lg w-36 border border-slate-700/60">
                 <Bot className="w-3.5 h-3.5 text-blue-400" />
-                <span className="animate-pulse font-medium text-[11px]">Đang xử lý dữ liệu...</span>
+                <span className="font-medium text-[11px]">
+                  Đang xử lý dữ liệu...
+                </span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -311,19 +368,25 @@ export const FloatingAiAssistant = ({
           {/* Quick Suggestion Chips */}
           <div className="px-3 py-2 bg-slate-950 border-t border-slate-800 flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0 text-[10px]">
             <button
-              onClick={() => handleSendMessage("Cho tôi danh sách SV nguy cơ trượt tiến độ")}
+              onClick={() =>
+                handleSendMessage("Cho tôi danh sách SV nguy cơ trượt tiến độ")
+              }
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 shrink-0 whitespace-nowrap transition-colors"
             >
               Danh sách SV nguy cơ
             </button>
             <button
-              onClick={() => handleSendMessage("Những doanh nghiệp nào chưa phản hồi?")}
+              onClick={() =>
+                handleSendMessage("Những doanh nghiệp nào chưa phản hồi?")
+              }
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 shrink-0 whitespace-nowrap transition-colors"
             >
               Doanh nghiệp trễ hạn
             </button>
             <button
-              onClick={() => handleSendMessage("Gợi ý danh sách SV đủ điều kiện chấm điểm")}
+              onClick={() =>
+                handleSendMessage("Gợi ý danh sách SV đủ điều kiện chấm điểm")
+              }
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 shrink-0 whitespace-nowrap transition-colors"
             >
               Đủ ĐK chấm điểm
@@ -338,12 +401,12 @@ export const FloatingAiAssistant = ({
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
               placeholder="Nhập câu hỏi hoặc yêu cầu xử lý..."
-              className="flex-1 bg-slate-900 text-white placeholder-slate-400 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+              className="flex-1 bg-slate-900 text-white placeholder-slate-400 text-xs px-3 py-2 rounded-md border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
             />
             <button
               onClick={() => handleSendMessage()}
               disabled={!inputMessage.trim()}
-              className="p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 text-white rounded-xl transition-colors shrink-0 cursor-pointer"
+              className="p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 text-white rounded-md transition-colors shrink-0 cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -354,7 +417,7 @@ export const FloatingAiAssistant = ({
       {/* 3. FLOATING ASSISTANT TRIGGER BUTTON */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="pointer-events-auto relative p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 border border-blue-400/30 flex items-center justify-center cursor-pointer group"
+        className="pointer-events-auto relative p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md transition-all duration-200 transform border border-blue-400/30 flex items-center justify-center cursor-pointer group"
         title="Mở Trợ lý AI InternLink"
       >
         {isOpen ? (

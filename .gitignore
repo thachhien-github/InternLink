@@ -19,6 +19,8 @@ obj/
 # Environment files
 .env
 .env.*
+backend/**/appsettings.Development.json
+backend/**/appsettings.*.local.json
 
 # Logs
 npm-debug.log*

@@ -1,4 +1,4 @@
-import { LecturerAnalytics } from '../components/LecturerAnalytics';
+import { LecturerAnalytics } from "../components/LecturerAnalytics";
 
 interface AnalyticsViewProps {
   showToast?: (msg: string) => void;

@@ -1,15 +1,16 @@
-import { ReactNode } from 'react';
-import { Sidebar as LecturerSidebar } from '../features/lecturer/components/Sidebar';
-import { Header as LecturerHeader } from '../features/lecturer/components/Header';
-import { Toast } from '../components/common/Toast';
-import { FloatingAiAssistant } from '../components/common/FloatingAiAssistant';
-import { useToast } from '../hooks/useToast';
+import { ReactNode } from "react";
+import { Sidebar as LecturerSidebar } from "../features/lecturer/components/Sidebar";
+import { Header as LecturerHeader } from "../features/lecturer/components/Header";
+import { Toast } from "../components/common/Toast";
+import { useToast } from "../hooks/useToast";
+
+import type { UserRole } from "../types/common";
 
 interface LecturerLayoutProps {
   children: ReactNode;
   activeTab: string;
   onNavigate: (tab: string) => void;
-  onSwitchPortal: (role: string) => void;
+  onSwitchPortal: (role: UserRole) => void;
   onLogout: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -26,12 +27,12 @@ export default function LecturerLayout({
   searchQuery,
   onSearchChange,
   currentLecturer,
-  assignedStudentsCount
+  assignedStudentsCount,
 }: LecturerLayoutProps) {
-  const { message, clearToast, showToast } = useToast();
+  const { message, clearToast } = useToast();
 
   return (
-    <div className="min-h-screen bg-[#faf8ff] text-slate-800 font-sans flex antialiased">
+    <div className="min-h-screen bg-[var(--il-surface-bg)] text-slate-800 font-sans flex antialiased">
       <LecturerSidebar
         activeTab={activeTab}
         onNavigate={onNavigate}
@@ -54,11 +55,6 @@ export default function LecturerLayout({
           {children}
         </main>
       </div>
-      <FloatingAiAssistant
-        activeTab={activeTab}
-        onNavigateTab={onNavigate}
-        onOpenAction={(act) => showToast(`Kích hoạt tính năng AI: ${act}`)}
-      />
     </div>
   );
 }

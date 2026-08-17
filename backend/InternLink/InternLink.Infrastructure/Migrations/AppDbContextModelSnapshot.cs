@@ -302,7 +302,7 @@ namespace InternLink.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("InternshipId");
 
-                    b.Property<Guid>("CompanyId")
+                    b.Property<Guid?>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -328,6 +328,9 @@ namespace InternLink.Infrastructure.Migrations
                     b.Property<string>("Position")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("SemesterId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
@@ -356,8 +359,11 @@ namespace InternLink.Infrastructure.Migrations
 
                     b.HasIndex("LecturerId");
 
-                    b.HasIndex("StudentId")
-                        .IsUnique();
+                    b.HasIndex("SemesterId");
+
+                    b.HasIndex("StudentId", "SemesterId")
+                        .IsUnique()
+                        .HasFilter("[SemesterId] IS NOT NULL");
 
                     b.ToTable("Internships", (string)null);
                 });
@@ -525,6 +531,70 @@ namespace InternLink.Infrastructure.Migrations
                     b.HasIndex("UserId", "UsedAt");
 
                     b.ToTable("PasswordResetTokens", (string)null);
+                });
+
+            modelBuilder.Entity("InternLink.Domain.Entities.Semester", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("SemesterId");
+
+                    b.Property<string>("AcademicYear")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxStudentsPerLecturer")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Term")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Semesters", (string)null);
                 });
 
             modelBuilder.Entity("InternLink.Domain.Entities.Student", b =>
@@ -781,7 +851,7 @@ namespace InternLink.Infrastructure.Migrations
             modelBuilder.Entity("InternLink.Domain.Entities.Document", b =>
                 {
                     b.HasOne("InternLink.Domain.Entities.Internship", "Internship")
-                        .WithMany()
+                        .WithMany("Documents")
                         .HasForeignKey("InternshipId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -836,24 +906,29 @@ namespace InternLink.Infrastructure.Migrations
                 {
                     b.HasOne("InternLink.Domain.Entities.Company", "Company")
                         .WithMany("Internships")
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("CompanyId");
 
                     b.HasOne("InternLink.Domain.Entities.Lecturer", "Lecturer")
                         .WithMany("Internships")
                         .HasForeignKey("LecturerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("InternLink.Domain.Entities.Semester", "Semester")
+                        .WithMany("Internships")
+                        .HasForeignKey("SemesterId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("InternLink.Domain.Entities.Student", "Student")
-                        .WithOne("Internship")
-                        .HasForeignKey("InternLink.Domain.Entities.Internship", "StudentId")
+                        .WithMany("Internships")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Company");
 
                     b.Navigation("Lecturer");
+
+                    b.Navigation("Semester");
 
                     b.Navigation("Student");
                 });
@@ -929,6 +1004,8 @@ namespace InternLink.Infrastructure.Migrations
 
             modelBuilder.Entity("InternLink.Domain.Entities.Internship", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("Submissions");
 
                     b.Navigation("WeeklyReports");
@@ -939,9 +1016,14 @@ namespace InternLink.Infrastructure.Migrations
                     b.Navigation("Internships");
                 });
 
+            modelBuilder.Entity("InternLink.Domain.Entities.Semester", b =>
+                {
+                    b.Navigation("Internships");
+                });
+
             modelBuilder.Entity("InternLink.Domain.Entities.Student", b =>
                 {
-                    b.Navigation("Internship");
+                    b.Navigation("Internships");
                 });
 
             modelBuilder.Entity("InternLink.Domain.Entities.Submission", b =>

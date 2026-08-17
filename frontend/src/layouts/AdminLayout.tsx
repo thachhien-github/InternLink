@@ -1,14 +1,18 @@
-import { ReactNode } from 'react';
-import { Sidebar as AdminSidebar } from '../features/admin/components/Sidebar';
-import { Header as AdminHeader } from '../features/admin/components/Header';
-import { Toast } from '../components/common/Toast';
-import { useToast } from '../hooks/useToast';
+import { ReactNode } from "react";
+import { Sidebar as AdminSidebar } from "../features/admin/components/Sidebar";
+import { Header as AdminHeader } from "../features/admin/components/Header";
+import { Toast } from "../components/common/Toast";
+import { useToast } from "../hooks/useToast";
+import { useAuth } from "../hooks/useAuth";
+import { useAdminNavStats } from "../hooks/useAdminNavStats";
+
+import type { UserRole } from "../types/common";
 
 interface AdminLayoutProps {
   children: ReactNode;
   activeTab: string;
   onNavigate: (tab: string) => void;
-  onSwitchPortal: (role: string) => void;
+  onSwitchPortal: (role: UserRole) => void;
   onLogout: () => void;
 }
 
@@ -16,28 +20,33 @@ export default function AdminLayout({
   children,
   activeTab,
   onNavigate,
-  onSwitchPortal,
-  onLogout
+  onSwitchPortal: _onSwitchPortal,
+  onLogout,
 }: AdminLayoutProps) {
   const { message, clearToast, showToast } = useToast();
+  const { user } = useAuth();
+  const { stats, recentNotifications } = useAdminNavStats(true);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex antialiased">
+    <div className="min-h-screen bg-[var(--il-surface-bg)] text-slate-800 font-sans flex antialiased">
       <AdminSidebar
         activeTab={activeTab}
         onNavigate={onNavigate}
-        onSwitchPortal={onSwitchPortal}
+        stats={stats}
+        user={user}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <AdminHeader
           activeTab={activeTab}
           onNavigate={onNavigate}
-          onSwitchPortal={onSwitchPortal}
           onLogout={onLogout}
           onShowToast={showToast}
+          user={user}
+          stats={stats}
+          recentNotifications={recentNotifications}
         />
         <Toast message={message} onClose={clearToast} />
-        <main className="flex-1">
+        <main className="flex-1 p-4 md:p-6 max-w-[1440px] w-full mx-auto">
           {children}
         </main>
       </div>

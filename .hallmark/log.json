@@ -1,0 +1,25 @@
+{
+  "entries": [
+    {
+      "date": "2026-08-13",
+      "verb": "redesign",
+      "target": "InternLink frontend shared UI",
+      "theme": "custom-utilitarian-editorial",
+      "macrostructure": "skipped — existing multi-portal IA preserved",
+      "files": [
+        "frontend/design.md",
+        "frontend/src/styles/designTokens.css",
+        "frontend/src/components/common/KpiCard.tsx",
+        "frontend/src/features/admin/components/RightSidebar.tsx",
+        "frontend/src/features/admin/components/cards/TaskCenterCard.tsx",
+        "frontend/src/features/lecturer/components/AIInsights.tsx",
+        "frontend/src/features/lecturer/components/RubricEvaluation.tsx",
+        "frontend/src/features/lecturer/components/StudentProgressWorkspace.tsx",
+        "frontend/src/features/admin/pages/StudentsView.tsx",
+        "frontend/src/features/admin/pages/LecturersView.tsx",
+        "frontend/src/features/student/pages/InternshipView.tsx",
+        "frontend/scripts/hallmark-de-slop.cjs"
+      ]
+    }
+  ]
+}

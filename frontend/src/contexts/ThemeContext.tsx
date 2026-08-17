@@ -1,6 +1,6 @@
-import { createContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useEffect, useState, type ReactNode } from "react";
 
-export type ThemeMode = 'education' | 'default';
+export type ThemeMode = "education" | "default";
 
 export interface ThemeContextType {
   theme: ThemeMode;
@@ -10,7 +10,7 @@ export interface ThemeContextType {
 export const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeMode>('education');
+  const [theme, setTheme] = useState<ThemeMode>("education");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

@@ -23,9 +23,9 @@ export interface Student {
 }
 
 export type StudentStatus =
-  | 'Đúng tiến độ'
-  | 'Chờ phản hồi'
-  | 'Đang chỉnh sửa'
-  | 'Quá hạn'
-  | 'Hoàn thành'
-  | 'Chưa có doanh nghiệp';
+  | "Đúng tiến độ"
+  | "Chờ phản hồi"
+  | "Đang chỉnh sửa"
+  | "Quá hạn"
+  | "Hoàn thành"
+  | "Chưa có doanh nghiệp";

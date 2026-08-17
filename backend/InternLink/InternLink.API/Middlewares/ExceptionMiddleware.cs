@@ -28,11 +28,17 @@ public class ExceptionMiddleware
         }
     }
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var (status, title) = exception switch
         {
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, exception.Message),
+            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, exception.Message),
             KeyNotFoundException => (StatusCodes.Status404NotFound, exception.Message),
             InvalidOperationException => (StatusCodes.Status400BadRequest, exception.Message),
             ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
@@ -41,7 +47,7 @@ public class ExceptionMiddleware
 
         var error = ApiError.From(title, exception.Message, status);
         var response = ApiResponse<object>.Fail(error);
-        var payload = JsonSerializer.Serialize(response);
+        var payload = JsonSerializer.Serialize(response, JsonOptions);
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = status;
         return context.Response.WriteAsync(payload);

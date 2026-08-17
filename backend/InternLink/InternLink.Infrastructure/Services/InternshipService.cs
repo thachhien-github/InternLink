@@ -22,10 +22,12 @@ public class InternshipService : IInternshipService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<InternshipListItemDto>> GetAllInternshipsAsync(int skip = 0, int take = 100)
+    public async Task<IEnumerable<InternshipListItemDto>> GetAllInternshipsAsync(int skip = 0, int take = 100, Guid? lecturerId = null)
     {
-        var internships = await _db.Internships
-            .Where(i => !i.IsDeleted)
+        var query = _db.Internships.Where(i => !i.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var internships = await query
             .Include(i => i.Student)
             .Include(i => i.Company)
             .Include(i => i.Submissions)
@@ -50,7 +52,7 @@ public class InternshipService : IInternshipService
         });
     }
 
-    public async Task<PaginatedResponse<InternshipListItemDto>> GetInternshipsWithFilterAsync(InternshipFilterRequest filter)
+    public async Task<PaginatedResponse<InternshipListItemDto>> GetInternshipsWithFilterAsync(InternshipFilterRequest filter, Guid? lecturerId = null)
     {
         var query = _db.Internships
             .Where(i => !i.IsDeleted)
@@ -59,6 +61,8 @@ public class InternshipService : IInternshipService
             .Include(i => i.Submissions)
             .AsQueryable();
 
+        query = ApplyLecturerScope(query, lecturerId ?? filter.LecturerId);
+
         // Apply filters
         if (filter.StudentId.HasValue)
             query = query.Where(i => i.StudentId == filter.StudentId.Value);
@@ -66,7 +70,7 @@ public class InternshipService : IInternshipService
         if (filter.CompanyId.HasValue)
             query = query.Where(i => i.CompanyId == filter.CompanyId.Value);
 
-        if (filter.LecturerId.HasValue)
+        if (!lecturerId.HasValue && filter.LecturerId.HasValue)
             query = query.Where(i => i.LecturerId == filter.LecturerId.Value);
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
@@ -164,10 +168,44 @@ public class InternshipService : IInternshipService
         return MapToDetailFullDto(internship);
     }
 
-    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStudentAsync(Guid studentId, int skip = 0, int take = 100)
+    public async Task<InternshipDetailFullDto?> GetInternshipByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
     {
-        var internships = await _db.Internships
-            .Where(i => i.StudentId == studentId && !i.IsDeleted)
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .Include(i => i.Company)
+            .Include(i => i.Lecturer)
+            .Include(i => i.Submissions)
+                .ThenInclude(s => s.Feedbacks)
+                    .ThenInclude(f => f.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+        if (internship == null)
+            return null;
+
+        var ownsInternship = internship.Student?.UserId == userId;
+        var isAssignedLecturer = internship.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this internship");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this internship");
+        }
+
+        return MapToDetailFullDto(internship);
+    }
+
+    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStudentAsync(Guid studentId, int skip = 0, int take = 100, Guid? lecturerId = null)
+    {
+        var query = _db.Internships
+            .Where(i => i.StudentId == studentId && !i.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var internships = await query
             .Include(i => i.Company)
             .Include(i => i.Submissions)
             .OrderByDescending(i => i.CreatedAt)
@@ -191,10 +229,13 @@ public class InternshipService : IInternshipService
         });
     }
 
-    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByCompanyAsync(Guid companyId, int skip = 0, int take = 100)
+    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByCompanyAsync(Guid companyId, int skip = 0, int take = 100, Guid? lecturerId = null)
     {
-        var internships = await _db.Internships
-            .Where(i => i.CompanyId == companyId && !i.IsDeleted)
+        var query = _db.Internships
+            .Where(i => i.CompanyId == companyId && !i.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var internships = await query
             .Include(i => i.Student)
             .Include(i => i.Submissions)
             .OrderByDescending(i => i.CreatedAt)
@@ -379,9 +420,11 @@ public class InternshipService : IInternshipService
         return true;
     }
 
-    public async Task<InternshipStatsDto> GetInternshipStatsAsync()
+    public async Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null)
     {
-        var internships = await _db.Internships.Where(i => !i.IsDeleted).ToListAsync();
+        var query = _db.Internships.Where(i => !i.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+        var internships = await query.ToListAsync();
 
         return new InternshipStatsDto
         {
@@ -403,13 +446,16 @@ public class InternshipService : IInternshipService
                 (i.Status == InternshipStatus.InProgress || i.Status == InternshipStatus.NotStarted));
     }
 
-    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStatusAsync(string status, int skip = 0, int take = 100)
+    public async Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStatusAsync(string status, int skip = 0, int take = 100, Guid? lecturerId = null)
     {
         if (!Enum.TryParse<InternshipStatus>(status, out var internshipStatus))
             return Enumerable.Empty<InternshipListItemDto>();
 
-        var internships = await _db.Internships
-            .Where(i => i.Status == internshipStatus && !i.IsDeleted)
+        var query = _db.Internships
+            .Where(i => i.Status == internshipStatus && !i.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var internships = await query
             .Include(i => i.Student)
             .Include(i => i.Company)
             .Include(i => i.Submissions)
@@ -432,6 +478,13 @@ public class InternshipService : IInternshipService
             SubmissionCount = i.Submissions?.Count ?? 0,
             CreatedAt = i.CreatedAt
         });
+    }
+
+    private static IQueryable<Internship> ApplyLecturerScope(IQueryable<Internship> query, Guid? lecturerId)
+    {
+        if (lecturerId.HasValue)
+            return query.Where(i => i.LecturerId == lecturerId.Value);
+        return query;
     }
 
     private InternshipDetailFullDto MapToDetailFullDto(Internship internship)

@@ -10,27 +10,28 @@ public interface IInternshipService
     /// <summary>
     /// Get all internships with pagination
     /// </summary>
-    Task<IEnumerable<InternshipListItemDto>> GetAllInternshipsAsync(int skip = 0, int take = 100);
+    Task<IEnumerable<InternshipListItemDto>> GetAllInternshipsAsync(int skip = 0, int take = 100, Guid? lecturerId = null);
 
     /// <summary>
     /// Get internships with filtering, sorting, and pagination
     /// </summary>
-    Task<PaginatedResponse<InternshipListItemDto>> GetInternshipsWithFilterAsync(InternshipFilterRequest filter);
+    Task<PaginatedResponse<InternshipListItemDto>> GetInternshipsWithFilterAsync(InternshipFilterRequest filter, Guid? lecturerId = null);
 
     /// <summary>
     /// Get a specific internship by ID with full details and submissions
     /// </summary>
     Task<InternshipDetailFullDto?> GetInternshipByIdAsync(Guid id);
+    Task<InternshipDetailFullDto?> GetInternshipByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
 
     /// <summary>
     /// Get internships for a specific student
     /// </summary>
-    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStudentAsync(Guid studentId, int skip = 0, int take = 100);
+    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStudentAsync(Guid studentId, int skip = 0, int take = 100, Guid? lecturerId = null);
 
     /// <summary>
     /// Get internships for a specific company
     /// </summary>
-    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByCompanyAsync(Guid companyId, int skip = 0, int take = 100);
+    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByCompanyAsync(Guid companyId, int skip = 0, int take = 100, Guid? lecturerId = null);
 
     /// <summary>
     /// Create a new internship
@@ -60,7 +61,7 @@ public interface IInternshipService
     /// <summary>
     /// Get internship statistics (count by status)
     /// </summary>
-    Task<InternshipStatsDto> GetInternshipStatsAsync();
+    Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null);
 
     /// <summary>
     /// Check if a student already has an internship assigned
@@ -70,5 +71,5 @@ public interface IInternshipService
     /// <summary>
     /// Get internships by status
     /// </summary>
-    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStatusAsync(string status, int skip = 0, int take = 100);
+    Task<IEnumerable<InternshipListItemDto>> GetInternshipsByStatusAsync(string status, int skip = 0, int take = 100, Guid? lecturerId = null);
 }

@@ -10,9 +10,13 @@ public class CreateStudentRequest
     public string? Phone { get; set; }
     public Guid? UserId { get; set; }
     /// <summary>
-    /// Optional login username. When set, creates a Student user account (default password).
+    /// Optional login username. Defaults to StudentCode when GrantAccount is true.
     /// </summary>
     public string? Username { get; set; }
+    /// <summary>
+    /// When true, creates a Student login account (random 8-char password, MustChangePassword).
+    /// </summary>
+    public bool GrantAccount { get; set; }
 }
 
 public class UpdateStudentRequest
@@ -23,6 +27,14 @@ public class UpdateStudentRequest
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public Guid? UserId { get; set; }
+    /// <summary>
+    /// Optional login username. Defaults to StudentCode when GrantAccount is true.
+    /// </summary>
+    public string? Username { get; set; }
+    /// <summary>
+    /// Grant login account when student has no linked user yet.
+    /// </summary>
+    public bool GrantAccount { get; set; }
 }
 
 public class StudentDto
@@ -50,6 +62,7 @@ public class StudentImportResultDto
     public int SkippedDuplicateCount { get; set; }
     public int EmailSentCount { get; set; }
     public int EmailFailedCount { get; set; }
+    /// <summary>Human-readable password policy (each account gets a unique random password).</summary>
     public string DefaultPassword { get; set; } = null!;
     public IReadOnlyList<StudentDto> CreatedStudents { get; set; } = Array.Empty<StudentDto>();
     public IReadOnlyList<StudentImportErrorDto> Errors { get; set; } = Array.Empty<StudentImportErrorDto>();

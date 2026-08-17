@@ -39,5 +39,9 @@ public class UpdateLecturerRequestValidator : AbstractValidator<UpdateLecturerRe
 
         RuleFor(x => x.Phone).MaximumLength(50);
         RuleFor(x => x.Department).MaximumLength(150);
+
+        RuleFor(x => x.Username)
+            .MaximumLength(100)
+            .When(x => !string.IsNullOrWhiteSpace(x.Username));
     }
 }

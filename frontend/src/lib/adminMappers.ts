@@ -1,0 +1,222 @@
+import type {
+  CompanyDto,
+  LecturerAssignmentItemDto,
+  LecturerDto,
+  StudentDto,
+  UserDto,
+} from "../types/api";
+import type { Enterprise } from "../types/enterprise";
+import type { AdminUser } from "../types/user";
+import { mapBackendRoleToAdminUserRole } from "./roleMap";
+
+function mapInternshipStatusFromApi(status?: string | null): string {
+  switch (status) {
+    case "InProgress":
+    case "BehindSchedule":
+    case "AwaitingFeedback":
+    case "RequiresRevision":
+      return "interning";
+    case "Completed":
+    case "Graded":
+      return "completed";
+    case "NotStarted":
+      return "preparing";
+    default:
+      return "registered";
+  }
+}
+
+export function mapStudentDtoToRow(
+  s: StudentDto,
+  context?: {
+    assignment?: {
+      lecturerName: string;
+      companyName?: string | null;
+      status?: string | null;
+    };
+    user?: Pick<UserDto, "isActive" | "lastLoginAt"> | null;
+  },
+) {
+  const hasUser = Boolean(s.userId);
+  let accountStatus: "active" | "pending" | "locked" = hasUser
+    ? "active"
+    : "pending";
+  if (hasUser && context?.user && !context.user.isActive) {
+    accountStatus = "locked";
+  }
+
+  const companyName =
+    context?.assignment?.companyName?.trim() || "Chưa có DN";
+  const assignedLecturer =
+    context?.assignment?.lecturerName?.trim() || "Chưa phân công";
+
+  return {
+    id: s.id,
+    userId: s.userId ?? null,
+    mssv: s.studentCode,
+    fullName: s.fullName,
+    gender: "—",
+    dateOfBirth: "—",
+    classCode: s.class ?? "—",
+    major: s.major ?? "—",
+    faculty: "—",
+    cohort: "—",
+    email: s.email ?? "—",
+    phone: s.phone ?? "—",
+    assignedLecturer,
+    companyName,
+    accountStatus,
+    internshipStatus: mapInternshipStatusFromApi(context?.assignment?.status),
+    lastLogin: context?.user?.lastLoginAt
+      ? new Date(context.user.lastLoginAt).toLocaleString("vi-VN")
+      : hasUser
+        ? "—"
+        : "Chưa cấp tài khoản",
+    gpa: 0,
+  };
+}
+
+export function mapLecturerDtoToRow(l: LecturerDto, assignedCount = 0) {
+  return {
+    id: l.id,
+    userId: l.userId ?? null,
+    employeeId: l.staffCode,
+    fullName: l.fullName,
+    academicDegree: "—",
+    faculty: l.department ?? "—",
+    department: l.department ?? "—",
+    email: l.email ?? "—",
+    phone: l.phone ?? "—",
+    currentCount: assignedCount,
+    maxCapacity: 40,
+    accountStatus: l.userId ? "active" : "pending",
+    guidanceStatus: "available",
+    lastLogin: "—",
+    assignedStudents: [],
+  };
+}
+
+export function mapCompanyDtoToEnterprise(c: CompanyDto): Enterprise {
+  const short =
+    c.companyName
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase() || "DN";
+  return {
+    id: c.id,
+    name: c.companyName,
+    shortCode: short,
+    badge: c.isActive ? "Đang hợp tác" : "Tạm ngưng",
+    badgeType: c.isActive ? "teal" : "gray",
+    studentCount: 0,
+    activeThisWeek: c.isActive,
+    contactEmail: c.contactEmail ?? "—",
+    location: c.address ?? "—",
+    status: c.isActive ? "Đang hợp tác" : "Tạm ngưng",
+    field: c.industry ?? "—",
+    contactPerson: c.contactPerson ?? "—",
+    contactPhone: c.contactPhone ?? "—",
+    website: c.website ?? "—",
+    capacity: c.capacity ?? 0,
+    rating: 0,
+    hasStipend: false,
+    isHiring: c.isActive,
+    isPriority: false,
+    updatedAt: c.updatedAt ?? c.createdAt,
+  };
+}
+
+export function mapUserDtoToAdminUser(u: UserDto): AdminUser {
+  const feRole = mapBackendRoleToAdminUserRole(u.role);
+  return {
+    id: u.id,
+    code: u.linkedStudentCode ?? u.linkedStaffCode ?? u.username,
+    fullName: u.fullName?.trim() || u.username,
+    email: u.email ?? "—",
+    role: feRole ?? "student",
+    status: u.isActive ? "active" : "locked",
+    departmentOrClass: u.linkedStudentCode
+      ? `SV ${u.linkedStudentCode}`
+      : u.linkedStaffCode
+        ? `GV ${u.linkedStaffCode}`
+        : "—",
+    lastLogin: u.lastLoginAt
+      ? new Date(u.lastLoginAt).toLocaleString("vi-VN")
+      : "—",
+    mustChangePassword: u.mustChangePassword,
+  };
+}
+
+/** Row shape used by AssignmentsView matrix. */
+export function mapLecturerDtoToAssignmentRow(l: LecturerDto, currentCount = 0) {
+  return {
+    id: l.id,
+    employeeId: l.staffCode,
+    fullName: l.fullName,
+    title: "Giảng viên",
+    department: l.department ?? "—",
+    currentCount,
+    maxCapacity: 40,
+    email: l.email ?? "—",
+    phone: l.phone ?? "—",
+  };
+}
+
+export function mapStudentDtoToAssignmentRow(
+  s: StudentDto,
+  assignment?: {
+    lecturerId: string;
+    lecturerName: string;
+    assignedDate: string;
+    companyName?: string | null;
+  },
+) {
+  return {
+    id: s.id,
+    studentId: s.studentCode,
+    fullName: s.fullName,
+    classCode: s.class ?? "—",
+    major: s.major ?? "—",
+    companyName: assignment?.companyName ?? "Chưa có DN",
+    assignmentStatus: assignment ? "assigned" : "unassigned",
+    assignedLecturerId: assignment?.lecturerId,
+    assignedLecturerName: assignment?.lecturerName,
+    assignedDate: assignment?.assignedDate,
+    gpa: 0,
+  };
+}
+
+export function buildAssignmentMaps(
+  lecturers: LecturerDto[],
+  assignmentGroups: LecturerAssignmentItemDto[][],
+) {
+  const studentAssignment = new Map<
+    string,
+    {
+      lecturerId: string;
+      lecturerName: string;
+      assignedDate: string;
+      companyName?: string | null;
+      status?: string | null;
+    }
+  >();
+  const lecturerCounts = new Map<string, number>();
+
+  lecturers.forEach((l, idx) => {
+    const items = assignmentGroups[idx] ?? [];
+    lecturerCounts.set(l.id, items.length);
+    for (const item of items) {
+      studentAssignment.set(item.studentId, {
+        lecturerId: l.id,
+        lecturerName: l.fullName,
+        assignedDate: new Date(item.createdAt).toLocaleDateString("vi-VN"),
+        companyName: item.companyName,
+        status: item.status,
+      });
+    }
+  });
+
+  return { studentAssignment, lecturerCounts };
+}

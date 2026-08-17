@@ -1,11 +1,4 @@
-import {
-  CalendarDays,
-  Lock,
-  FileText,
-  Award,
-  Flag,
-  Clock
-} from 'lucide-react';
+import { CalendarDays, Lock, FileText, Award, Flag, Clock } from "lucide-react";
 export const UpcomingDeadlinesCard = () => {
   const deadlines = [
     {
@@ -15,7 +8,7 @@ export const UpcomingDeadlinesCard = () => {
       timeRemaining: "\u0110\xE3 kh\xF3a",
       status: "completed",
       icon: Lock,
-      color: "slate"
+      color: "slate",
     },
     {
       id: "d2",
@@ -24,7 +17,7 @@ export const UpcomingDeadlinesCard = () => {
       timeRemaining: "C\xF2n 15 ng\xE0y",
       status: "upcoming",
       icon: FileText,
-      color: "amber"
+      color: "amber",
     },
     {
       id: "d3",
@@ -33,7 +26,7 @@ export const UpcomingDeadlinesCard = () => {
       timeRemaining: "C\xF2n 25 ng\xE0y",
       status: "upcoming",
       icon: Award,
-      color: "blue"
+      color: "blue",
     },
     {
       id: "d4",
@@ -42,17 +35,18 @@ export const UpcomingDeadlinesCard = () => {
       timeRemaining: "C\xF2n 30 ng\xE0y",
       status: "upcoming",
       icon: Flag,
-      color: "rose"
-    }
+      color: "rose",
+    },
   ];
-  return <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+  return (
+    <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-xs space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-md border border-blue-100">
             <CalendarDays className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-900 tracking-tight">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
               Lịch trình & Hạn chót sắp tới (Upcoming Deadlines)
             </h2>
             <p className="text-xs text-slate-500 font-medium">
@@ -64,30 +58,37 @@ export const UpcomingDeadlinesCard = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {deadlines.map((dl) => {
-    const Icon = dl.icon;
-    const isDone = dl.status === "completed";
-    return <div
-      key={dl.id}
-      className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between space-y-2 ${isDone ? "bg-slate-50/80 border-slate-200 text-slate-600 opacity-75" : "bg-slate-50/80 hover:bg-slate-50 border-slate-200/80"}`}
-    >
+          const Icon = dl.icon;
+          const isDone = dl.status === "completed";
+          return (
+            <div
+              key={dl.id}
+              className={`p-3.5 rounded-md border transition-all flex flex-col justify-between space-y-2 ${isDone ? "bg-slate-50/80 border-slate-200 text-slate-600 opacity-75" : "bg-slate-50/80 hover:bg-slate-50 border-slate-200/80"}`}
+            >
               <div className="flex items-center justify-between">
-                <div className={`p-2 rounded-lg border ${isDone ? "bg-slate-200 text-slate-600 border-slate-300" : dl.color === "amber" ? "bg-amber-50 text-amber-600 border-amber-100" : dl.color === "blue" ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>
+                <div
+                  className={`p-2 rounded-lg border ${isDone ? "bg-slate-200 text-slate-600 border-slate-300" : dl.color === "amber" ? "bg-amber-50 text-amber-600 border-amber-100" : dl.color === "blue" ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}
+                >
                   <Icon className="w-4 h-4" />
                 </div>
 
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${isDone ? "bg-slate-200 text-slate-700" : "bg-blue-100 text-blue-800"}`}>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isDone ? "bg-slate-200 text-slate-700" : "bg-blue-100 text-blue-800"}`}
+                >
                   {dl.timeRemaining}
                 </span>
               </div>
 
               <div>
-                <p className="font-extrabold text-slate-900 text-xs">{dl.title}</p>
+                <p className="font-bold text-slate-900 text-xs">{dl.title}</p>
                 <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                   <Clock className="w-3 h-3 text-slate-400" /> Ngày: {dl.date}
                 </p>
               </div>
-            </div>;
-  })}
+            </div>
+          );
+        })}
       </div>
-    </div>;
+    </div>
+  );
 };

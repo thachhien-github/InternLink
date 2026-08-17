@@ -10,22 +10,23 @@ public interface IDocumentService
     /// <summary>
     /// Get all documents with pagination
     /// </summary>
-    Task<IEnumerable<DocumentListItemDto>> GetAllDocumentsAsync(int skip = 0, int take = 100);
+    Task<IEnumerable<DocumentListItemDto>> GetAllDocumentsAsync(int skip = 0, int take = 100, Guid? userId = null, bool isLecturerOrAdmin = false);
 
     /// <summary>
     /// Get documents with filtering, sorting, and pagination
     /// </summary>
-    Task<PaginatedResponse<DocumentListItemDto>> GetDocumentsWithFilterAsync(DocumentFilterRequest filter);
+    Task<PaginatedResponse<DocumentListItemDto>> GetDocumentsWithFilterAsync(DocumentFilterRequest filter, Guid? userId = null, bool isLecturerOrAdmin = false);
 
     /// <summary>
     /// Get a specific document by ID
     /// </summary>
     Task<DocumentDetailDto?> GetDocumentByIdAsync(Guid id);
+    Task<DocumentDetailDto?> GetDocumentByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
 
     /// <summary>
     /// Get all documents for a specific internship
     /// </summary>
-    Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100);
+    Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100, Guid? userId = null, bool isLecturerOrAdmin = false);
 
     /// <summary>
     /// Create a new document (metadata only). Prefer UploadDocumentAsync for file uploads.
@@ -40,7 +41,7 @@ public interface IDocumentService
     /// <summary>
     /// Update document metadata
     /// </summary>
-    Task<DocumentDetailDto?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request);
+    Task<DocumentDetailDto?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, Guid? actorUserId = null);
 
     /// <summary>
     /// Update document with file information after upload
@@ -51,11 +52,12 @@ public interface IDocumentService
     /// Download document file content
     /// </summary>
     Task<DocumentDownloadDto?> DownloadDocumentAsync(Guid id);
+    Task<DocumentDownloadDto?> DownloadDocumentAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
 
     /// <summary>
     /// Delete a document (soft delete if supported)
     /// </summary>
-    Task<bool> DeleteDocumentAsync(Guid id);
+    Task<bool> DeleteDocumentAsync(Guid id, Guid? actorUserId = null);
 
     /// <summary>
     /// Save file to disk and return file path
@@ -70,5 +72,5 @@ public interface IDocumentService
     /// <summary>
     /// Get document count for an internship
     /// </summary>
-    Task<int> GetDocumentCountByInternshipAsync(Guid internshipId);
+    Task<int> GetDocumentCountByInternshipAsync(Guid internshipId, Guid? userId = null, bool isLecturerOrAdmin = false);
 }

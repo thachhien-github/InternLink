@@ -7,6 +7,7 @@ using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
 using InternLink.Domain.Enums;
+using InternLink.Infrastructure.Identity;
 using InternLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,8 @@ namespace InternLink.Infrastructure.Services;
 
 public class LecturerProfileService : ILecturerProfileService
 {
-    public const string DefaultPassword = SeedData.DefaultPassword;
+    public const string TemporaryPasswordPolicyDescription =
+        "Mat khau tam 8 ky tu ngau nhien (gui qua email neu co)";
 
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
@@ -77,13 +79,15 @@ public class LecturerProfileService : ILecturerProfileService
         Guid? userId = request.UserId;
         var createdNewUser = false;
         string? createdUsername = null;
+        string? createdTemporaryPassword = null;
 
-        if (!string.IsNullOrWhiteSpace(request.Username))
+        if (request.GrantAccount || !string.IsNullOrWhiteSpace(request.Username))
         {
-            createdUsername = request.Username.Trim();
+            createdUsername = (request.Username ?? request.StaffCode).Trim();
             var ensure = await EnsureLecturerUserAsync(createdUsername, request.FullName, request.Email);
             userId = ensure.UserId;
             createdNewUser = ensure.CreatedNew;
+            createdTemporaryPassword = ensure.TemporaryPassword;
         }
         else if (userId.HasValue)
         {
@@ -107,12 +111,13 @@ public class LecturerProfileService : ILecturerProfileService
         await _db.Lecturers.AddAsync(lecturer);
         await _db.SaveChangesAsync();
 
-        if (createdNewUser && createdUsername != null)
+        if (createdNewUser && createdUsername != null && createdTemporaryPassword != null)
         {
             await TrySendInvitationAsync(
                 lecturer.Email,
                 lecturer.FullName,
                 createdUsername,
+                createdTemporaryPassword,
                 staffCode: lecturer.StaffCode,
                 rowNumber: null);
         }
@@ -132,6 +137,27 @@ public class LecturerProfileService : ILecturerProfileService
             if (userTaken)
                 throw new InvalidOperationException("User is already linked to another lecturer profile");
             lecturer.UserId = request.UserId;
+        }
+        else if (request.GrantAccount || !string.IsNullOrWhiteSpace(request.Username))
+        {
+            if (lecturer.UserId.HasValue)
+                throw new InvalidOperationException("Lecturer already has a login account");
+
+            var username = (request.Username ?? lecturer.StaffCode).Trim();
+            var email = NullIfWhiteSpace(request.Email) ?? lecturer.Email;
+            var ensure = await EnsureLecturerUserAsync(username, request.FullName, email);
+            lecturer.UserId = ensure.UserId;
+
+            if (ensure.CreatedNew && ensure.TemporaryPassword != null)
+            {
+                await TrySendInvitationAsync(
+                    email,
+                    request.FullName.Trim(),
+                    username,
+                    ensure.TemporaryPassword,
+                    staffCode: lecturer.StaffCode,
+                    rowNumber: null);
+            }
         }
 
         lecturer.FullName = request.FullName.Trim();
@@ -222,11 +248,11 @@ public class LecturerProfileService : ILecturerProfileService
         var errors = new List<LecturerImportErrorDto>();
         var emailErrors = new List<LecturerImportErrorDto>();
         var created = new List<Lecturer>();
+        var allProcessedLecturers = new List<Lecturer>();
         var pendingInvitations = new List<PendingInvitation>();
         var seenCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var totalRows = 0;
-        var skippedDuplicates = 0;
         var emailSentCount = 0;
         var emailFailedCount = 0;
 
@@ -266,15 +292,58 @@ public class LecturerProfileService : ILecturerProfileService
                 continue;
             }
 
-            if (await _db.Lecturers.AnyAsync(l => l.StaffCode == staffCode && !l.IsDeleted))
+            var existingLecturer = await _db.Lecturers
+                .Include(l => l.User)
+                .FirstOrDefaultAsync(l => l.StaffCode == staffCode && !l.IsDeleted);
+
+            if (existingLecturer != null)
             {
-                skippedDuplicates++;
-                errors.Add(new LecturerImportErrorDto { RowNumber = rowNumber, StaffCode = staffCode, Message = "MaGV already exists in system" });
+                existingLecturer.FullName = fullName;
+                if (!string.IsNullOrWhiteSpace(email))
+                    existingLecturer.Email = email.Trim();
+                if (!string.IsNullOrWhiteSpace(phone))
+                    existingLecturer.Phone = phone.Trim();
+                if (!string.IsNullOrWhiteSpace(department))
+                    existingLecturer.Department = department.Trim();
+                existingLecturer.UpdatedAt = DateTime.UtcNow;
+
+                if (existingLecturer.User != null)
+                {
+                    existingLecturer.User.FullName = fullName;
+                    if (!string.IsNullOrWhiteSpace(email))
+                        existingLecturer.User.Email = email.Trim();
+                    existingLecturer.User.UpdatedAt = DateTime.UtcNow;
+                }
+                else if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(email))
+                {
+                    if (string.IsNullOrWhiteSpace(username))
+                        username = staffCode;
+
+                    if (seenUsernames.Add(username))
+                    {
+                        try
+                        {
+                            var ensure = await EnsureLecturerUserAsync(username, fullName, email);
+                            existingLecturer.UserId = ensure.UserId;
+                            if (ensure.CreatedNew && ensure.TemporaryPassword != null)
+                            {
+                                pendingInvitations.Add(new PendingInvitation(
+                                    rowNumber, staffCode, username, fullName, NullIfWhiteSpace(email), ensure.TemporaryPassword));
+                            }
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Ignore user conflict for existing lecturer
+                        }
+                    }
+                }
+
+                allProcessedLecturers.Add(existingLecturer);
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(email) && email.Contains('@'))
-                username = email.Split('@')[0];
+            if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(email))
+                username = staffCode;
 
             Guid? userId = null;
             if (!string.IsNullOrWhiteSpace(username))
@@ -290,9 +359,10 @@ public class LecturerProfileService : ILecturerProfileService
                 {
                     var ensure = await EnsureLecturerUserAsync(username, fullName, email);
                     userId = ensure.UserId;
-                    if (ensure.CreatedNew)
+                    if (ensure.CreatedNew && ensure.TemporaryPassword != null)
                     {
-                        pendingInvitations.Add(new PendingInvitation(rowNumber, staffCode, username, fullName, NullIfWhiteSpace(email)));
+                        pendingInvitations.Add(new PendingInvitation(
+                            rowNumber, staffCode, username, fullName, NullIfWhiteSpace(email), ensure.TemporaryPassword));
                     }
                 }
                 catch (InvalidOperationException ex)
@@ -302,7 +372,7 @@ public class LecturerProfileService : ILecturerProfileService
                 }
             }
 
-            created.Add(new Lecturer
+            var newLecturer = new Lecturer
             {
                 Id = Guid.NewGuid(),
                 StaffCode = staffCode,
@@ -312,14 +382,17 @@ public class LecturerProfileService : ILecturerProfileService
                 Department = NullIfWhiteSpace(department),
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+
+            created.Add(newLecturer);
+            allProcessedLecturers.Add(newLecturer);
         }
 
         if (created.Count > 0)
         {
             await _db.Lecturers.AddRangeAsync(created);
-            await _db.SaveChangesAsync();
         }
+        await _db.SaveChangesAsync();
 
         foreach (var invite in pendingInvitations)
         {
@@ -327,6 +400,7 @@ public class LecturerProfileService : ILecturerProfileService
                 invite.Email,
                 invite.FullName,
                 invite.Username,
+                invite.TemporaryPassword,
                 invite.StaffCode,
                 invite.RowNumber);
 
@@ -347,13 +421,13 @@ public class LecturerProfileService : ILecturerProfileService
         return new LecturerImportResultDto
         {
             TotalRows = totalRows,
-            SuccessCount = created.Count,
+            SuccessCount = allProcessedLecturers.Count,
             FailedCount = errors.Count,
-            SkippedDuplicateCount = skippedDuplicates,
+            SkippedDuplicateCount = 0,
             EmailSentCount = emailSentCount,
             EmailFailedCount = emailFailedCount,
-            DefaultPassword = DefaultPassword,
-            CreatedLecturers = _mapper.Map<List<LecturerDto>>(created),
+            DefaultPassword = TemporaryPasswordPolicyDescription,
+            CreatedLecturers = _mapper.Map<List<LecturerDto>>(allProcessedLecturers),
             Errors = errors,
             EmailErrors = emailErrors
         };
@@ -376,12 +450,13 @@ public class LecturerProfileService : ILecturerProfileService
         sheet.Cell(2, 3).Value = "nguyenvana@university.edu.vn";
         sheet.Cell(2, 4).Value = "0901234567";
         sheet.Cell(2, 5).Value = "CNTT";
-        sheet.Cell(2, 6).Value = "gv.nguyenvana";
+        sheet.Cell(2, 6).Value = "GV001";
 
         sheet.Cell(4, 1).Value = "Ghi chu:";
         sheet.Cell(4, 2).Value =
-            $"Neu co Username thi tao tai khoan login (mat khau mac dinh: {DefaultPassword}). " +
-            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau).";
+            "Neu co Email hoac Username thi tao tai khoan login (username mac dinh = MaGV, mat khau tam 8 ky tu ngau nhien). " +
+            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau). " +
+            "Lan dang nhap dau tien bat buoc doi mat khau.";
 
         sheet.Row(1).Style.Font.Bold = true;
         sheet.Columns().AdjustToContents();
@@ -391,7 +466,7 @@ public class LecturerProfileService : ILecturerProfileService
         return stream.ToArray();
     }
 
-    private async Task<(Guid UserId, bool CreatedNew)> EnsureLecturerUserAsync(string username, string fullName, string? email)
+    private async Task<(Guid UserId, bool CreatedNew, string? TemporaryPassword)> EnsureLecturerUserAsync(string username, string fullName, string? email)
     {
         var existing = await _db.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
         if (existing != null)
@@ -403,7 +478,7 @@ public class LecturerProfileService : ILecturerProfileService
             if (linked)
                 throw new InvalidOperationException($"Username '{username}' is already linked to a lecturer profile");
 
-            return (existing.Id, CreatedNew: false);
+            return (existing.Id, CreatedNew: false, TemporaryPassword: null);
         }
 
         if (!string.IsNullOrWhiteSpace(email))
@@ -413,6 +488,7 @@ public class LecturerProfileService : ILecturerProfileService
                 throw new InvalidOperationException($"Email '{email}' already exists in system");
         }
 
+        var tempPassword = PasswordGenerator.GenerateTemporaryPassword();
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -421,18 +497,20 @@ public class LecturerProfileService : ILecturerProfileService
             Email = NullIfWhiteSpace(email),
             Role = Role.Lecturer,
             IsActive = true,
+            MustChangePassword = true,
             CreatedAt = DateTime.UtcNow
         };
-        user.PasswordHash = _hasher.HashPassword(user, DefaultPassword);
+        user.PasswordHash = _hasher.HashPassword(user, tempPassword);
         await _db.Users.AddAsync(user);
         await _db.SaveChangesAsync();
-        return (user.Id, CreatedNew: true);
+        return (user.Id, CreatedNew: true, TemporaryPassword: tempPassword);
     }
 
     private async Task<InvitationSendOutcome> TrySendInvitationAsync(
         string? email,
         string fullName,
         string username,
+        string temporaryPassword,
         string? staffCode,
         int? rowNumber)
     {
@@ -461,7 +539,7 @@ public class LecturerProfileService : ILecturerProfileService
                 FullName = fullName,
                 Role = InvitationRole.Lecturer,
                 Username = username,
-                TemporaryPassword = DefaultPassword
+                TemporaryPassword = temporaryPassword
             });
 
             if (!result.Success)
@@ -512,7 +590,13 @@ public class LecturerProfileService : ILecturerProfileService
 
     private enum InvitationSendStatus { Sent, Failed, SkippedNoEmail }
 
-    private sealed record PendingInvitation(int RowNumber, string StaffCode, string Username, string FullName, string? Email);
+    private sealed record PendingInvitation(
+        int RowNumber,
+        string StaffCode,
+        string Username,
+        string FullName,
+        string? Email,
+        string TemporaryPassword);
 
     private sealed record InvitationSendOutcome(InvitationSendStatus Status, LecturerImportErrorDto? Error)
     {

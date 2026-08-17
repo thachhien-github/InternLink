@@ -1,7 +1,7 @@
-import type { Student } from '../types/student';
-import type { Enterprise } from '../types/enterprise';
-import type { Submission } from '../types/submission';
-import type { ActionItem, Deadline, Activity } from '../types/common';
+import type { Student } from "../types/student";
+import type { Enterprise } from "../types/enterprise";
+import type { Submission } from "../types/submission";
+import type { ActionItem, Deadline, Activity } from "../types/common";
 
 export const INITIAL_STUDENTS: Student[] = [
   // Thầy Phước (6 sinh viên)
@@ -19,12 +19,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 85,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: API Gateway & Auth",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 14:20",
     notesCount: 3,
-    chatCount: 12
+    chatCount: 12,
   },
   {
     id: "sv-2421010230",
@@ -40,12 +41,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 90,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: Kiểm thử bảo mật API",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 09:15",
     notesCount: 2,
-    chatCount: 8
+    chatCount: 8,
   },
   {
     id: "sv-2421160051",
@@ -61,12 +63,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Quá hạn",
     progress: 25,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo Giữa kỳ (Trễ 4 ngày)",
     lastReportDate: "12/10/2026",
     updatedAt: "12/10/2026 16:30",
     notesCount: 5,
-    chatCount: 14
+    chatCount: 14,
   },
   {
     id: "sv-2421160033",
@@ -82,12 +85,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 95,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: Tối ưu SQL Query",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 11:10",
     notesCount: 1,
-    chatCount: 6
+    chatCount: 6,
   },
   {
     id: "sv-2421160046",
@@ -103,12 +107,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 88,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: Tailwind Component",
     lastReportDate: "23/10/2026",
     updatedAt: "23/10/2026 15:40",
     notesCount: 2,
-    chatCount: 5
+    chatCount: 5,
   },
   {
     id: "sv-2421160015",
@@ -124,12 +129,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 80,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: Sơ đồ luồng nghiệp vụ",
     lastReportDate: "22/10/2026",
     updatedAt: "22/10/2026 10:20",
     notesCount: 3,
-    chatCount: 9
+    chatCount: 9,
   },
   // Thầy Thành (7 sinh viên)
   {
@@ -146,12 +152,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 80,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: OpenStack deployment",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 16:00",
     notesCount: 2,
-    chatCount: 7
+    chatCount: 7,
   },
   {
     id: "sv-2421160052",
@@ -167,12 +174,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Chưa có doanh nghiệp",
     progress: 15,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Nộp nguyện vọng thực tập đợt 2",
     lastReportDate: "20/09/2026",
     updatedAt: "20/09/2026 14:00",
     notesCount: 4,
-    chatCount: 11
+    chatCount: 11,
   },
   {
     id: "sv-2421160014",
@@ -188,12 +196,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Hoàn thành",
     progress: 100,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Nộp Báo cáo Tổng kết thực tập",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 17:30",
     notesCount: 1,
-    chatCount: 4
+    chatCount: 4,
   },
   {
     id: "sv-2421160013",
@@ -209,12 +218,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đang chỉnh sửa",
     progress: 50,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 4: Cần chỉnh sửa quy cách",
     lastReportDate: "21/10/2026",
     updatedAt: "21/10/2026 09:00",
     notesCount: 6,
-    chatCount: 15
+    chatCount: 15,
   },
   {
     id: "sv-2421160027",
@@ -230,12 +240,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Chờ phản hồi",
     progress: 70,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Đánh giá Giữa kỳ từ Mentor",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 13:20",
     notesCount: 2,
-    chatCount: 8
+    chatCount: 8,
   },
   {
     id: "sv-2421160031",
@@ -251,12 +262,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Quá hạn",
     progress: 35,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Chưa nộp báo cáo tuần 5 (Quá 3 ngày)",
     lastReportDate: "15/10/2026",
     updatedAt: "15/10/2026 10:00",
     notesCount: 8,
-    chatCount: 18
+    chatCount: 18,
   },
   {
     id: "sv-2421160002",
@@ -272,12 +284,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 90,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: Fine-tuning LLM",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 18:00",
     notesCount: 1,
-    chatCount: 5
+    chatCount: 5,
   },
   // Thầy Cường (7 sinh viên)
   {
@@ -294,12 +307,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Chờ phản hồi",
     progress: 75,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: Unity C# Physics",
     lastReportDate: "23/10/2026",
     updatedAt: "23/10/2026 11:30",
     notesCount: 2,
-    chatCount: 6
+    chatCount: 6,
   },
   {
     id: "sv-2421160036",
@@ -315,12 +329,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Quá hạn",
     progress: 30,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Trễ báo cáo giữa kỳ 5 ngày",
     lastReportDate: "10/10/2026",
     updatedAt: "10/10/2026 08:15",
     notesCount: 5,
-    chatCount: 16
+    chatCount: 16,
   },
   {
     id: "sv-2421160011",
@@ -336,12 +351,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 80,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: Mobile UI Design",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 15:10",
     notesCount: 1,
-    chatCount: 4
+    chatCount: 4,
   },
   {
     id: "sv-2421160010",
@@ -357,12 +373,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 85,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: SOC Log Analysis",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 12:00",
     notesCount: 3,
-    chatCount: 7
+    chatCount: 7,
   },
   {
     id: "sv-2421160001",
@@ -378,12 +395,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 92,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 6: Kubernetes Ingress",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 17:40",
     notesCount: 2,
-    chatCount: 8
+    chatCount: 8,
   },
   {
     id: "sv-2421160047",
@@ -399,12 +417,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 75,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: CAN Bus Protocol",
     lastReportDate: "22/10/2026",
     updatedAt: "22/10/2026 14:10",
     notesCount: 1,
-    chatCount: 5
+    chatCount: 5,
   },
   {
     id: "sv-2421160016",
@@ -420,12 +439,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Hoàn thành",
     progress: 100,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Nộp Cuốn Báo cáo tổng kết",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 19:10",
     notesCount: 2,
-    chatCount: 3
+    chatCount: 3,
   },
   // Cô Minh An (7 sinh viên)
   {
@@ -442,12 +462,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đang chỉnh sửa",
     progress: 40,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Cần cập nhật báo cáo tuần 4",
     lastReportDate: "18/10/2026",
     updatedAt: "18/10/2026 10:30",
     notesCount: 4,
-    chatCount: 12
+    chatCount: 12,
   },
   {
     id: "sv-2421160022",
@@ -463,12 +484,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 70,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: Express Middleware",
     lastReportDate: "23/10/2026",
     updatedAt: "23/10/2026 16:50",
     notesCount: 2,
-    chatCount: 6
+    chatCount: 6,
   },
   {
     id: "sv-2421160040",
@@ -484,12 +506,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Chờ phản hồi",
     progress: 65,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo Figma Prototype",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 09:45",
     notesCount: 1,
-    chatCount: 4
+    chatCount: 4,
   },
   {
     id: "sv-2421100055",
@@ -505,12 +528,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Hoàn thành",
     progress: 100,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo Tổng kết & Đánh giá Doanh nghiệp",
     lastReportDate: "25/10/2026",
     updatedAt: "25/10/2026 15:00",
     notesCount: 3,
-    chatCount: 5
+    chatCount: 5,
   },
   {
     id: "sv-2421160008",
@@ -526,12 +550,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Chưa có doanh nghiệp",
     progress: 20,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Phiếu đăng ký bổ sung",
     lastReportDate: "19/09/2026",
     updatedAt: "19/09/2026 11:20",
     notesCount: 5,
-    chatCount: 13
+    chatCount: 13,
   },
   {
     id: "sv-2321160029",
@@ -547,12 +572,13 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đang chỉnh sửa",
     progress: 45,
     riskFlag: true,
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 4: Test case execution",
     lastReportDate: "20/10/2026",
     updatedAt: "20/10/2026 14:40",
     notesCount: 4,
-    chatCount: 10
+    chatCount: 10,
   },
   {
     id: "sv-2421160006",
@@ -568,13 +594,14 @@ export const INITIAL_STUDENTS: Student[] = [
     status: "Đúng tiến độ",
     progress: 82,
     riskFlag: false,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     lastReportName: "Báo cáo tuần 5: VueJS & Express",
     lastReportDate: "24/10/2026",
     updatedAt: "24/10/2026 13:00",
     notesCount: 2,
-    chatCount: 7
-  }
+    chatCount: 7,
+  },
 ];
 
 export const INITIAL_ENTERPRISES: Enterprise[] = [
@@ -593,13 +620,17 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     contactPerson: "Trần Thị Thu Hà (HR Manager)",
     contactPhone: "024 7300 7300",
     website: "https://fpt-software.com",
-    openPositions: ["Fullstack React/Node", "AI & Data Intern", "DevOps Engine"],
+    openPositions: [
+      "Fullstack React/Node",
+      "AI & Data Intern",
+      "DevOps Engine",
+    ],
     capacity: 50,
     rating: 4.9,
     hasStipend: true,
     isHiring: true,
     isPriority: true,
-    updatedAt: "30/10/2026"
+    updatedAt: "30/10/2026",
   },
   {
     id: "dn-2",
@@ -622,7 +653,7 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: true,
     isHiring: true,
     isPriority: true,
-    updatedAt: "28/10/2026"
+    updatedAt: "28/10/2026",
   },
   {
     id: "dn-3",
@@ -645,7 +676,7 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: true,
     isHiring: true,
     isPriority: true,
-    updatedAt: "25/10/2026"
+    updatedAt: "25/10/2026",
   },
   {
     id: "dn-4",
@@ -668,7 +699,7 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: true,
     isHiring: true,
     isPriority: false,
-    updatedAt: "20/10/2026"
+    updatedAt: "20/10/2026",
   },
   {
     id: "dn-5",
@@ -691,7 +722,7 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: true,
     isHiring: true,
     isPriority: false,
-    updatedAt: "15/10/2026"
+    updatedAt: "15/10/2026",
   },
   {
     id: "dn-6",
@@ -714,7 +745,7 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: false,
     isHiring: true,
     isPriority: false,
-    updatedAt: "10/10/2026"
+    updatedAt: "10/10/2026",
   },
   {
     id: "dn-7",
@@ -737,8 +768,8 @@ export const INITIAL_ENTERPRISES: Enterprise[] = [
     hasStipend: true,
     isHiring: false,
     isPriority: false,
-    updatedAt: "05/10/2026"
-  }
+    updatedAt: "05/10/2026",
+  },
 ];
 
 export const INITIAL_SUBMISSIONS: Submission[] = [
@@ -746,7 +777,8 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     id: "sub-1",
     studentName: "Trần Tuấn Anh",
     mssv: "2421160043",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     company: "FPT Software",
     reportType: "Báo cáo tuần 6",
     time: "14:20",
@@ -754,17 +786,19 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bao_cao_t6_trantuananh.pdf",
     fileSize: "3.2 MB",
-    summary: "Đã hoàn thành module Authentication với OAuth2 và tích hợp Google API. Báo cáo cấu trúc sơ đồ Sequence Diagram rõ ràng.",
+    summary:
+      "Đã hoàn thành module Authentication với OAuth2 và tích hợp Google API. Báo cáo cấu trúc sơ đồ Sequence Diagram rõ ràng.",
     duplicateScore: 4,
     lecturerNote: "Báo cáo rất chi tiết, hình vẽ rõ ràng. Đạt yêu cầu tuần 6.",
     approvedAt: "24/10/2026 16:30",
-    gradeScore: 9
+    gradeScore: 9,
   },
   {
     id: "sub-2",
     studentName: "Lê Đặng Quang Hậu",
     mssv: "2421010230",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     company: "MB Bank",
     reportType: "Báo cáo Giữa kỳ",
     time: "10:05",
@@ -772,17 +806,19 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bck_ledangquanghau.pdf",
     fileSize: "5.8 MB",
-    summary: "Đánh giá giữa kỳ từ mentor doanh nghiệp Đạt 9.2/10 điểm. Kiểm thử bảo mật API cho hệ thống Mobile Banking.",
+    summary:
+      "Đánh giá giữa kỳ từ mentor doanh nghiệp Đạt 9.2/10 điểm. Kiểm thử bảo mật API cho hệ thống Mobile Banking.",
     duplicateScore: 2,
     lecturerNote: "Doanh nghiệp đánh giá xuất sắc. Duyệt báo cáo giữa kỳ.",
     approvedAt: "25/10/2026 11:15",
-    gradeScore: 9.2
+    gradeScore: 9.2,
   },
   {
     id: "sub-3",
     studentName: "Nguyễn Nhật Minh",
     mssv: "2421160033",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     company: "FPT Software",
     reportType: "Báo cáo tuần 6",
     time: "11:10",
@@ -790,17 +826,19 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bao_cao_t6_nguyennhatminh.pdf",
     fileSize: "2.4 MB",
-    summary: "Tối ưu hóa SQL Query cho hệ thống microservice, giảm thời gian query từ 450ms xuống 45ms.",
+    summary:
+      "Tối ưu hóa SQL Query cho hệ thống microservice, giảm thời gian query từ 450ms xuống 45ms.",
     duplicateScore: 5,
     lecturerNote: "Kết quả benchmark ấn tượng. Duyệt bài nộp.",
     approvedAt: "24/10/2026 15:00",
-    gradeScore: 9.5
+    gradeScore: 9.5,
   },
   {
     id: "sub-4",
     studentName: "Nguyễn Minh Phúc",
     mssv: "2421160046",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
     company: "FPT Software",
     reportType: "Báo cáo tuần 6",
     time: "15:40",
@@ -808,15 +846,17 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Chờ duyệt",
     fileUrl: "bao_cao_t6_nguyenminhphuc.pdf",
     fileSize: "4.1 MB",
-    summary: "Xây dựng Design System component thư viện bằng Tailwind CSS và ReactJS cho dự án FPT Enterprise.",
+    summary:
+      "Xây dựng Design System component thư viện bằng Tailwind CSS và ReactJS cho dự án FPT Enterprise.",
     duplicateScore: 8,
-    lecturerNote: ""
+    lecturerNote: "",
   },
   {
     id: "sub-5",
     studentName: "Lê Anh Tài",
     mssv: "2421160015",
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
     company: "MB Bank",
     reportType: "Báo cáo tuần 5",
     time: "10:20",
@@ -824,17 +864,19 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bao_cao_t5_leanhtai.pdf",
     fileSize: "1.9 MB",
-    summary: "Vẽ sơ đồ luồng nghiệp vụ phê duyệt khoản vay doanh nghiệp bằng BPMN 2.0.",
+    summary:
+      "Vẽ sơ đồ luồng nghiệp vụ phê duyệt khoản vay doanh nghiệp bằng BPMN 2.0.",
     duplicateScore: 3,
     lecturerNote: "Sơ đồ chuẩn quy chuẩn BPMN.",
     approvedAt: "22/10/2026 14:10",
-    gradeScore: 8.5
+    gradeScore: 8.5,
   },
   {
     id: "sub-6",
     studentName: "Đinh Quốc Khánh",
     mssv: "2421160051",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     company: "Viettel Group",
     reportType: "Báo cáo Giữa kỳ",
     time: "16:30",
@@ -844,14 +886,16 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     fileSize: "1.2 MB",
     summary: "Báo cáo giữa kỳ quá ngắn, chưa có xác nhận từ Mentor Viettel.",
     duplicateScore: 32,
-    lecturerNote: "Bài nộp thiếu xác nhận doanh nghiệp và tỉ lệ trùng lặp 32%. Yêu cầu bổ sung và viết lại phần tổng quan.",
-    gradeScore: 5
+    lecturerNote:
+      "Bài nộp thiếu xác nhận doanh nghiệp và tỉ lệ trùng lặp 32%. Yêu cầu bổ sung và viết lại phần tổng quan.",
+    gradeScore: 5,
   },
   {
     id: "sub-7",
     studentName: "Đinh Thiên Bảo",
     mssv: "2421160048",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     company: "Viettel Group",
     reportType: "Báo cáo tuần 5",
     time: "16:00",
@@ -859,17 +903,19 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bao_cao_t5_dinhthienbao.pdf",
     fileSize: "3.8 MB",
-    summary: "Triển khai cụm OpenStack private cloud cho hệ thống thử nghiệm của Viettel.",
+    summary:
+      "Triển khai cụm OpenStack private cloud cho hệ thống thử nghiệm của Viettel.",
     duplicateScore: 6,
     lecturerNote: "Tiến độ rất xuất sắc.",
     approvedAt: "24/10/2026 17:30",
-    gradeScore: 9
+    gradeScore: 9,
   },
   {
     id: "sub-8",
     studentName: "Nguyễn Vương Đăng Trường",
     mssv: "2421160002",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     company: "FPT Software",
     reportType: "Báo cáo tuần 6",
     time: "18:00",
@@ -877,12 +923,13 @@ export const INITIAL_SUBMISSIONS: Submission[] = [
     status: "Đã duyệt",
     fileUrl: "bao_cao_t6_dangtruong.pdf",
     fileSize: "4.5 MB",
-    summary: "Fine-tuning mô hình Llama-3 cho bài toán trích xuất thực thể tên riêng tiếng Việt.",
+    summary:
+      "Fine-tuning mô hình Llama-3 cho bài toán trích xuất thực thể tên riêng tiếng Việt.",
     duplicateScore: 1,
     lecturerNote: "Kết quả nghiên cứu thực tế tốt.",
     approvedAt: "25/10/2026 19:10",
-    gradeScore: 9.8
-  }
+    gradeScore: 9.8,
+  },
 ];
 
 export const INITIAL_ACTION_ITEMS: ActionItem[] = [
@@ -893,7 +940,7 @@ export const INITIAL_ACTION_ITEMS: ActionItem[] = [
     type: "review",
     priority: "high",
     count: 5,
-    buttonText: "Xem danh sách"
+    buttonText: "Xem danh sách",
   },
   {
     id: "act-2",
@@ -901,7 +948,7 @@ export const INITIAL_ACTION_ITEMS: ActionItem[] = [
     subtitle: "Cần gửi nhắc nhở hệ thống",
     type: "remind",
     count: 3,
-    buttonText: "Gửi nhắc nhở"
+    buttonText: "Gửi nhắc nhở",
   },
   {
     id: "act-3",
@@ -910,7 +957,7 @@ export const INITIAL_ACTION_ITEMS: ActionItem[] = [
     type: "overdue",
     priority: "high",
     count: 2,
-    buttonText: "Cảnh báo"
+    buttonText: "Cảnh báo",
   },
   {
     id: "act-4",
@@ -918,7 +965,7 @@ export const INITIAL_ACTION_ITEMS: ActionItem[] = [
     subtitle: "Kết thúc: Nguyễn Văn A",
     type: "grade",
     count: 1,
-    buttonText: "Chấm ngay"
+    buttonText: "Chấm ngay",
   },
   {
     id: "act-5",
@@ -926,8 +973,8 @@ export const INITIAL_ACTION_ITEMS: ActionItem[] = [
     subtitle: "Xác nhận hồ sơ tiếp nhận sinh viên mới",
     type: "enterprise",
     count: 2,
-    buttonText: "Duyệt ngay"
-  }
+    buttonText: "Duyệt ngay",
+  },
 ];
 
 export const INITIAL_DEADLINES: Deadline[] = [
@@ -937,7 +984,7 @@ export const INITIAL_DEADLINES: Deadline[] = [
     month: "THÁNG 10",
     title: "Báo cáo giữa kỳ",
     subtitle: "Lớp CNTT-02 • 12 SV",
-    studentCount: 12
+    studentCount: 12,
   },
   {
     id: "dl-2",
@@ -945,7 +992,7 @@ export const INITIAL_DEADLINES: Deadline[] = [
     month: "THÁNG 10",
     title: "Xét duyệt hồ sơ DN",
     subtitle: "Đợt Thu 2026",
-    studentCount: 25
+    studentCount: 25,
   },
   {
     id: "dl-3",
@@ -953,8 +1000,8 @@ export const INITIAL_DEADLINES: Deadline[] = [
     month: "THÁNG 11",
     title: "Nộp nhận xét doanh nghiệp",
     subtitle: "Tất cả sinh viên k15",
-    studentCount: 28
-  }
+    studentCount: 28,
+  },
 ];
 
 export const INITIAL_ACTIVITIES: Activity[] = [
@@ -963,27 +1010,27 @@ export const INITIAL_ACTIVITIES: Activity[] = [
     actor: "Trần Văn Tú",
     action: "đã nộp Báo cáo tuần 5",
     timeAgo: "15 phút trước",
-    type: "submission"
+    type: "submission",
   },
   {
     id: "act-log-2",
     actor: "VinFast",
     action: "đã xác nhận 2 SV tiếp nhận mới",
     timeAgo: "2 giờ trước",
-    type: "approval"
+    type: "approval",
   },
   {
     id: "act-log-3",
     actor: "Hệ thống AI",
     action: "đã tự động cảnh báo 5 sinh viên chậm tiến độ",
     timeAgo: "4 giờ trước",
-    type: "reminder"
+    type: "reminder",
   },
   {
     id: "act-log-4",
     actor: "TS. Phạm Minh Anh",
     action: "đã hoàn thành nhận xét 8 báo cáo",
     timeAgo: "Hôm qua",
-    type: "grade"
-  }
+    type: "grade",
+  },
 ];

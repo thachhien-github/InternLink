@@ -56,8 +56,12 @@ public static class DependencyInjection
         // Auth service
         services.AddScoped<InternLink.Application.Interfaces.IAuthService, InternLink.Infrastructure.Services.AuthService>();
 
+        // Semester management service
+        services.AddScoped<InternLink.Application.Interfaces.ISemesterService, InternLink.Infrastructure.Services.SemesterService>();
+
         // Lecturer workflow service
         services.AddScoped<InternLink.Application.Interfaces.ILecturerService, InternLink.Infrastructure.Services.LecturerService>();
+        services.AddScoped<InternLink.Application.Interfaces.ILecturerAccessService, InternLink.Infrastructure.Services.LecturerAccessService>();
 
         // Lecturer profile CRUD / import / overview
         services.AddScoped<InternLink.Application.Interfaces.ILecturerProfileService, InternLink.Infrastructure.Services.LecturerProfileService>();
@@ -85,6 +89,9 @@ public static class DependencyInjection
 
         // Notification service
         services.AddScoped<InternLink.Application.Interfaces.INotificationService, InternLink.Infrastructure.Services.NotificationService>();
+
+        // Admin broadcast notifications
+        services.AddScoped<IAdminNotificationService, InternLink.Infrastructure.Services.AdminNotificationService>();
 
         // User management (Admin)
         services.AddScoped<IUserManagementService, InternLink.Infrastructure.Services.UserManagementService>();

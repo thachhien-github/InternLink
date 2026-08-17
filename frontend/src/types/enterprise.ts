@@ -5,7 +5,7 @@ export interface Enterprise {
   name: string;
   shortCode: string;
   badge: string;
-  badgeType: 'primary' | 'teal' | 'gray' | 'warning' | string;
+  badgeType: "primary" | "teal" | "gray" | "warning" | string;
   studentCount: number;
   activeThisWeek: boolean;
   contactEmail: string;

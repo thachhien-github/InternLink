@@ -18,8 +18,11 @@ public static class SeedData
         var hasher = new PasswordHasher<User>();
 
         await EnsureUsersAsync(context, hasher);
+        await EnsureSemestersAsync(context);
         await EnsureLecturerProfilesAsync(context);
+        await EnsureStudentUserLinksAsync(context);
         await EnsureInternshipLecturerLinksAsync(context);
+        await EnsureDemoInternshipsAsync(context);
 
         if (await context.Companies.AnyAsync() || await context.Students.AnyAsync())
             return;
@@ -246,6 +249,99 @@ public static class SeedData
         await context.SaveChangesAsync();
     }
 
+    private static async Task EnsureStudentUserLinksAsync(AppDbContext context)
+    {
+        var studentUsers = await context.Users
+            .Where(u => u.Role == Role.Student && !u.IsDeleted)
+            .OrderBy(u => u.Username)
+            .ToListAsync();
+
+        var unlinkedStudents = await context.Students
+            .Where(s => !s.IsDeleted && s.UserId == null)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync();
+
+        var unlinkedIndex = 0;
+        foreach (var user in studentUsers)
+        {
+            var alreadyLinked = await context.Students
+                .AnyAsync(s => s.UserId == user.Id && !s.IsDeleted);
+            if (alreadyLinked)
+                continue;
+
+            if (unlinkedIndex < unlinkedStudents.Count)
+            {
+                var student = unlinkedStudents[unlinkedIndex++];
+                student.UserId = user.Id;
+                student.UpdatedAt = DateTime.UtcNow;
+                continue;
+            }
+
+            var studentCode = $"DEMO-{user.Username.ToUpperInvariant()}";
+            if (await context.Students.AnyAsync(s => s.StudentCode == studentCode && !s.IsDeleted))
+                studentCode = $"DEMO-{user.Id.ToString()[..8]}";
+
+            await context.Students.AddAsync(new Student
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                StudentCode = studentCode,
+                FullName = user.FullName ?? user.Username,
+                Email = user.Email,
+                Class = "K15CNTT",
+                Major = "Software Engineering",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task EnsureDemoInternshipsAsync(AppDbContext context)
+    {
+        var demoStudentUser = await context.Users
+            .FirstOrDefaultAsync(u => u.Username == "student1" && u.Role == Role.Student && !u.IsDeleted);
+        if (demoStudentUser == null)
+            return;
+
+        var student = await context.Students
+            .FirstOrDefaultAsync(s => s.UserId == demoStudentUser.Id && !s.IsDeleted);
+        if (student == null)
+            return;
+
+        var hasInternship = await context.Internships
+            .AnyAsync(i => !i.IsDeleted && i.StudentId == student.Id);
+        if (hasInternship)
+            return;
+
+        var company = await context.Companies
+            .Where(c => !c.IsDeleted && c.IsActive)
+            .OrderBy(c => c.CreatedAt)
+            .FirstOrDefaultAsync();
+        var lecturer = await context.Lecturers
+            .Where(l => !l.IsDeleted)
+            .OrderBy(l => l.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (company == null || lecturer == null)
+            return;
+
+        await context.Internships.AddAsync(new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            CompanyId = company.Id,
+            LecturerId = lecturer.Id,
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddMonths(3),
+            Status = InternshipStatus.InProgress,
+            Position = "Intern",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+    }
+
     private static async Task EnsureInternshipLecturerLinksAsync(AppDbContext context)
     {
         var defaultLecturer = await context.Lecturers
@@ -268,5 +364,66 @@ public static class SeedData
 
         if (orphanInternships.Count > 0)
             await context.SaveChangesAsync();
+    }
+
+    private static async Task EnsureSemestersAsync(AppDbContext context)
+    {
+        if (await context.Semesters.AnyAsync())
+            return;
+
+        var activeSem = new Semester
+        {
+            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Name = "Thực tập Tốt nghiệp K20 (2025 - 2026)",
+            Term = "Học kỳ I",
+            AcademicYear = "2025 - 2026",
+            StartDate = DateTime.UtcNow.AddMonths(-2),
+            EndDate = DateTime.UtcNow.AddMonths(2),
+            Status = SemesterStatus.Active,
+            Description = "Đợt thực tập chính thức cho sinh viên Khóa 2020 ngành Công nghệ Thông tin, Kỹ thuật Phần mềm và Mạng máy tính.",
+            MaxStudentsPerLecturer = 30,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var upcomingSem = new Semester
+        {
+            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            Name = "Thực tập Doanh nghiệp K20 (2025 - 2026)",
+            Term = "Học kỳ II",
+            AcademicYear = "2025 - 2026",
+            StartDate = DateTime.UtcNow.AddMonths(3),
+            EndDate = DateTime.UtcNow.AddMonths(7),
+            Status = SemesterStatus.Upcoming,
+            Description = "Đợt thực tập Học kỳ II dành cho sinh viên giai đoạn 2 và sinh viên đăng ký bổ sung.",
+            MaxStudentsPerLecturer = 30,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var completedSem = new Semester
+        {
+            Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            Name = "Thực tập Tốt nghiệp K19 (2024 - 2025)",
+            Term = "Học kỳ I",
+            AcademicYear = "2024 - 2025",
+            StartDate = DateTime.UtcNow.AddYears(-1),
+            EndDate = DateTime.UtcNow.AddYears(-1).AddMonths(4),
+            Status = SemesterStatus.Completed,
+            Description = "Khóa thực tập đã hoàn tất bảo vệ, chấm điểm và tổng kết dữ liệu Khoa CNTT.",
+            MaxStudentsPerLecturer = 30,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.Semesters.AddRange(activeSem, upcomingSem, completedSem);
+        await context.SaveChangesAsync();
+
+        var internships = await context.Internships.Where(i => i.SemesterId == null).ToListAsync();
+        foreach (var i in internships)
+        {
+            i.SemesterId = activeSem.Id;
+        }
+        if (internships.Count > 0)
+        {
+            await context.SaveChangesAsync();
+        }
     }
 }
