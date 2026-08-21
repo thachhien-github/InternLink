@@ -12,4 +12,5 @@ public class User : BaseEntity
     public bool IsActive { get; set; } = true;
     public bool MustChangePassword { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

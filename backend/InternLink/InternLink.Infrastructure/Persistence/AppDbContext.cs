@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<WeeklyReport> WeeklyReports { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+    public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -231,6 +232,24 @@ public class AppDbContext : DbContext
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(x => x.TokenHash).IsUnique();
             b.HasIndex(x => new { x.UserId, x.UsedAt });
+        });
+
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.ToTable("RefreshTokens");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("RefreshTokenId");
+            b.Property(x => x.Token).IsRequired().HasMaxLength(256);
+            b.Property(x => x.JwtId).IsRequired().HasMaxLength(128);
+            b.Property(x => x.IsUsed).HasDefaultValue(false);
+            b.Property(x => x.IsRevoked).HasDefaultValue(false);
+            b.Property(x => x.CreatedByIp).HasMaxLength(50);
+            b.Property(x => x.RevokedByIp).HasMaxLength(50);
+            b.Property(x => x.ReplacedByToken).HasMaxLength(256);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.User).WithMany(u => u.RefreshTokens).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => x.Token).IsUnique();
+            b.HasIndex(x => new { x.UserId, x.IsRevoked, x.IsUsed });
         });
     }
 }
