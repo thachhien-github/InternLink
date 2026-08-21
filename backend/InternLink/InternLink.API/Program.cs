@@ -1,5 +1,6 @@
 using InternLink.API.Extensions;
 using InternLink.API.Filters;
+using InternLink.API.Hubs;
 using InternLink.Application;
 using InternLink.Infrastructure;
 using Microsoft.OpenApi;
@@ -34,7 +35,7 @@ builder.Services.AddCors(options =>
         }
         else if (builder.Environment.IsDevelopment())
         {
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -50,8 +51,10 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<InternLink.Application.Interfaces.IRealtimeNotificationService, InternLink.Infrastructure.Services.RealtimeNotificationService<NotificationHub>>();
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCustomHealthChecks();
 builder.Services.AddSwaggerGen(c =>
 {
     c.OperationFilter<FileUploadOperationFilter>();
@@ -85,11 +88,12 @@ if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
 app.UseApiExceptionHandler();
 app.UseSerilogRequestLogging();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Environment.IsEnvironment("Local"))
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "InternLink API v1"));
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InternLink API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
@@ -97,6 +101,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapCustomHealthChecks();
 
 await app.MigrateAndSeedDatabaseAsync();
 

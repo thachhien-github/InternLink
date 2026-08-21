@@ -22,14 +22,18 @@ public class DocumentController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllDocuments([FromQuery] int skip = 0, [FromQuery] int take = 100)
     {
-        var documents = await _documentService.GetAllDocumentsAsync(skip, take);
+        var userId = User.GetUserId();
+        var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+        var documents = await _documentService.GetAllDocumentsAsync(skip, take, userId, isLecturerOrAdmin);
         return Ok(ApiResponse<IEnumerable<DocumentListItemDto>>.Ok(documents));
     }
 
     [HttpPost("filter")]
     public async Task<IActionResult> GetDocumentsWithFilter([FromBody] DocumentFilterRequest filter)
     {
-        var result = await _documentService.GetDocumentsWithFilterAsync(filter);
+        var userId = User.GetUserId();
+        var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+        var result = await _documentService.GetDocumentsWithFilterAsync(filter, userId, isLecturerOrAdmin);
         return Ok(ApiResponse<PaginatedResponse<DocumentListItemDto>>.Ok(result));
     }
 
@@ -40,23 +44,42 @@ public class DocumentController : ControllerBase
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
-        var document = await _documentService.GetDocumentByIdAsync(id, userId.Value, isLecturerOrAdmin);
-        if (document == null)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+        try
+        {
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var document = await _documentService.GetDocumentByIdAsync(id, userId.Value, isLecturerOrAdmin);
+            if (document == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
 
-        return Ok(ApiResponse<DocumentDetailDto>.Ok(document));
+            return Ok(ApiResponse<DocumentDetailDto>.Ok(document));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("internship/{internshipId:guid}")]
     public async Task<IActionResult> GetDocumentsByInternship(Guid internshipId, [FromQuery] int skip = 0, [FromQuery] int take = 100)
     {
-        var documents = await _documentService.GetDocumentsByInternshipAsync(internshipId, skip, take);
-        return Ok(ApiResponse<IEnumerable<DocumentListItemDto>>.Ok(documents));
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var documents = await _documentService.GetDocumentsByInternshipAsync(internshipId, skip, take, userId.Value, isLecturerOrAdmin);
+            return Ok(ApiResponse<IEnumerable<DocumentListItemDto>>.Ok(documents));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpPost("upload")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadDocument([FromForm] UploadDocumentFormRequest form)
     {
@@ -76,48 +99,102 @@ public class DocumentController : ControllerBase
             IsRequired = form.IsRequired
         };
 
-        await using var stream = form.File.OpenReadStream();
-        var document = await _documentService.UploadDocumentAsync(createRequest, stream, form.File.FileName, userId.Value);
+        try
+        {
+            await using var stream = form.File.OpenReadStream();
+            var document = await _documentService.UploadDocumentAsync(createRequest, stream, form.File.FileName, userId.Value);
 
-        return CreatedAtAction(nameof(GetDocumentById), new { id = document.Id }, ApiResponse<DocumentDetailDto>.Ok(document));
+            return CreatedAtAction(nameof(GetDocumentById), new { id = document.Id }, ApiResponse<DocumentDetailDto>.Ok(document));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> UpdateDocument(Guid id, [FromBody] UpdateDocumentRequest request)
     {
-        var document = await _documentService.UpdateDocumentAsync(id, request);
-        if (document == null)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return Ok(ApiResponse<DocumentDetailDto>.Ok(document));
+        try
+        {
+            var document = await _documentService.UpdateDocumentAsync(id, request, userId.Value);
+            if (document == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+
+            return Ok(ApiResponse<DocumentDetailDto>.Ok(document));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("{id:guid}/download")]
     public async Task<IActionResult> DownloadDocument(Guid id)
     {
-        var document = await _documentService.DownloadDocumentAsync(id);
-        if (document == null)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return File(document.FileContent, document.MimeType, document.FileName);
+        try
+        {
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var document = await _documentService.DownloadDocumentAsync(id, userId.Value, isLecturerOrAdmin);
+            if (document == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+
+            return File(document.FileContent, document.MimeType, document.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> DeleteDocument(Guid id)
     {
-        var result = await _documentService.DeleteDocumentAsync(id);
-        if (!result)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return Ok(ApiResponse<object>.Ok(null));
+        try
+        {
+            var result = await _documentService.DeleteDocumentAsync(id, userId.Value);
+            if (!result)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Document not found" }));
+
+            return Ok(ApiResponse<object>.Ok(null));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("internship/{internshipId:guid}/count")]
     public async Task<IActionResult> GetDocumentCount(Guid internshipId)
     {
-        var count = await _documentService.GetDocumentCountByInternshipAsync(internshipId);
-        return Ok(ApiResponse<int>.Ok(count));
+        var userId = User.GetUserId();
+        var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+        try
+        {
+            var count = await _documentService.GetDocumentCountByInternshipAsync(internshipId, userId, isLecturerOrAdmin);
+            return Ok(ApiResponse<int>.Ok(count));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 }

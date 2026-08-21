@@ -42,11 +42,23 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpGet("internship/{internshipId:guid}")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> GetByInternship(Guid internshipId)
     {
-        var submissions = await _submissionService.GetByInternshipAsync(internshipId);
-        return Ok(ApiResponse<IEnumerable<SubmissionDto>>.Ok(submissions));
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var submissions = await _submissionService.GetByInternshipAsync(internshipId, userId.Value, isLecturerOrAdmin);
+            return Ok(ApiResponse<IEnumerable<SubmissionDto>>.Ok(submissions));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("mine")]
@@ -217,16 +229,24 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateSubmissionStatusRequest request)
     {
         try
         {
-            var submission = await _submissionService.UpdateStatusAsync(id, request);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var submission = await _submissionService.UpdateStatusAsync(id, request, userId.Value);
             if (submission == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
 
             return Ok(ApiResponse<SubmissionDto>.Ok(submission));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {
@@ -235,14 +255,25 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _submissionService.SoftDeleteAsync(id);
-        if (!deleted)
-            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        return Ok(ApiResponse<object>.Ok(null));
+            var deleted = await _submissionService.SoftDeleteAsync(id, userId.Value);
+            if (!deleted)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+
+            return Ok(ApiResponse<object>.Ok(null));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("{id:guid}/feedbacks")]

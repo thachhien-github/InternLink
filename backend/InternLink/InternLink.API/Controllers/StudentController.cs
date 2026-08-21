@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Shared.Responses;
@@ -7,23 +8,40 @@ using InternLink.Shared.Responses;
 namespace InternLink.API.Controllers;
 
 /// <summary>
-/// Read-only student lookup for Lecturers.
-/// Master-data write/import moved to <see cref="AdminStudentsController"/> (/api/Admin/students).
+/// Read-only student lookup scoped to assigned Lecturer (or global for SuperAdmin).
+/// Master-data write/import is in <see cref="AdminStudentsController"/> (/api/Admin/students).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "RequireLecturer")]
+[Authorize(Policy = "RequireLecturerOrAdmin")]
 public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
+    private readonly ILecturerAccessService _lecturerAccessService;
 
-    public StudentController(IStudentService studentService)
+    public StudentController(
+        IStudentService studentService,
+        ILecturerAccessService lecturerAccessService)
     {
         _studentService = studentService;
+        _lecturerAccessService = lecturerAccessService;
+    }
+
+    private async Task<(bool isLecturer, Guid? lecturerId)> ResolveLecturerScopeAsync()
+    {
+        if (User.IsSuperAdmin())
+            return (false, null);
+
+        var userId = User.GetUserId();
+        if (userId == null)
+            return (true, Guid.Empty);
+
+        var lecturerId = await _lecturerAccessService.ResolveLecturerIdAsync(userId.Value);
+        return (true, lecturerId ?? Guid.Empty);
     }
 
     /// <summary>
-    /// Get all students with pagination (read-only for Lecturer).
+    /// Get all students with pagination (scoped to assigned Lecturer if not Admin).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAllStudents([FromQuery] int skip = 0, [FromQuery] int take = 100)
@@ -36,7 +54,11 @@ public class StudentController : ControllerBase
             if (take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-            var students = await _studentService.GetAllStudentsAsync(skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(ApiResponse<IEnumerable<StudentDto>>.Ok(Array.Empty<StudentDto>()));
+
+            var students = await _studentService.GetAllStudentsAsync(skip, take, lecturerId);
             return Ok(ApiResponse<IEnumerable<StudentDto>>.Ok(students));
         }
         catch (Exception ex)
@@ -46,7 +68,7 @@ public class StudentController : ControllerBase
     }
 
     /// <summary>
-    /// Get students with filtering (read-only for Lecturer).
+    /// Get students with filtering (scoped to assigned Lecturer if not Admin).
     /// </summary>
     [HttpPost("search")]
     public async Task<IActionResult> SearchStudents([FromBody] StudentFilterRequest request)
@@ -59,7 +81,19 @@ public class StudentController : ControllerBase
             if (request.Take < 1 || request.Take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-            var result = await _studentService.GetStudentsWithFilterAsync(request);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+            {
+                return Ok(ApiResponse<PaginatedResponse<StudentDto>>.Ok(new PaginatedResponse<StudentDto>
+                {
+                    Items = Array.Empty<StudentDto>(),
+                    Total = 0,
+                    Skip = request.Skip,
+                    Take = request.Take
+                }));
+            }
+
+            var result = await _studentService.GetStudentsWithFilterAsync(request, lecturerId);
             return Ok(ApiResponse<PaginatedResponse<StudentDto>>.Ok(result));
         }
         catch (Exception ex)
@@ -69,14 +103,18 @@ public class StudentController : ControllerBase
     }
 
     /// <summary>
-    /// Get a specific student by ID.
+    /// Get a specific student by ID (scoped to assigned Lecturer if not Admin).
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetStudentById(Guid id)
     {
         try
         {
-            var student = await _studentService.GetStudentByIdAsync(id);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student not found" }));
+
+            var student = await _studentService.GetStudentByIdAsync(id, lecturerId);
             if (student == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student not found" }));
 
@@ -89,7 +127,7 @@ public class StudentController : ControllerBase
     }
 
     /// <summary>
-    /// Get a student by student code (MSSV).
+    /// Get a student by student code (MSSV) (scoped to assigned Lecturer if not Admin).
     /// </summary>
     [HttpGet("by-number/{studentCode}")]
     public async Task<IActionResult> GetStudentByNumber(string studentCode)
@@ -99,7 +137,11 @@ public class StudentController : ControllerBase
             if (string.IsNullOrWhiteSpace(studentCode))
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Student number is required" }));
 
-            var student = await _studentService.GetStudentByCodeAsync(studentCode);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student not found" }));
+
+            var student = await _studentService.GetStudentByCodeAsync(studentCode, lecturerId);
             if (student == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student not found" }));
 
@@ -112,9 +154,10 @@ public class StudentController : ControllerBase
     }
 
     /// <summary>
-    /// Check if a student number already exists.
+    /// Check if a student number already exists (Admin only).
     /// </summary>
     [HttpGet("check/{studentCode}")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> CheckStudentNumberExists(string studentCode)
     {
         try

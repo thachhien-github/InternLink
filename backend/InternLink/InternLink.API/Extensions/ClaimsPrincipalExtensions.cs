@@ -13,4 +13,13 @@ public static class ClaimsPrincipalExtensions
 
         return Guid.TryParse(value, out var id) ? id : null;
     }
+
+    public static bool IsSuperAdmin(this ClaimsPrincipal user) =>
+        user.IsInRole("SuperAdmin");
+
+    public static bool IsLecturer(this ClaimsPrincipal user) =>
+        user.IsInRole("Lecturer");
+
+    public static bool IsStudent(this ClaimsPrincipal user) =>
+        user.IsInRole("Student");
 }

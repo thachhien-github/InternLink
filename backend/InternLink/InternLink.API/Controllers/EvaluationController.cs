@@ -3,7 +3,6 @@ using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace InternLink.API.Controllers;
 
@@ -16,12 +15,30 @@ namespace InternLink.API.Controllers;
 public class EvaluationController : ControllerBase
 {
     private readonly IEvaluationService _evaluationService;
+    private readonly ILecturerAccessService _lecturerAccessService;
     private readonly ILogger<EvaluationController> _logger;
 
-    public EvaluationController(IEvaluationService evaluationService, ILogger<EvaluationController> logger)
+    public EvaluationController(
+        IEvaluationService evaluationService, 
+        ILecturerAccessService lecturerAccessService,
+        ILogger<EvaluationController> logger)
     {
         _evaluationService = evaluationService;
+        _lecturerAccessService = lecturerAccessService;
         _logger = logger;
+    }
+
+    private async Task<(bool isLecturer, Guid? lecturerId)> ResolveLecturerScopeAsync()
+    {
+        if (User.IsSuperAdmin())
+            return (false, null);
+
+        var userId = User.GetUserId();
+        if (userId == null)
+            return (true, Guid.Empty);
+
+        var lecturerId = await _lecturerAccessService.ResolveLecturerIdAsync(userId.Value);
+        return (true, lecturerId ?? Guid.Empty);
     }
 
     /// <summary>
@@ -29,12 +46,16 @@ public class EvaluationController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EvaluationListItemDto>), StatusCodes.Status200OK)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<IEnumerable<EvaluationListItemDto>>> GetAllEvaluations([FromQuery] int skip = 0, [FromQuery] int take = 100)
     {
         try
         {
-            var evaluations = await _evaluationService.GetAllEvaluationsAsync(skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(Array.Empty<EvaluationListItemDto>());
+
+            var evaluations = await _evaluationService.GetAllEvaluationsAsync(skip, take, lecturerId);
             return Ok(evaluations);
         }
         catch (Exception ex)
@@ -49,12 +70,16 @@ public class EvaluationController : ControllerBase
     /// </summary>
     [HttpPost("filter")]
     [ProducesResponseType(typeof(PaginatedResponse<EvaluationListItemDto>), StatusCodes.Status200OK)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<PaginatedResponse<EvaluationListItemDto>>> GetEvaluationsWithFilter([FromBody] EvaluationFilterRequest filter)
     {
         try
         {
-            var result = await _evaluationService.GetEvaluationsWithFilterAsync(filter);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(new PaginatedResponse<EvaluationListItemDto> { Items = Enumerable.Empty<EvaluationListItemDto>(), Total = 0, Skip = filter.Skip, Take = filter.Take });
+
+            var result = await _evaluationService.GetEvaluationsWithFilterAsync(filter, lecturerId);
             return Ok(result);
         }
         catch (Exception ex)
@@ -106,11 +131,20 @@ public class EvaluationController : ControllerBase
     {
         try
         {
-            var evaluation = await _evaluationService.GetEvaluationByInternshipAsync(internshipId);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var evaluation = await _evaluationService.GetEvaluationByInternshipAsync(internshipId, userId.Value, isLecturerOrAdmin);
             if (evaluation == null)
                 return NotFound(new { message = "Evaluation not found for this internship" });
 
             return Ok(evaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -128,7 +162,11 @@ public class EvaluationController : ControllerBase
     {
         try
         {
-            var evaluations = await _evaluationService.GetEvaluationsByStudentAsync(studentId, skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(Array.Empty<EvaluationListItemDto>());
+
+            var evaluations = await _evaluationService.GetEvaluationsByStudentAsync(studentId, skip, take, lecturerId);
             return Ok(evaluations);
         }
         catch (Exception ex)
@@ -143,12 +181,16 @@ public class EvaluationController : ControllerBase
     /// </summary>
     [HttpGet("company/{companyId}")]
     [ProducesResponseType(typeof(IEnumerable<EvaluationListItemDto>), StatusCodes.Status200OK)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<IEnumerable<EvaluationListItemDto>>> GetEvaluationsByCompany(Guid companyId, [FromQuery] int skip = 0, [FromQuery] int take = 100)
     {
         try
         {
-            var evaluations = await _evaluationService.GetEvaluationsByCompanyAsync(companyId, skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(Array.Empty<EvaluationListItemDto>());
+
+            var evaluations = await _evaluationService.GetEvaluationsByCompanyAsync(companyId, skip, take, lecturerId);
             return Ok(evaluations);
         }
         catch (Exception ex)
@@ -165,18 +207,21 @@ public class EvaluationController : ControllerBase
     [ProducesResponseType(typeof(EvaluationDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<EvaluationDetailDto>> CreateEvaluation([FromBody] CreateEvaluationRequest request)
     {
         try
         {
-            // Get current user ID
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
+            var userId = User.GetUserId();
+            if (userId == null)
                 return Unauthorized(new { message = "User ID not found in token" });
 
-            var evaluation = await _evaluationService.CreateEvaluationAsync(request, Guid.Parse(userId));
+            var evaluation = await _evaluationService.CreateEvaluationAsync(request, userId.Value);
             return CreatedAtAction(nameof(GetEvaluationById), new { id = evaluation.Id }, evaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {
@@ -197,16 +242,24 @@ public class EvaluationController : ControllerBase
     [ProducesResponseType(typeof(EvaluationDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<EvaluationDetailDto>> UpdateEvaluation(Guid id, [FromBody] UpdateEvaluationRequest request)
     {
         try
         {
-            var evaluation = await _evaluationService.UpdateEvaluationAsync(id, request);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "User ID not found in token" });
+
+            var evaluation = await _evaluationService.UpdateEvaluationAsync(id, request, userId.Value);
             if (evaluation == null)
                 return NotFound(new { message = "Evaluation not found" });
 
             return Ok(evaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {
@@ -226,16 +279,24 @@ public class EvaluationController : ControllerBase
     [HttpPost("{id}/finalize")]
     [ProducesResponseType(typeof(EvaluationDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<EvaluationDetailDto>> FinalizeEvaluation(Guid id)
     {
         try
         {
-            var evaluation = await _evaluationService.FinalizeEvaluationAsync(id);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "User ID not found in token" });
+
+            var evaluation = await _evaluationService.FinalizeEvaluationAsync(id, userId.Value);
             if (evaluation == null)
                 return NotFound(new { message = "Evaluation not found" });
 
             return Ok(evaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -251,16 +312,24 @@ public class EvaluationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> DeleteEvaluation(Guid id)
     {
         try
         {
-            var result = await _evaluationService.DeleteEvaluationAsync(id);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "User ID not found in token" });
+
+            var result = await _evaluationService.DeleteEvaluationAsync(id, userId.Value);
             if (!result)
                 return NotFound(new { message = "Evaluation not found" });
 
             return NoContent();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {
@@ -279,12 +348,16 @@ public class EvaluationController : ControllerBase
     /// </summary>
     [HttpGet("company/{companyId}/average-grade")]
     [ProducesResponseType(typeof(decimal), StatusCodes.Status200OK)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<decimal>> GetAverageGradeByCompany(Guid companyId)
     {
         try
         {
-            var average = await _evaluationService.GetAverageGradeByCompanyAsync(companyId);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(0m);
+
+            var average = await _evaluationService.GetAverageGradeByCompanyAsync(companyId, lecturerId);
             return Ok(average);
         }
         catch (Exception ex)
@@ -303,8 +376,17 @@ public class EvaluationController : ControllerBase
     {
         try
         {
-            var hasEvaluation = await _evaluationService.HasEvaluationAsync(internshipId);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var hasEvaluation = await _evaluationService.HasEvaluationAsync(internshipId, userId.Value, isLecturerOrAdmin);
             return Ok(hasEvaluation);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -318,14 +400,33 @@ public class EvaluationController : ControllerBase
     /// </summary>
     [HttpGet("statistics/summary")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<ActionResult<object>> GetEvaluationStatistics()
     {
         try
         {
-            var finalizedCount = await _evaluationService.GetFinalizedEvaluationCountAsync();
-            var draftCount = await _evaluationService.GetDraftEvaluationCountAsync();
-            var distribution = await _evaluationService.GetEvaluationDistributionAsync();
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+            {
+                return Ok(new
+                {
+                    FinalizedCount = 0,
+                    DraftCount = 0,
+                    TotalCount = 0,
+                    Distribution = new Dictionary<string, int>
+                    {
+                        { "Excellent (9-10)", 0 },
+                        { "Good (7-8.99)", 0 },
+                        { "Average (5-6.99)", 0 },
+                        { "Fair (3-4.99)", 0 },
+                        { "Poor (0-2.99)", 0 }
+                    }
+                });
+            }
+
+            var finalizedCount = await _evaluationService.GetFinalizedEvaluationCountAsync(lecturerId);
+            var draftCount = await _evaluationService.GetDraftEvaluationCountAsync(lecturerId);
+            var distribution = await _evaluationService.GetEvaluationDistributionAsync(lecturerId);
 
             return Ok(new
             {

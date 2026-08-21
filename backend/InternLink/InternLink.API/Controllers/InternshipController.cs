@@ -8,22 +8,42 @@ using InternLink.Shared.Responses;
 namespace InternLink.API.Controllers;
 
 /// <summary>
-/// API endpoints for internship management (Lecturer access only)
+/// Legacy & Admin API endpoints for global internship management.
+/// NOTE: Lecturers should prefer using the consolidated portal endpoints under `/api/Lecturer/*` (e.g. `/api/Lecturer/internships`, `/api/Lecturer/students`).
+/// Reads are scoped to assigned Lecturer when accessed by a Lecturer (or global for SuperAdmin).
+/// Writes and assignments are restricted to SuperAdmin.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "RequireLecturer")]
+[Authorize(Policy = "RequireLecturerOrAdmin")]
 public class InternshipController : ControllerBase
 {
     private readonly IInternshipService _internshipService;
+    private readonly ILecturerAccessService _lecturerAccessService;
 
-    public InternshipController(IInternshipService internshipService)
+    public InternshipController(
+        IInternshipService internshipService,
+        ILecturerAccessService lecturerAccessService)
     {
         _internshipService = internshipService;
+        _lecturerAccessService = lecturerAccessService;
+    }
+
+    private async Task<(bool isLecturer, Guid? lecturerId)> ResolveLecturerScopeAsync()
+    {
+        if (User.IsSuperAdmin())
+            return (false, null);
+
+        var userId = User.GetUserId();
+        if (userId == null)
+            return (true, Guid.Empty);
+
+        var lecturerId = await _lecturerAccessService.ResolveLecturerIdAsync(userId.Value);
+        return (true, lecturerId ?? Guid.Empty);
     }
 
     /// <summary>
-    /// Get all internships with pagination
+    /// Get all internships with pagination (scoped to current Lecturer if not Admin)
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAllInternships([FromQuery] int skip = 0, [FromQuery] int take = 100)
@@ -33,7 +53,11 @@ public class InternshipController : ControllerBase
             if (skip < 0 || take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination parameters" }));
 
-            var internships = await _internshipService.GetAllInternshipsAsync(skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(Array.Empty<InternshipListItemDto>()));
+
+            var internships = await _internshipService.GetAllInternshipsAsync(skip, take, lecturerId);
             return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(internships));
         }
         catch (Exception ex)
@@ -43,7 +67,7 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Search internships with advanced filtering and sorting
+    /// Search internships with advanced filtering and sorting (scoped to current Lecturer if not Admin)
     /// </summary>
     [HttpPost("search")]
     public async Task<IActionResult> SearchInternships([FromBody] InternshipFilterRequest request)
@@ -53,7 +77,19 @@ public class InternshipController : ControllerBase
             if (request.Skip < 0 || request.Take < 1 || request.Take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination parameters" }));
 
-            var result = await _internshipService.GetInternshipsWithFilterAsync(request);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+            {
+                return Ok(ApiResponse<PaginatedResponse<InternshipListItemDto>>.Ok(new PaginatedResponse<InternshipListItemDto>
+                {
+                    Items = Array.Empty<InternshipListItemDto>(),
+                    Total = 0,
+                    Skip = request.Skip,
+                    Take = request.Take
+                }));
+            }
+
+            var result = await _internshipService.GetInternshipsWithFilterAsync(request, lecturerId);
             return Ok(ApiResponse<PaginatedResponse<InternshipListItemDto>>.Ok(result));
         }
         catch (Exception ex)
@@ -63,7 +99,7 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Get internship by ID with all details
+    /// Get internship by ID with all details (enforces assignment check)
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetInternshipById(Guid id)
@@ -92,7 +128,7 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Get internships by student
+    /// Get internships by student (scoped to Lecturer if not Admin)
     /// </summary>
     [HttpGet("student/{studentId}")]
     public async Task<IActionResult> GetInternshipsByStudent(Guid studentId, [FromQuery] int skip = 0, [FromQuery] int take = 100)
@@ -102,7 +138,11 @@ public class InternshipController : ControllerBase
             if (skip < 0 || take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination parameters" }));
 
-            var internships = await _internshipService.GetInternshipsByStudentAsync(studentId, skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(Array.Empty<InternshipListItemDto>()));
+
+            var internships = await _internshipService.GetInternshipsByStudentAsync(studentId, skip, take, lecturerId);
             return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(internships));
         }
         catch (Exception ex)
@@ -112,7 +152,7 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Get internships by company
+    /// Get internships by company (scoped to Lecturer if not Admin)
     /// </summary>
     [HttpGet("company/{companyId}")]
     public async Task<IActionResult> GetInternshipsByCompany(Guid companyId, [FromQuery] int skip = 0, [FromQuery] int take = 100)
@@ -122,7 +162,11 @@ public class InternshipController : ControllerBase
             if (skip < 0 || take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination parameters" }));
 
-            var internships = await _internshipService.GetInternshipsByCompanyAsync(companyId, skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(Array.Empty<InternshipListItemDto>()));
+
+            var internships = await _internshipService.GetInternshipsByCompanyAsync(companyId, skip, take, lecturerId);
             return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(internships));
         }
         catch (Exception ex)
@@ -132,7 +176,7 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Get internships by status
+    /// Get internships by status (scoped to Lecturer if not Admin)
     /// </summary>
     [HttpGet("status/{status}")]
     public async Task<IActionResult> GetInternshipsByStatus(string status, [FromQuery] int skip = 0, [FromQuery] int take = 100)
@@ -142,7 +186,11 @@ public class InternshipController : ControllerBase
             if (skip < 0 || take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination parameters" }));
 
-            var internships = await _internshipService.GetInternshipsByStatusAsync(status, skip, take);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(Array.Empty<InternshipListItemDto>()));
+
+            var internships = await _internshipService.GetInternshipsByStatusAsync(status, skip, take, lecturerId);
             return Ok(ApiResponse<IEnumerable<InternshipListItemDto>>.Ok(internships));
         }
         catch (Exception ex)
@@ -152,9 +200,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new internship
+    /// Create a new internship (Admin only)
     /// </summary>
     [HttpPost]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> CreateInternship([FromBody] CreateInternshipRequest request)
     {
         try
@@ -176,9 +225,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Update an internship
+    /// Update an internship (Admin only)
     /// </summary>
     [HttpPut("{id}")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateInternship(Guid id, [FromBody] UpdateInternshipRequest request)
     {
         try
@@ -203,9 +253,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Update internship status
+    /// Update internship status (Admin only)
     /// </summary>
     [HttpPatch("{id}/status")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateInternshipStatus(Guid id, [FromBody] UpdateInternshipStatusRequest request)
     {
         try
@@ -230,9 +281,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Assign or change company for an internship
+    /// Assign or change company for an internship (Admin only)
     /// </summary>
     [HttpPut("{id}/company")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> AssignCompany(Guid id, [FromBody] AssignCompanyRequest request)
     {
         try
@@ -257,9 +309,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Delete an internship
+    /// Delete an internship (Admin only)
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> DeleteInternship(Guid id)
     {
         try
@@ -281,14 +334,20 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Get internship statistics
+    /// Get internship statistics (scoped to current Lecturer if not Admin)
     /// </summary>
     [HttpGet("stats/overview")]
     public async Task<IActionResult> GetInternshipStats()
     {
         try
         {
-            var stats = await _internshipService.GetInternshipStatsAsync();
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+            {
+                return Ok(ApiResponse<InternshipStatsDto>.Ok(new InternshipStatsDto()));
+            }
+
+            var stats = await _internshipService.GetInternshipStatsAsync(lecturerId);
             return Ok(ApiResponse<InternshipStatsDto>.Ok(stats));
         }
         catch (Exception ex)

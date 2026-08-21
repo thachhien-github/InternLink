@@ -165,4 +165,12 @@ public class AdminStudentsController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
     }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] Guid? semesterId = null)
+    {
+        var bytes = await _studentService.ExportStudentsExcelAsync(semesterId);
+        var fileName = $"danh-sach-sinh-vien-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
 }

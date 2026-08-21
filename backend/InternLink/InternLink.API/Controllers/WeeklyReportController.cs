@@ -54,11 +54,27 @@ public class WeeklyReportController : ControllerBase
     }
 
     [HttpGet("internship/{internshipId:guid}")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> GetByInternship(Guid internshipId)
     {
-        var reports = await _weeklyReportService.GetByInternshipAsync(internshipId);
-        return Ok(ApiResponse<IEnumerable<WeeklyReportDto>>.Ok(reports));
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var reports = await _weeklyReportService.GetByInternshipAsync(internshipId, userId.Value, isLecturerOrAdmin);
+            return Ok(ApiResponse<IEnumerable<WeeklyReportDto>>.Ok(reports));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(new ApiError { Title = "Internal server error", Detail = ex.Message }));
+        }
     }
 
     [HttpPost]
@@ -137,20 +153,32 @@ public class WeeklyReportController : ControllerBase
     }
 
     [HttpPost("{id:guid}/review")]
-    [Authorize(Policy = "RequireLecturer")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> Review(Guid id, [FromBody] ReviewWeeklyReportRequest request)
     {
         try
         {
-            var report = await _weeklyReportService.ReviewAsync(id, request);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var report = await _weeklyReportService.ReviewAsync(id, userId.Value, request);
             if (report == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Weekly report not found" }));
 
             return Ok(ApiResponse<WeeklyReportDto>.Ok(report));
         }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(new ApiError { Title = "Internal server error", Detail = ex.Message }));
         }
     }
 

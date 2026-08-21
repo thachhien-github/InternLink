@@ -178,4 +178,12 @@ public class AdminCompaniesController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
     }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export()
+    {
+        var bytes = await _companyService.ExportCompaniesExcelAsync();
+        var fileName = $"danh-sach-doanh-nghiep-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
 }

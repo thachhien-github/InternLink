@@ -22,8 +22,49 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var token = await _auth.LoginAsync(request);
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var token = await _auth.LoginAsync(request, ipAddress);
         return Ok(ApiResponse<LoginResponse>.Ok(token));
+    }
+
+    [HttpPost("refresh-token")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "AccessToken and RefreshToken are required" }));
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var response = await _auth.RefreshTokenAsync(request, ipAddress);
+        return Ok(ApiResponse<LoginResponse>.Ok(response));
+    }
+
+    [HttpPost("revoke-token")]
+    [Authorize]
+    public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "RefreshToken is required" }));
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await _auth.RevokeTokenAsync(request.RefreshToken, ipAddress);
+        if (!result)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Token not found or already revoked" }));
+
+        return Ok(ApiResponse<object>.Ok(new { message = "Token successfully revoked" }));
+    }
+
+    [HttpPost("revoke-all")]
+    [Authorize]
+    public async Task<IActionResult> RevokeAll()
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _auth.RevokeAllTokensForUserAsync(userId.Value, ipAddress);
+        return Ok(ApiResponse<object>.Ok(new { message = "All active sessions revoked" }));
     }
 
     [HttpPost("logout")]
