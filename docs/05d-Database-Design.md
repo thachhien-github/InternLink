@@ -1,197 +1,60 @@
-# Database Design
+# InternLink — Thiết Kế Cơ Sở Dữ Liệu SQL Server (Database Design)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 1.2
-
-**Status:** Active — aligned with EF Core / SQL Server (12 tables)
-
-**See also:** [`database/README.md`](../database/README.md) · [`database/MIGRATIONS.md`](../database/MIGRATIONS.md)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Công Nghệ & Chiến Lược CSDL (DBMS & Technology Stack)
 
-Tài liệu này mô tả các quyết định thiết kế cơ sở dữ liệu của hệ thống InternLink.
-
-Mục tiêu:
-
-- Chuẩn hóa (3NF)
-- Dễ mở rộng và bảo trì
-- Phù hợp Entity Framework Core code-first
-- Hỗ trợ SuperAdmin module + workflow Giảng viên
-
----
-
-# 2. Database Platform
-
-| Item | Technology |
-|------|------------|
-| DBMS | Microsoft SQL Server |
-| ORM | Entity Framework Core 10 |
-| Language | C# |
-| Backend | ASP.NET Core Web API |
-| Naming | PascalCase tables/columns; PK `{Entity}Id` |
+- **Hệ quản trị CSDL**: Microsoft SQL Server 2022.
+- **ORM / Data Access**: Entity Framework Core 10 (Code-First Migrations).
+- **Quy ước đặt tên**:
+  - Bảng: Tên tiếng Anh số nhiều, PascalCase (`Users`, `Semesters`, `Internships`, `WeeklyReports`).
+  - Khóa chính (PK): `Id` kiểu `uniqueidentifier` (GUID v4) giúp chống lộ ID tuần tự và tối ưu khi mở rộng phân tán.
+  - Khóa ngoại (FK): `{Entity}Id` (VD: `UserId`, `SemesterId`, `InternshipId`).
+  - Cột thời gian: `CreatedAt`, `UpdatedAt`, `DeletedAt` sử dụng chuẩn `datetime2` và múi giờ UTC.
 
 ---
 
-# 3. Current Schema (12 tables)
+## 2. Chiến Lược Đánh Chỉ Mục (Indexing Strategy)
 
-| Table | Purpose |
-|-------|---------|
-| Users | Authentication, roles, MustChangePassword |
-| Lecturers | GV profile, StaffCode unique |
-| Students | SV profile, MSSV |
-| Companies | DN thực tập |
-| Internships | Hồ sơ SV–GV–DN, status workflow |
-| WeeklyReports | Báo cáo tuần |
-| Submissions | Nộp bài + versioning |
-| Feedbacks | Nhận xét GV |
-| Evaluations | Chấm cuối kỳ |
-| Documents | File metadata |
-| Notifications | Thông báo in-app |
-| PasswordResetTokens | Forgot-password (hashed token) |
+Nhằm tối ưu hóa tốc độ truy vấn cho các tác vụ tìm kiếm, lọc theo học kỳ và tổng hợp báo cáo:
 
-**Planned:** InternshipLogs
-
-Chi tiết cột: `docs/05c-Data-Dictionary.md`
+| Bảng | Tên Index | Loại Index | Cột Được Index | Mục Đích Tối Ưu |
+| :--- | :--- | :---: | :--- | :--- |
+| `Users` | `IX_Users_Username` | Unique | `Username` | Đăng nhập tốc độ cao ($O(1)$). |
+| `Semesters` | `IX_Semesters_Code` | Unique | `Code` | Tìm kiếm học kỳ theo mã. |
+| `Semesters` | `IX_Semesters_IsCurrent` | Non-Clustered | `IsCurrent` | Truy vấn học kỳ hiện tại đang chạy. |
+| `Students` | `IX_Students_StudentCode` | Unique | `StudentCode` | Tra cứu hồ sơ theo MSSV. |
+| `Lecturers` | `IX_Lecturers_StaffCode` | Unique | `StaffCode` | Tra cứu hồ sơ theo Mã GV. |
+| `Internships`| `IX_Internships_Semester_Student` | Unique | `(SemesterId, StudentId)` | Bảo đảm 1 SV chỉ có 1 đợt thực tập/kỳ. |
+| `Internships`| `IX_Internships_LecturerId` | Non-Clustered | `LecturerId` | Lọc danh sách SV theo GVHD. |
+| `WeeklyReports`| `IX_WeeklyReports_Internship_Week` | Unique | `(InternshipId, WeekNumber)` | Bảo đảm 1 SV chỉ nộp 1 báo cáo/tuần. |
+| `Evaluations`| `IX_Evaluations_InternshipId` | Unique | `InternshipId` | Quan hệ 1:1 giữa thực tập và điểm số. |
 
 ---
 
-# 4. Migration History
+## 3. Cơ Chế Xóa Mềm & Toàn Vẹn Lịch Sử (Soft Delete)
 
-| Migration | Change |
-|-----------|--------|
-| InitialCreate | Core entities |
-| AddLecturerWorkflow | Workflow fields |
-| AddDocumentAndEvaluationEntities | Documents, Evaluations |
-| AddStudentUserAndWeeklyReportAndNotification | User link, weekly reports |
-| AddLecturerEntity | Lecturers table |
-| StandardizeColumnNaming | `{Entity}Id` PK columns |
-| AddMustChangePasswordToUsers | Users.MustChangePassword |
-| AddPasswordResetTokens | Self-service password reset |
-
-Full list: [`database/MIGRATIONS.md`](../database/MIGRATIONS.md)
-
----
-
-# 5. Design Principles
-
-- Third Normal Form (3NF); một bảng một thực thể nghiệp vụ.
-- Foreign keys bắt buộc cho quan hệ cha–con.
-- Soft delete (`IsDeleted`) trên bảng nghiệp vụ chính.
-- Audit: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`.
+1. **Global Query Filter trong EF Core**:
+   Tất cả các câu lệnh LINQ tự động áp dụng bộ lọc `Where(e => !e.IsDeleted)` trong `AppDbContext.cs`:
+   ```csharp
+   modelBuilder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
+   modelBuilder.Entity<Semester>().HasQueryFilter(s => !s.IsDeleted);
+   modelBuilder.Entity<Internship>().HasQueryFilter(i => !i.IsDeleted);
+   modelBuilder.Entity<WeeklyReport>().HasQueryFilter(w => !w.IsDeleted);
+   modelBuilder.Entity<Evaluation>().HasQueryFilter(e => !e.IsDeleted);
+   ```
+2. **Lợi ích**:
+   - Không làm mất lịch sử thực tập của các khóa trước khi xóa tài khoản sinh viên/học kỳ cũ.
+   - Cho phép khôi phục dữ liệu nhanh chóng khi có thao tác nhầm lẫn từ phía người dùng.
 
 ---
 
-# 6. Primary Key Strategy
+## 4. Phân Vùng Dữ Liệu Theo Học Kỳ (Semester Scoping)
 
-Toàn bộ bảng dùng `UNIQUEIDENTIFIER` (GUID):
-
-```text
-StudentId, CompanyId, InternshipId, UserId, ...
-```
-
-C# entity: `BaseEntity.Id` → map Fluent API → `{Entity}Id`.
-
----
-
-# 7. Relationship Design
-
-| Type | Example |
-|------|---------|
-| 1:1 | Student ↔ Internship |
-| 1:N | Company → Internships, Lecturer → Internships |
-| 1:N | Internship → Submissions, WeeklyReports |
-| 1:0..1 | Internship ↔ Evaluation |
-| 1:N | User → Notifications, PasswordResetTokens |
-
-ERD: [`database/diagrams/erd.md`](../database/diagrams/erd.md)
-
----
-
-# 8. File Storage Strategy
-
-Database chỉ lưu metadata (`FileName`, `FilePath`, `FileUrl`, `MimeType`, `FileSize`).  
-File binary lưu ngoài SQL (filesystem / object storage).
-
----
-
-# 9. Soft Delete & Audit
-
-- `IsDeleted BIT` — không xóa vật lý dữ liệu nghiệp vụ quan trọng.
-- Token reset cũ được đánh dấu `IsDeleted` khi phát hành token mới.
-
----
-
-# 10. Index Strategy
-
-| Area | Index |
-|------|-------|
-| Users | Username (query login) |
-| Lecturers | StaffCode (unique) |
-| Students | StudentCode, UserId (unique filtered) |
-| Internships | StudentId, LecturerId, CompanyId, Status |
-| WeeklyReports | (InternshipId, WeekNumber) |
-| Notifications | (UserId, IsRead) |
-| PasswordResetTokens | TokenHash (unique), (UserId, UsedAt) |
-
----
-
-# 11. Enum Strategy (Domain → DB int)
-
-## Role
-
-SuperAdmin, Lecturer, Student
-
-## InternshipStatus
-
-NotStarted, InProgress, BehindSchedule, AwaitingFeedback, RequiresRevision, Completed, Graded
-
-## SubmissionStatus
-
-Submitted, Reviewed, RevisionRequested, Approved, Rejected
-
-## WeeklyReportStatus
-
-Draft, Submitted, Reviewed, RevisionRequested, Approved
-
----
-
-# 12. Security-Related Columns
-
-| Column | Table | Purpose |
-|--------|-------|---------|
-| PasswordHash | Users | ASP.NET Identity hasher |
-| MustChangePassword | Users | Force change on first login / admin reset |
-| TokenHash | PasswordResetTokens | SHA-256 of reset token (never store plaintext) |
-| ExpiresAt / UsedAt | PasswordResetTokens | Time-bound, one-time use |
-
----
-
-# 13. Naming Convention
-
-- **Tables:** PascalCase plural (`Students`, `Internships`)
-- **PK:** `{Entity}Id`
-- **FK:** `{ReferencedEntity}Id`
-
----
-
-# 14. Future Enhancements
-
-- InternshipBatch, CompanyRating, ActivityLog
-- EmailQueue (bulk import mail)
-- AIRecommendation, StudentSkill
-
----
-
-# 15. Summary
-
-Schema hiện tại phục vụ:
-
-1. Quản lý master data (SV, GV, DN) — SuperAdmin
-2. Phân công SV → GV + workflow thực tập
-3. Nộp bài, phản hồi, chấm điểm
-4. Tài khoản, email invitation, forgot password
-
-Triển khai và verify: `dotnet ef database update` + `database/scripts/verify-schema.sql`.
+- Mọi thực thể tiến độ (`WeeklyReport`, `Submission`, `Evaluation`, `Document`) đều liên kết chặt chẽ với `Internship`.
+- `Internship` bắt buộc gắn với `SemesterId`.
+- Nhờ cấu trúc này, khi bước sang học kỳ mới, hệ thống tự động lọc và hiển thị đúng dữ liệu của học kỳ đang kích hoạt (`IsCurrent = true`) mà không làm xáo trộn dữ liệu của các kỳ trước.

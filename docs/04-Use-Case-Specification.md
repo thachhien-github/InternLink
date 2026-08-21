@@ -1,482 +1,128 @@
-# Use Case Specification
+# InternLink — Đặc Tả Use Cases Chi Tiết (Use Case Specification)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 2.0
-
-**Status:** Active — aligned with Admin module (Phases 0–7)
-
-**Diagrams:**
-- Use Case: [`docs/images/usecase/usecase-diagram.md`](images/usecase/usecase-diagram.md)
-- Sequence: [`docs/images/sequence/`](images/sequence/)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
-
-Tài liệu mô tả chức năng người dùng trên InternLink theo **ba tác nhân**:
-
-| Actor | Vai trò |
-|-------|---------|
-| **SuperAdmin** | Quản trị hệ thống (phòng/khoa): import dữ liệu, cấp TK, email mời, phân công SV→GV |
-| **Lecturer** | Hướng dẫn thực tập: theo dõi SV được giao, gán DN, duyệt/chấm, export |
-| **Student** | Sinh viên thực tập: nộp báo cáo, xem phản hồi |
-
----
-
-# 2. Actors
-
-## SuperAdmin
-
-Quản trị viên hệ thống — **không** thay thế Giảng viên trong nghiệp vụ hàng ngày.
-
-Responsibilities:
-
-- Import / CRUD sinh viên, giảng viên, doanh nghiệp
-- Cấp và quản lý tài khoản (tạo, khóa, reset mật khẩu)
-- Gửi email mời tham gia (invitation)
-- Phân công sinh viên cho giảng viên (bulk assign)
-- Kiểm tra email (test SMTP)
-
----
-
-## Lecturer
-
-Giảng viên hướng dẫn thực tập (chỉ SV được phân công).
-
-Responsibilities:
-
-- Xem danh sách SV / DN (read-only master data)
-- Gán doanh nghiệp cho hồ sơ thực tập
-- Theo dõi tiến độ, duyệt submission / weekly report
-- Gửi feedback, chấm điểm, finalize evaluation
-- Upload tài liệu, export Excel cuối kỳ
-
----
-
-## Student
-
-Sinh viên thực tập.
-
-Responsibilities:
-
-- Đăng nhập / đổi mật khẩu / quên mật khẩu
-- Nộp báo cáo tuần, sản phẩm / báo cáo cuối
-- Xem phản hồi, nộp lại khi được yêu cầu
-- Tải tài liệu, xem thông báo
-
----
-
-# 3. Use Case List
-
-## 3.1 Auth (chung)
-
-| ID | Use Case | Actor | Status |
-|----|----------|--------|--------|
-| UC-01 | Login | SuperAdmin, Lecturer, Student | ✅ |
-| UC-02 | Change Password | SuperAdmin, Lecturer, Student | ✅ |
-| UC-03 | Forgot Password | SuperAdmin, Lecturer, Student | ✅ |
-| UC-04 | Reset Password | SuperAdmin, Lecturer, Student | ✅ |
-| UC-05 | View Current User (Me) | SuperAdmin, Lecturer, Student | ✅ |
-
-## 3.2 SuperAdmin
-
-| ID | Use Case | Actor | Status |
-|----|----------|--------|--------|
-| UC-A01 | Manage Students (CRUD / Import) | SuperAdmin | ✅ |
-| UC-A02 | Create Student Account + Invitation Email | SuperAdmin | ✅ |
-| UC-A03 | Manage Lecturers (CRUD / Import) | SuperAdmin | ✅ |
-| UC-A04 | Create Lecturer Account + Invitation Email | SuperAdmin | ✅ |
-| UC-A05 | Manage Companies (CRUD / Import) | SuperAdmin | ✅ |
-| UC-A06 | Manage Users (CRUD / Deactivate) | SuperAdmin | ✅ |
-| UC-A07 | Admin Reset User Password | SuperAdmin | ✅ |
-| UC-A08 | Bulk Assign Students → Lecturer | SuperAdmin | ✅ |
-| UC-A09 | Unassign Student from Lecturer | SuperAdmin | ✅ |
-| UC-A10 | View Assignments by Lecturer | SuperAdmin | ✅ |
-| UC-A11 | Test Invitation Email | SuperAdmin | ✅ |
-
-## 3.3 Lecturer
-
-| ID | Use Case | Actor | Status |
-|----|----------|--------|--------|
-| UC-L01 | View Assigned Internships | Lecturer | ✅ |
-| UC-L02 | View Students (read-only) | Lecturer | ✅ |
-| UC-L03 | View Companies (read-only) | Lecturer | ✅ |
-| UC-L04 | Assign / Change Company for Internship | Lecturer | ✅ |
-| UC-L05 | Review Submission | Lecturer | ✅ |
-| UC-L06 | Send Feedback | Lecturer | ✅ |
-| UC-L07 | Review Weekly Report | Lecturer | ✅ |
-| UC-L08 | Evaluate / Grade Internship | Lecturer | ✅ |
-| UC-L09 | Finalize Evaluation | Lecturer | ✅ |
-| UC-L10 | Upload / Manage Documents | Lecturer | ✅ |
-| UC-L11 | Export End-of-Term Excel | Lecturer | ✅ |
-| UC-L12 | Manage Lecturer Profile (own / overview) | SuperAdmin, Lecturer | ✅ |
-
-## 3.4 Student
-
-| ID | Use Case | Actor | Status |
-|----|----------|--------|--------|
-| UC-S01 | Submit Weekly Report | Student | ✅ |
-| UC-S02 | Upload Final Report / Product | Student | ✅ |
-| UC-S03 | View Feedback | Student | ✅ |
-| UC-S04 | Resubmit Report | Student | ✅ |
-| UC-S05 | Download Documents | Student | ✅ |
-| UC-S06 | View Notifications | Student | ✅ |
-
-## 3.5 Planned / deferred
-
-| ID | Use Case | Actor | Status |
-|----|----------|--------|--------|
-| UC-P01 | Submit Internship Log | Student | ⬜ Planned |
-| UC-P02 | Manage Rubric (configurable) | Lecturer | ⬜ Deferred |
-| UC-P03 | Advanced Analytics Dashboard | Lecturer | ⬜ Deferred |
-
----
-
-# 4. Use Case Specifications (key flows)
-
-## UC-01 Login
-
-### Actor
-
-SuperAdmin, Lecturer, Student
-
-### Description
-
-Đăng nhập bằng username / password, nhận JWT.
-
-### Preconditions
-
-Tài khoản tồn tại, `IsActive = true`, chưa soft-delete.
-
-### Main Flow
-
-1. Người dùng nhập username và password.
-2. Hệ thống xác thực hash mật khẩu.
-3. Hệ thống trả JWT + `Role` + `MustChangePassword`.
-4. Nếu `MustChangePassword = true`, client chuyển sang đổi mật khẩu.
-
-### Alternative Flow
-
-- Sai credentials → 401.
-- Tài khoản bị khóa (`IsActive = false`) → 401.
-
-### API
-
-`POST /api/Auth/login`
-
----
-
-## UC-03 Forgot Password
-
-### Actor
-
-SuperAdmin, Lecturer, Student
-
-### Description
-
-Yêu cầu link đặt lại mật khẩu qua email (không trả mật khẩu plaintext).
-
-### Main Flow
-
-1. Người dùng gửi email đã đăng ký.
-2. Nếu email tồn tại và active → tạo `PasswordResetToken` (hash, expiry 24h).
-3. Gửi email chứa link `{PortalUrl}/reset-password?token=...`.
-4. API luôn trả 200 (không lộ email có tồn tại hay không).
-
-### API
-
-`POST /api/Auth/forgot-password`
-
-**Sequence:** [`forgot-password.md`](images/sequence/forgot-password.md)
-
----
-
-## UC-04 Reset Password
-
-### Actor
-
-SuperAdmin, Lecturer, Student
-
-### Description
-
-Đặt mật khẩu mới bằng token từ email.
-
-### Main Flow
-
-1. Người dùng mở link, nhập mật khẩu mới.
-2. Hệ thống hash token, tìm bản ghi chưa dùng / chưa hết hạn.
-3. Cập nhật `PasswordHash`, `MustChangePassword = false`, đánh dấu `UsedAt`.
-4. Login bằng mật khẩu mới.
-
-### Alternative Flow
-
-- Token hết hạn / đã dùng / sai → 401.
-
-### API
-
-`POST /api/Auth/reset-password`
-
----
-
-## UC-A01 Manage Students (CRUD / Import)
-
-### Actor
-
-SuperAdmin
-
-### Description
-
-Quản lý master data sinh viên: xem, tạo, sửa, xóa mềm, import Excel.
-
-### Main Flow
-
-1. SuperAdmin mở `/api/Admin/students`.
-2. CRUD hoặc import file Excel (có cột Username nếu cần tạo TK).
-3. Hệ thống lưu profile `Students`.
-
-### Notes
-
-Lecturer chỉ **đọc** qua `/api/Student` (read-only).
-
-### API
-
-`GET|POST|PUT|DELETE /api/Admin/students`, `POST .../import`
-
----
-
-## UC-A02 / UC-A04 Create Account + Invitation Email
-
-### Actor
-
-SuperAdmin
-
-### Description
-
-Tạo tài khoản login gắn profile SV/GV và gửi email mời (username + mật khẩu tạm).
-
-### Main Flow
-
-1. SuperAdmin tạo SV/GV (hoặc User) kèm Username + Email.
-2. Hệ thống tạo `Users` (role tương ứng), `MustChangePassword = true`.
-3. Gửi invitation email (SMTP hoặc log khi `Email:Enabled=false`).
-4. Người nhận đăng nhập → bắt buộc đổi MK.
-
-### API
-
-- Students: `POST /api/Admin/students`
-- Lecturers: `POST /api/LecturerProfile`
-- Users: `POST /api/Admin/users`
-
-**Sequence:** [`invitation-email.md`](images/sequence/invitation-email.md)
-
----
-
-## UC-A07 Admin Reset User Password
-
-### Actor
-
-SuperAdmin
-
-### Description
-
-Đặt lại mật khẩu tạm ngẫu nhiên, gửi email thông báo (không trả MK trong API response).
-
-### Main Flow
-
-1. SuperAdmin gọi reset trên user.
-2. Hệ thống sinh password tạm, hash, `MustChangePassword = true`.
-3. Gửi email “Mật khẩu mới”.
-
-### API
-
-`POST /api/Admin/users/{id}/reset-password`
-
----
-
-## UC-A08 Bulk Assign Students → Lecturer
-
-### Actor
-
-SuperAdmin
-
-### Description
-
-Gán nhiều sinh viên cho một giảng viên.
-
-### Main Flow
-
-1. SuperAdmin chọn `lecturerId` + danh sách `studentIds`.
-2. Với mỗi SV:
-   - Chưa có Internship → tạo stub (`NotStarted`, DN placeholder).
-   - Đã có → cập nhật `LecturerId` (re-assign).
-3. Lecturer xem SV trong workflow.
-
-### Postconditions
-
-Lecturer cũ không còn thấy SV đã re-assign.
-
-### API
-
-`POST /api/Admin/assignments`
-
-**Sequence:** [`bulk-assign.md`](images/sequence/bulk-assign.md)
-
----
-
-## UC-L04 Assign Company for Internship
-
-### Actor
-
-Lecturer
-
-### Description
-
-Gán / đổi doanh nghiệp cho hồ sơ thực tập (SV đã được Admin phân công).
-
-### Main Flow
-
-1. Lecturer chọn internship thuộc mình.
-2. Chọn `CompanyId` từ danh sách DN (read-only list).
-3. Hệ thống cập nhật `Internships.CompanyId`.
-
-### Notes
-
-Lecturer **không** đổi `LecturerId` — chỉ SuperAdmin phân công GV.
-
-### API
-
-`PUT /api/Internship/{id}/company`
-
----
-
-## UC-L05 / UC-L06 Review Submission + Send Feedback
-
-### Actor
-
-Lecturer
-
-### Description
-
-Xem submission của SV được giao, gửi nhận xét, cập nhật trạng thái.
-
-### Main Flow
-
-1. Lecturer mở internship → danh sách submissions.
-2. Đọc nội dung / file.
-3. Gửi feedback (`Comment`, `IsPublic`, optional `NewStatus`).
-4. Student nhận thông báo / xem phản hồi.
-
----
-
-## UC-L08 / UC-L09 Evaluate + Finalize
-
-### Actor
-
-Lecturer
-
-### Description
-
-Chấm 4 tiêu chí (Technical, Communication, Teamwork, Initiative), tính `FinalGrade`, chốt điểm.
-
-### Main Flow
-
-1. Nhập điểm + nhận xét.
-2. Lưu evaluation (draft).
-3. Finalize → khóa chỉnh sửa.
-
----
-
-## UC-L11 Export End-of-Term Excel
-
-### Actor
-
-Lecturer
-
-### Description
-
-Xuất Excel tổng kết SV được phân công cuối kỳ.
-
-### API
-
-`GET /api/Lecturer/export/end-of-term`
-
----
-
-## UC-S01 Submit Weekly Report
-
-### Actor
-
-Student
-
-### Description
-
-Nộp báo cáo tuần gắn internship.
-
-### Preconditions
-
-Đã có Internship (đã được Admin phân công GV).
-
-### Main Flow
-
-1. Chọn tuần (`WeekNumber`).
-2. Nhập tiêu đề / nội dung (hoặc file qua Submission).
-3. Submit → trạng thái Submitted.
-4. Lecturer review.
-
----
-
-## UC-S04 Resubmit Report
-
-### Actor
-
-Student
-
-### Description
-
-Nộp lại sau khi Lecturer yêu cầu chỉnh sửa (`RevisionRequested`).
-
-### Extend
-
-UC-S03 View Feedback
-
----
-
-# 5. Relationships
-
-## Include
-
-- UC-L06 Send Feedback → UC-L05 Review Submission
-- UC-A02 Create Student Account → invitation email send
-- UC-A08 Bulk Assign → create/update Internship
-
-## Extend
-
-- UC-S04 Resubmit → UC-S03 View Feedback
-- UC-01 Login → UC-02 Change Password (khi `MustChangePassword`)
-
-## Authorization boundary
-
-```text
-RequireAdmin     → SuperAdmin only  (/api/Admin/*)
-RequireLecturer  → Lecturer only    (workflow, không gộp SuperAdmin)
-RequireStudent   → Student only
+## 1. Sơ Đồ Tổng Quan Use Case (Use Case Overview)
+
+Hệ thống bao gồm 3 Tác nhân chính (Actors) với các nhóm Use Case tương ứng:
+
+```
+                  ┌────────────────────────────────────────────────────────┐
+                  │                 HỆ THỐNG INTERNLINK                    │
+                  ├────────────────────────────────────────────────────────┤
+                  │ [UC-ADM-01] Quản lý Học kỳ thực tập                    │
+                  │ [UC-ADM-02] Quản lý Người dùng & Phân quyền            │
+   [ SuperAdmin ] ┤ [UC-ADM-03] Import Excel Sinh viên / Giảng viên        │
+                  │ [UC-ADM-04] Phân công GVHD cho Sinh viên               │
+                  │ [UC-ADM-05] Gửi Email Kích hoạt tài khoản hàng loạt    │
+                  │ [UC-ADM-06] Phát Thông báo Toàn hệ thống (Broadcast)   │
+                  ├────────────────────────────────────────────────────────┤
+                  │ [UC-LEC-01] Quản lý & Lọc danh sách SV phụ trách       │
+                  │ [UC-LEC-02] Duyệt & Nhận xét Báo cáo tuần (12 tuần)    │
+   [ Lecturer ] ──┤ [UC-LEC-03] Đánh giá Đồ án / Báo cáo cuối kỳ           │
+                  │ [UC-LEC-04] Chấm điểm Rubric 4 tiêu chí & Chốt điểm    │
+                  │ [UC-LEC-05] Xuất Báo cáo tổng hợp Excel & PDF          │
+                  ├────────────────────────────────────────────────────────┤
+                  │ [UC-STU-01] Cập nhật Thông tin Doanh nghiệp thực tập   │
+                  │ [UC-STU-02] Nộp Báo cáo Nhật ký hàng tuần (Tuần 1-12)  │
+   [ Student ] ───┤ [UC-STU-03] Nộp Báo cáo / Đồ án tốt nghiệp             │
+                  │ [UC-STU-04] Xem Nhận xét, Điểm số & Xếp loại           │
+                  │ [UC-STU-05] Tải Biểu mẫu & Tài liệu hướng dẫn          │
+                  └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-# 6. Summary
+## 2. Đặc Tả Chi Tiết Các Use Cases Trọng Tâm
 
-| Nhóm | Số UC chính (implemented) |
-|------|---------------------------|
-| Auth | 5 |
-| SuperAdmin | 11 |
-| Lecturer | 12 |
-| Student | 6 |
-| **Tổng** | **~34** (MVP + Admin) |
+### 2.1. UC-ADM-03: Import Sinh Viên & Giảng Viên Bằng Excel
 
-Ba quy trình cốt lõi sau Admin module:
+- **Tác nhân chính**: SuperAdmin
+- **Mục đích**: Nhập danh sách hàng trăm sinh viên/giảng viên cùng lúc từ file Excel của Phòng Đào tạo vào CSDL.
+- **Tiền điều kiện**: Admin đã đăng nhập với quyền `SuperAdmin` và có file Excel theo đúng cấu trúc mẫu.
+- **Luồng sự kiện chính (Main Flow)**:
+  1. Admin chọn mục "Quản lý Sinh viên" hoặc "Quản lý Giảng viên".
+  2. Bấm "Tải file mẫu Excel" nếu chưa có template chuẩn.
+  3. Chọn file Excel từ máy tính và bấm "Tải lên & Xử lý".
+  4. Backend (sử dụng ClosedXML) đọc dữ liệu, kiểm tra tính hợp lệ của từng dòng:
+     - Kiểm tra MSSV / Mã GV bắt buộc.
+     - Kiểm tra định dạng Email.
+     - Kiểm tra trùng lặp với CSDL hiện có.
+  5. Hệ thống tạo tài khoản User tương ứng với mật khẩu ngẫu nhiên an toàn.
+  6. Trả về kết quả: Tổng số dòng import thành công, danh sách các dòng bị lỗi (nếu có).
+- **Luồng phụ / Ngoại lệ (Alternative Flow)**:
+  - Nếu file sai định dạng hoặc không có dữ liệu: Hệ thống báo lỗi và giữ nguyên CSDL.
 
-1. **Admin vận hành:** import master data → cấp TK + email → phân công SV→GV.
-2. **Lecturer hướng dẫn:** gán DN → duyệt / feedback → chấm điểm → export.
-3. **Student thực tập:** nộp bài → xem phản hồi → nộp lại; tự phục vụ quên MK.
+---
+
+### 2.2. UC-ADM-05: Gửi Email Thư Mời & Kích Hoạt Tài Khoản Hàng Loạt
+
+- **Tác nhân chính**: SuperAdmin
+- **Mục đích**: Gửi thư mời tham gia hệ thống kèm tài khoản, mật khẩu khởi tạo cho toàn bộ người dùng mới.
+- **Tiền điều kiện**: Đã cấu hình thông tin SMTP Email trong hệ thống.
+- **Luồng sự kiện chính (Main Flow)**:
+  1. Admin bấm nút "Gửi Email Kích hoạt".
+  2. Hệ thống lọc danh sách người dùng mới được tạo chưa kích hoạt.
+  3. Với mỗi người dùng:
+     - Tạo nội dung email cá nhân hóa (xưng hô theo vai trò: Thầy/Cô hoặc Bạn sinh viên).
+     - Đính kèm URL hệ thống, Tên đăng nhập và Mật khẩu tạm thời.
+     - Gửi email qua SMTP Service.
+  4. Hệ thống cập nhật trạng thái đã gửi thư mời và hiển thị thông báo thành công cho Admin.
+
+---
+
+### 2.3. UC-LEC-02: Duyệt & Nhận Xét Báo Cáo Tuần (Weekly Reports)
+
+- **Tác nhân chính**: Lecturer (GVHD)
+- **Mục đích**: Kiểm tra tiến độ thực tập hàng tuần của sinh viên và đưa ra phản hồi kịp thời.
+- **Tiền điều kiện**: GVHD đã đăng nhập và được phân công sinh viên trong học kỳ hiện tại.
+- **Luồng sự kiện chính (Main Flow)**:
+  1. GVHD chọn sinh viên từ danh sách hướng dẫn.
+  2. Xem danh sách 12 tuần: tuần nào đã nộp, tuần nào đang chờ duyệt, tuần nào quá hạn.
+  3. Chọn tuần cần duyệt: xem nội dung công việc, kế hoạch và tải file minh chứng.
+  4. Nhập nhận xét góp ý và chọn hành động:
+     - **Duyệt (`Approved`)**: Đánh dấu hoàn thành tuần, nhập điểm tuần nếu cần.
+     - **Yêu cầu sửa (`Rejected`)**: Yêu cầu sinh viên bổ sung tài liệu.
+  5. Hệ thống lưu kết quả và gửi thông báo Real-time cho sinh viên qua SignalR.
+
+---
+
+### 2.4. UC-LEC-04: Chấm Điểm Rubric 4 Tiêu Chí & Chốt Điểm
+
+- **Tác nhân chính**: Lecturer (GVHD)
+- **Mục đích**: Đánh giá kết quả toàn diện của sinh viên theo chuẩn đầu ra của Khoa.
+- **Tiền điều kiện**: Sinh viên đã hoàn thành đợt thực tập và nộp báo cáo cuối kỳ.
+- **Luồng sự kiện chính (Main Flow)**:
+  1. GVHD mở giao diện "Đánh giá & Chấm điểm".
+  2. Nhập điểm theo thang điểm 10 cho 4 tiêu chí:
+     - Kiến thức chuyên môn (40%).
+     - Thái độ & Kỷ luật (20%).
+     - Kỹ năng mềm & Giao tiếp (20%).
+     - Báo cáo cuối kỳ (20%).
+  3. Hệ thống tự động tính điểm trung bình tổng kết và tự động quy đổi xếp loại:
+     - `≥ 9.0`: Xuất sắc
+     - `8.0 - 8.9`: Giỏi
+     - `6.5 - 7.9`: Khá
+     - `5.0 - 6.4`: Trung bình
+     - `< 5.0`: Không đạt
+  4. GVHD nhập nhận xét tổng kết và nhấn "Lưu & Chốt điểm" (`Finalize`).
+  5. Hệ thống khóa bản ghi điểm, cập nhật trạng thái thực tập sang `Completed`.
+
+---
+
+### 2.5. UC-LEC-05: Xuất Báo Cáo Tổng Hợp Excel & PDF Server-Side
+
+- **Tác nhân chính**: Lecturer (GVHD)
+- **Mục đích**: Xuất bảng điểm chính thức và phiếu đánh giá phục vụ lưu trữ học vụ và nộp về Khoa.
+- **Tiền điều kiện**: Đã có dữ liệu đánh giá sinh viên.
+- **Luồng sự kiện chính (Main Flow)**:
+  1. GVHD vào màn hình "Export cuối kỳ".
+  2. Tùy chọn định dạng xuất:
+     - **Xuất Bảng Điểm (.xlsx)**: Gọi `GET /api/Lecturer/export/end-of-term` tải về bảng tổng hợp điểm 15 cột.
+     - **Xuất Báo Cáo PDF Server-Side**: Gọi `GET /api/Lecturer/export/end-of-term/pdf` tải về bảng tổng hợp A4 có Quốc hiệu và khung chữ ký.
+     - **Xuất Phiếu Đánh Giá Cá Nhân PDF**: Gọi `GET /api/Lecturer/export/evaluation/{internshipId}/pdf` tải phiếu Rubric cá nhân của từng sinh viên.
+  3. Tệp tin được tải trực tiếp về máy tính người dùng.

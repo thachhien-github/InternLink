@@ -1,4 +1,4 @@
-﻿{
+{
     "variable": [
         { "key": "baseUrl", "value": "http://localhost:7109" },
         { "key": "token", "value": "" }

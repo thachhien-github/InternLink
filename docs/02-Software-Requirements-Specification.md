@@ -1,271 +1,101 @@
-# Software Requirements Specification (SRS)
+# InternLink — Đặc Tả Yêu Cầu Phần Mềm (Software Requirements Specification - SRS)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 2.0
-
-**Status:** Active — aligned with MVP + SuperAdmin module
-
-**Related:** [`01-Vision-Scope.md`](01-Vision-Scope.md) · [`04-Use-Case-Specification.md`](04-Use-Case-Specification.md) · [`Backend-Plan.md`](Backend-Plan.md)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Introduction
+## 1. Giới thiệu (Introduction)
 
-## 1.1 Purpose
-
-Mô tả yêu cầu chức năng và phi chức năng của InternLink — cơ sở phân tích, thiết kế, phát triển và kiểm thử.
-
-## 1.2 Scope
-
-InternLink là nền tảng web hỗ trợ **SuperAdmin**, **Lecturer** và **Student** trong quản lý thực tập.
-
-MVP gồm:
-
-1. Admin: import master data, cấp TK, email mời, phân công SV→GV
-2. Tiến độ thực tập + báo cáo tuần
-3. Nộp bài / phản hồi / nộp lại
-4. Doanh nghiệp (master + gán vào internship)
-5. Đánh giá cuối kỳ + export Excel
-6. Auth (JWT, đổi MK, quên/reset MK)
-
-## 1.3 Intended Users
-
-| Role | Mô tả |
-|------|--------|
-| SuperAdmin | Quản trị hệ thống (khoa/phòng) |
-| Lecturer | Giảng viên hướng dẫn |
-| Student | Sinh viên thực tập |
-
-## 1.4 Definitions
-
-| Term | Meaning |
-|------|---------|
-| Internship | Hồ sơ thực tập 1 SV trong đợt (1:1 với Student) |
-| Invitation email | Email chứa portal link + username + MK tạm |
-| MustChangePassword | Cờ bắt đổi MK sau invitation / admin reset |
+Tài liệu này đặc tả chi tiết toàn bộ các yêu cầu chức năng (Functional Requirements) và phi chức năng (Non-Functional Requirements) của hệ thống InternLink, phục vụ công tác phát triển, kiểm thử, đánh giá nghiệm thu và báo cáo đồ án tốt nghiệp.
 
 ---
 
-# 2. Functional Requirements
+## 2. Các Tác nhân Trong Hệ Thống (Actors)
 
-## FR-01 Authentication & Account Security
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-01.1 | Đăng nhập username/password, nhận JWT | UC-01 |
-| FR-01.2 | Phân quyền theo Role: SuperAdmin, Lecturer, Student | UC-01 |
-| FR-01.3 | Đổi mật khẩu khi đã đăng nhập | UC-02 |
-| FR-01.4 | Quên mật khẩu: gửi link reset qua email (không lộ email tồn tại) | UC-03 |
-| FR-01.5 | Đặt lại mật khẩu bằng token one-time, có expiry | UC-04 |
-| FR-01.6 | Login trả cờ `MustChangePassword` | UC-01 |
-| FR-01.7 | Xem thông tin user hiện tại (`/me`) | UC-05 |
-
-Policies: `RequireAdmin`, `RequireLecturer`, `RequireStudent` (Lecturer **không** gồm SuperAdmin).
+1. **SuperAdmin (Quản trị viên Khoa / Ban Đào tạo)**: Người có quyền cao nhất, quản trị toàn bộ học kỳ, danh mục người dùng, phân công giảng viên - sinh viên và cài đặt hệ thống.
+2. **Lecturer (Giảng viên hướng dẫn - GVHD)**: Người trực tiếp quản lý, hướng dẫn, duyệt báo cáo tuần, chấm điểm và đánh giá kết quả thực tập của nhóm sinh viên được phân công.
+3. **Student (Sinh viên thực tập)**: Người tham gia đợt thực tập, đăng ký thông tin doanh nghiệp, nộp nhật ký 12 tuần, nộp báo cáo tốt nghiệp và theo dõi phản hồi.
+4. **System (Hệ thống ngầm)**: Các service nền xử lý gửi Email tự động (SMTP), phát tín hiệu thông báo thời gian thực (SignalR), tính toán điểm số và tạo file PDF nhị phân.
 
 ---
 
-## FR-02 Admin — Student Master Data
+## 3. Yêu Cầu Chức Năng (Functional Requirements - FR)
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-02.1 | SuperAdmin CRUD sinh viên | UC-A01 |
-| FR-02.2 | Import Excel (MSSV, thông tin, optional Username) | UC-A01 |
-| FR-02.3 | Tạo User role Student + gửi invitation email khi có Username/Email | UC-A02 |
-| FR-02.4 | Lecturer chỉ **đọc** danh sách/hồ sơ SV (không write master data) | UC-L02 |
+### 3.1. Phân hệ Quản trị & Xác thực Chung (Authentication & Profile)
 
----
-
-## FR-03 Admin — Lecturer & Company Master Data
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-03.1 | SuperAdmin CRUD / import Giảng viên (LecturerProfile) | UC-A03 |
-| FR-03.2 | Tạo User Lecturer + invitation email | UC-A04 |
-| FR-03.3 | SuperAdmin CRUD / import Doanh nghiệp | UC-A05 |
-| FR-03.4 | Lecturer đọc danh sách DN; **không** CRUD master DN | UC-L03 |
+| Mã YC | Tên Chức Năng | Mô Tả Chi Tiết |
+| :--- | :--- | :--- |
+| **FR-AUTH-01** | Đăng nhập hệ thống | Xác thực tài khoản qua Username/Password, trả về JWT Access Token (hạn 60 phút) và Refresh Token. |
+| **FR-AUTH-02** | Phân quyền vai trò (RBAC) | Phân quyền truy cập tài nguyên nghiêm ngặt: `SuperAdmin`, `Lecturer`, `Student`. |
+| **FR-AUTH-03** | Đổi mật khẩu lần đầu | Bắt buộc đổi mật khẩu khi đăng nhập lần đầu với tài khoản mới được Admin cấp (`MustChangePassword = true`). |
+| **FR-AUTH-04** | Quên mật khẩu & Reset Token | Tạo token khôi phục mật khẩu có thời hạn (15 phút), gửi liên kết xác nhận qua Email. |
+| **FR-AUTH-05** | Thông tin cá nhân (Profile) | Xem và cập nhật số điện thoại, email liên hệ, ảnh đại diện và thông tin học vấn/chuyên môn. |
 
 ---
 
-## FR-04 Admin — User Management
+### 3.2. Phân hệ Quản trị Khoa (SuperAdmin Module)
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-04.1 | SuperAdmin list/filter users (role, active, search) | UC-A06 |
-| FR-04.2 | Tạo user Student/Lecturer, link StudentCode/StaffCode | UC-A06 |
-| FR-04.3 | Cập nhật FullName, Email, IsActive | UC-A06 |
-| FR-04.4 | Soft delete / deactivate user | UC-A06 |
-| FR-04.5 | Admin reset password → MK tạm ngẫu nhiên + email; **không** trả MK trong API | UC-A07 |
-| FR-04.6 | Không cho sửa/xóa/reset SuperAdmin qua Admin Users API | UC-A06 |
-
----
-
-## FR-05 Admin — Assignment (SV → GV)
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-05.1 | Bulk assign nhiều SV cho một GV | UC-A08 |
-| FR-05.2 | SV chưa có Internship → tạo stub NotStarted + DN placeholder | UC-A08 |
-| FR-05.3 | SV đã có Internship → cập nhật `LecturerId` (re-assign) | UC-A08 |
-| FR-05.4 | Unassign (clear LecturerId); list by lecturer | UC-A09, UC-A10 |
-| FR-05.5 | Chỉ SuperAdmin đổi `LecturerId`; Lecturer chỉ gán `CompanyId` | UC-L04 |
+| Mã YC | Tên Chức Năng | Mô Tả Chi Tiết |
+| :--- | :--- | :--- |
+| **FR-ADM-01** | Quản lý Học kỳ (Semesters) | Thêm, sửa, đóng học kỳ, thiết lập 1 học kỳ làm hiện tại (`IsCurrent`), xem thống kê sinh viên từng kỳ. |
+| **FR-ADM-02** | Quản lý Tài khoản (User Management) | Danh sách người dùng, kích hoạt/khóa tài khoản, đặt lại mật khẩu về mặc định, cấp quyền Admin. |
+| **FR-ADM-03** | Import Sinh viên & GV từ Excel | Tải file Excel mẫu, import danh sách hàng loạt, tự động sinh mã định danh và tài khoản đăng nhập. |
+| **FR-ADM-04** | Phân công Hướng dẫn (Assignments) | Phân công 1 hoặc nhiều sinh viên cho GVHD theo học kỳ, tự động khởi tạo bản ghi `Internship`. |
+| **FR-ADM-05** | Gửi Email Kích hoạt Hàng loạt | Gửi thư mời chứa tài khoản và mật khẩu khởi tạo cho toàn bộ SV/GV mới được import qua Gmail SMTP. |
+| **FR-ADM-06** | Quản lý Doanh nghiệp (Companies) | Quản lý danh mục đối tác thực tập, lĩnh vực hoạt động, người liên hệ và sức chứa tiếp nhận SV. |
+| **FR-ADM-07** | Phát Thông báo Toàn hệ thống | Tạo và phát thông báo Broadcast tức thời đến toàn bộ người dùng qua SignalR Core Hub. |
+| **FR-ADM-08** | Cấu hình Hệ thống (Settings) | Cấu hình thông tin trường, khoa, email SMTP, thời lượng thực tập tiêu chuẩn (12 tuần). |
 
 ---
 
-## FR-06 Internship Progress
+### 3.3. Phân hệ Giảng viên Hướng dẫn (Lecturer Portal)
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-06.1 | Lecturer xem internships được phân công | UC-L01 |
-| FR-06.2 | Cập nhật / theo dõi status: NotStarted, InProgress, BehindSchedule, AwaitingFeedback, RequiresRevision, Completed, Graded | — |
-| FR-06.3 | Student nộp Weekly Report theo tuần | UC-S01 |
-| FR-06.4 | Lecturer review weekly report | UC-L07 |
-
-**Note:** InternshipLog (nhật ký ngày) = Planned — chưa bắt buộc MVP.
-
----
-
-## FR-07 Submission & Feedback
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-07.1 | Student nộp báo cáo / sản phẩm (file + metadata) | UC-S02 |
-| FR-07.2 | Lưu version history | UC-S02 |
-| FR-07.3 | Lecturer review submission | UC-L05 |
-| FR-07.4 | Lecturer gửi feedback (public/private, optional status) | UC-L06 |
-| FR-07.5 | Student xem feedback và resubmit khi RevisionRequested | UC-S03, UC-S04 |
+| Mã YC | Tên Chức Năng | Mô Tả Chi Tiết |
+| :--- | :--- | :--- |
+| **FR-LEC-01** | Dashboard Tổng quan GVHD | Thống kê số lượng SV phụ trách, tỷ lệ hoàn thành báo cáo, số báo cáo tuần chờ duyệt. |
+| **FR-LEC-02** | Danh sách Sinh viên Hướng dẫn | Lọc theo lớp, ngành, trạng thái thực tập, tìm kiếm theo MSSV hoặc họ tên. |
+| **FR-LEC-03** | Duyệt Nhật ký Thực tập Tuần | Xem báo cáo 12 tuần của sinh viên, xem file minh chứng, phê duyệt (`Approved`) hoặc yêu cầu sửa (`Rejected`). |
+| **FR-LEC-04** | Đánh giá & Phản hồi Bài nộp | Xem đồ án cuối kỳ của sinh viên, viết nhận xét phản hồi (Feedback) và cập nhật trạng thái bài nộp. |
+| **FR-LEC-05** | Chấm điểm Rubric Chuẩn 4 Tiêu chí | Chấm điểm theo trọng số: Kỹ thuật (40%), Thái độ (20%), Kỹ năng mềm (20%), Báo cáo cuối kỳ (20%). |
+| **FR-LEC-06** | Chốt Điểm Cuối kỳ (Finalize) | Khóa điểm chính thức để ngăn chặn chỉnh sửa sau khi đã nộp điểm về Khoa. |
+| **FR-LEC-07** | Xuất Bảng điểm Tổng hợp Excel | Xuất file `.xlsx` chứa đầy đủ 15 trường thông tin phục vụ nhập điểm vào hệ thống Đào tạo trường. |
+| **FR-LEC-08** | Xuất Báo cáo PDF Server-Side | Xuất PDF Bảng tổng hợp đợt thực tập và Phiếu đánh giá cá nhân chuẩn mẫu Bộ GD&ĐT. |
 
 ---
 
-## FR-08 Company Assignment (runtime)
+### 3.4. Phân hệ Sinh viên Thực tập (Student Portal)
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-08.1 | Lecturer gán/đổi Company cho internship thuộc mình | UC-L04 |
-| FR-08.2 | Master data DN do SuperAdmin quản lý (FR-03) | UC-A05 |
-
----
-
-## FR-09 Document Library
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-09.1 | Upload tài liệu gắn internship (metadata + storage path) | UC-L10 |
-| FR-09.2 | Student tải tài liệu được phép | UC-S05 |
-| FR-09.3 | Phân loại Category | UC-L10 |
+| Mã YC | Tên Chức Năng | Mô Tả Chi Tiết |
+| :--- | :--- | :--- |
+| **FR-STU-01** | Cổng Thông tin Thực tập Cá nhân | Xem thông tin học kỳ, GVHD phụ trách, hạn nộp các mốc thời gian quan trọng. |
+| **FR-STU-02** | Đăng ký & Cập nhật Doanh nghiệp | Cập nhật thông tin công ty thực tập, địa chỉ, vị trí thực tập, tên và số điện thoại Mentor. |
+| **FR-STU-03** | Nộp Nhật ký Tuần (Weekly Reports) | Nộp báo cáo công việc hàng tuần (Tuần 1 đến 12), đính kèm tệp minh chứng (.pdf, .docx, .png...). |
+| **FR-STU-04** | Nộp Báo cáo Tốt nghiệp / Đồ án | Nộp bài báo cáo cuối kỳ, hỗ trợ cập nhật phiên bản mới khi GVHD yêu cầu chỉnh sửa. |
+| **FR-STU-05** | Xem Nhận xét & Kết quả Đánh giá | Xem phản hồi của GVHD, xem bảng điểm Rubric chi tiết và xếp loại học lực khi GVHD chốt điểm. |
+| **FR-STU-06** | Kho Tài liệu & Biểu mẫu Chuẩn | Tải các mẫu đơn đăng ký, phiếu nhận xét doanh nghiệp, mẫu bìa báo cáo do Khoa ban hành. |
 
 ---
 
-## FR-10 Evaluation & Export
+## 4. Yêu Cầu Phi Chức Năng (Non-Functional Requirements - NFR)
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-10.1 | Lecturer chấm 4 tiêu chí + FinalGrade + nhận xét | UC-L08 |
-| FR-10.2 | Finalize evaluation (khóa chỉnh sửa) | UC-L09 |
-| FR-10.3 | Export Excel cuối kỳ cho SV được phân công | UC-L11 |
-| FR-10.4 | Chỉ Lecturer được chấm / finalize | BR-05 |
+### 4.1. Hiệu năng & Khả năng Đáp ứng (Performance)
+- **NFR-PERF-01**: Thời gian phản hồi API trung bình dưới **300ms** cho các tác vụ truy vấn thông thường.
+- **NFR-PERF-02**: Tác vụ xuất file Excel và sinh mã nhị phân PDF hoàn thành trong dưới **1.5 giây** cho danh sách 100 sinh viên.
+- **NFR-PERF-03**: Hệ thống hỗ trợ xử lý mượt mà tối thiểu **200 người dùng đồng thời (Concurrent Users)**.
 
----
+### 4.2. Bảo mật & Toàn vẹn Dữ liệu (Security)
+- **NFR-SEC-01**: Mật khẩu người dùng được băm an toàn bằng giải thuật **PBKDF2** kèm muối ngẫu nhiên (Salt).
+- **NFR-SEC-02**: Xác thực API qua **JWT Token** với chữ ký HMAC-SHA256 bí mật, tự động thu hồi khi Token hết hạn.
+- **NFR-SEC-03**: Phân quyền truy cập tài liệu: Sinh viên chỉ được xem và tải file của chính mình; GVHD chỉ xem file của sinh viên mình phụ trách.
+- **NFR-SEC-04**: Cơ chế **Soft Delete** (`IsDeleted`) bảo vệ dữ liệu lịch sử, không bao giờ xóa vật lý khỏi CSDL.
 
-## FR-11 Notification
+### 4.3. Độ tin cậy & Tính sẵn sàng (Reliability & Availability)
+- **NFR-REL-01**: Độ sẵn sàng hệ thống đạt **99.5%**.
+- **NFR-REL-02**: Tự động ghi log chi tiết các lỗi hệ thống (Logging Middleware) để phục vụ giám sát và khắc phục sự cố.
+- **NFR-REL-03**: Dữ liệu tài liệu sinh viên được mount vào **Docker Persistent Named Volume**, đảm bảo không mất mát dữ liệu khi container khởi động lại.
 
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-11.1 | Thông báo in-app theo user | UC-S06 |
-| FR-11.2 | Đánh dấu đã đọc | UC-S06 |
-
----
-
-## FR-12 Email (platform)
-
-| ID | Requirement | UC |
-|----|-------------|-----|
-| FR-12.1 | Gửi invitation (portal + username + temp password) | UC-A02, A04 |
-| FR-12.2 | Gửi admin password-reset notification | UC-A07 |
-| FR-12.3 | Gửi forgot-password link (không kèm password) | UC-03 |
-| FR-12.4 | Dev mode: `Email:Enabled=false` → log nội dung (không crash) | UC-A11 |
-| FR-12.5 | SuperAdmin test email endpoint | UC-A11 |
-
----
-
-# 3. Non-Functional Requirements
-
-| ID | Requirement |
-|----|-------------|
-| NFR-01 | Response thông thường &lt; 3s (dev/local) |
-| NFR-02 | JWT auth; password hashed (ASP.NET Identity hasher); reset token hashed (SHA-256) |
-| NFR-03 | Role policies tách bạch Admin / Lecturer / Student |
-| NFR-04 | Soft delete trên entity nghiệp vụ chính |
-| NFR-05 | Layered architecture (API / Application / Domain / Infrastructure) |
-| NFR-06 | SQL Server + EF Core code-first migrations |
-| NFR-07 | Secrets SMTP không commit; dùng config / user secrets |
-| NFR-08 | API trả `ApiResponse&lt;T&gt;`; OpenAPI qua Swagger |
-| NFR-09 | Unit tests cho services/templates chính (≥70 tests) |
-
----
-
-# 4. Business Rules
-
-| ID | Rule |
-|----|------|
-| BR-01 | Một SV một Internship (1:1) trong đợt |
-| BR-02 | Một DN tiếp nhận nhiều SV |
-| BR-03 | Một submission có nhiều feedback; có versioning |
-| BR-04 | Chỉ Lecturer chấm / finalize evaluation |
-| BR-05 | Student chỉ thao tác dữ liệu của mình |
-| BR-06 | Chỉ SuperAdmin set/clear `Internship.LecturerId` |
-| BR-07 | Lecturer chỉ gán `CompanyId` trên internship mình phụ trách |
-| BR-08 | User inactive / deleted không đăng nhập được |
-| BR-09 | Password reset token: one-time + expiry |
-| BR-10 | Không expose mật khẩu tạm trong JSON API response |
-
----
-
-# 5. Assumptions
-
-- SuperAdmin cấp tài khoản (hoặc import) cho SV/GV.
-- SMTP có thể tắt ở Development (logging stub).
-- Hệ thống không thay thế phần mềm quản lý đào tạo nhà trường.
-- Frontend React tiêu thụ REST + JWT.
-
----
-
-# 6. Constraints
-
-- Web Application
-- Backend: ASP.NET Core Web API
-- Frontend: React (planned / in progress)
-- Database: Microsoft SQL Server
-- Auth: JWT Bearer
-- Email: MailKit SMTP (optional)
-
----
-
-# 7. Out of Scope / Future
-
-- InternshipLog API
-- Configurable Rubric management UI
-- Advanced analytics
-- AI features
-- Zalo / LMS / Hangfire bulk mail
-- Mobile app
-
----
-
-# 8. Traceability (summary)
-
-| Area | Primary docs |
-|------|----------------|
-| UC list | `04-Use-Case-Specification.md` |
-| Domain / DB | `05a`–`05d`, `database/` |
-| API | `api/swagger.json`, `08-API-Specification.md` (D4) |
-| Admin delivery | `Admin-Implementation-Plan.md` |
-
----
-
-# 9. Revision History
-
-| Ver | Date | Notes |
-|-----|------|-------|
-| 1.0 | 2026-07 | Draft — Lecturer + Student only |
-| 2.0 | 2026-08-12 | Active — SuperAdmin FR, email, assignment, auth reset |
+### 4.4. Tính Tương thích & Giao diện (Usability & Compatibility)
+- **NFR-UI-01**: Giao diện chuẩn **Responsive Design**, tương thích hoàn hảo trên Máy tính để bàn, Laptop và Máy tính bảng.
+- **NFR-UI-02**: Hỗ trợ 100% tiếng Việt có dấu với bảng mã UTF-8 chuẩn.

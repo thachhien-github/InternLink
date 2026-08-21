@@ -1,180 +1,63 @@
-# Information Architecture
+# InternLink — Kiến Trúc Thông Tin & Điều Hướng (Information Architecture - IA)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 2.0
-
-**Status:** Active — aligned with MVP + SuperAdmin module
-
-**Diagrams:** [`images/information-architecture/`](images/information-architecture/)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Sơ Đồ Cấu Trúc Menu & Điều Hướng (Site Map)
 
-IA mô tả tổ chức thông tin, điều hướng và luồng di chuyển theo **ba portal**:
+Toàn bộ ứng dụng được tổ chức theo 3 Portal độc lập và các tuyến đường công khai:
 
-- SuperAdmin
-- Lecturer
-- Student
-
-Mục tiêu: tìm nhanh, ít thao tác, phân quyền rõ (Admin ≠ Lecturer).
-
----
-
-# 2. User Roles & Portal Visibility
-
-| Role | Portal | Ghi chú |
-|------|--------|---------|
-| SuperAdmin | `/admin/*` | Master data, users, assignments |
-| Lecturer | `/lecturer/*` | Workflow SV được giao |
-| Student | `/student/*` | Nộp bài, feedback |
-
-Sau login, route theo `Role` (+ redirect đổi MK nếu `MustChangePassword`).
-
----
-
-# 3. Site Map
-
-## Public
-
-```text
-/login
-/forgot-password
-/reset-password?token=...
+```
+INTERNLINK SYSTEM
+│
+├── [ KHU VỰC CÔNG KHAI / XÁC THỰC ]
+│   ├── /login                     (Đăng nhập tài khoản)
+│   ├── /forgot-password           (Yêu cầu cấp lại mật khẩu)
+│   └── /reset-password            (Đặt lại mật khẩu mới)
+│
+├── [ CỔNG QUẢN TRỊ KHOA - /admin ]
+│   ├── /admin/dashboard           (Tổng quan KPI, tiến độ học kỳ)
+│   ├── /admin/semesters           (Quản lý học kỳ, kích hoạt học kỳ hiện tại)
+│   ├── /admin/users               (Quản lý tài khoản người dùng, đổi mật khẩu)
+│   ├── /admin/students            (Quản lý sinh viên, Import Excel danh sách)
+│   ├── /admin/lecturers           (Quản lý GVHD, Import Excel danh sách)
+│   ├── /admin/companies           (Danh mục doanh nghiệp thực tập đối tác)
+│   ├── /admin/assignments         (Phân công hướng dẫn GVHD - Sinh viên)
+│   ├── /admin/email               (Gửi email thư mời kích hoạt tài khoản)
+│   ├── /admin/notifications       (Phát thông báo Broadcast toàn hệ thống)
+│   └── /admin/settings            (Cấu hình hệ thống, thông tin Khoa)
+│
+├── [ CỔNG GIẢNG VIÊN HƯỚNG DẪN - /lecturer ]
+│   ├── /lecturer/dashboard        (KPI sinh viên phụ trách, việc cần xử lý)
+│   ├── /lecturer/students         (Danh sách sinh viên hướng dẫn, lọc theo lớp)
+│   ├── /lecturer/reports          (Duyệt nhật ký 12 tuần & đồ án cuối kỳ)
+│   ├── /lecturer/evaluations      (Chấm điểm Rubric 4 tiêu chí & chốt điểm)
+│   ├── /lecturer/templates        (Quản lý & đăng tải biểu mẫu hướng dẫn)
+│   ├── /lecturer/companies        (Xem danh bạ doanh nghiệp & mentor)
+│   └── /lecturer/export           (Xuất bảng điểm Excel & Báo cáo PDF Server-side)
+│
+└── [ CỔNG SINH VIÊN THỰC TẬP - /student ]
+    ├── /student/dashboard         (Tiến độ thực tập, mốc thời gian, thông báo)
+    ├── /student/internship        (Thông tin GVHD, khai báo doanh nghiệp & mentor)
+    ├── /student/weekly-reports    (Nộp nhật ký thực tập hàng tuần 1-12)
+    ├── /student/submissions       (Nộp báo cáo cuối kỳ, đồ án tốt nghiệp)
+    ├── /student/evaluation        (Xem kết quả đánh giá, bảng điểm Rubric)
+    └── /student/templates         (Tải biểu mẫu, phiếu tiếp nhận, bìa báo cáo)
 ```
 
 ---
 
-## SuperAdmin
+## 2. Nguyên Tắc Điều Hướng & Bảo Vệ Tuyến Đường (Route Guards)
 
-```text
-/admin
-├── Dashboard (ops overview)
-├── Students          ← CRUD + import + tạo TK
-├── Lecturers         ← CRUD + import + tạo TK
-├── Companies         ← CRUD + import
-├── Users             ← list / create / deactivate / reset password
-├── Assignments       ← bulk assign SV→GV, list by lecturer
-├── Email test        ← (dev/ops)
-└── Account
-```
-
----
-
-## Lecturer
-
-```text
-/lecturer
-├── Dashboard
-├── Internships       ← SV được phân công
-│   ├── Detail
-│   ├── Assign company
-│   ├── Weekly reports (review)
-│   ├── Submissions (review + feedback)
-│   └── Evaluation
-├── Students          ← read-only browse (master)
-├── Companies         ← read-only browse (master)
-├── Documents
-├── Export end-of-term
-├── Notifications
-└── Account
-```
-
-**Không còn:** Lecturer CRUD Students/Companies như quyền chính (đã chuyển Admin).
-
----
-
-## Student
-
-```text
-/student
-├── Dashboard
-├── Internship
-│   ├── Progress / status
-│   ├── Weekly reports
-│   ├── Submissions
-│   └── Feedback
-├── Documents
-├── Notifications
-└── Account (change password)
-```
-
-Canonical tree: [`images/information-architecture/sitemap.md`](images/information-architecture/sitemap.md)
-
----
-
-# 4. Navigation Principles
-
-1. **Role-based shell** — mỗi portal một layout/nav riêng.
-2. **Primary nav ≤ 7 mục** — tránh overload.
-3. **Admin = data & access**; Lecturer = coaching workflow.
-4. Deep links từ Notification → đúng entity (submission, report…).
-5. Empty states rõ (vd. chưa được assign).
-
----
-
-# 5. Screen Permission Matrix (MVP UI)
-
-| Screen / Area | SuperAdmin | Lecturer | Student |
-|---------------|:----------:|:--------:|:-------:|
-| Admin Students/Companies/Users | ✅ | — | — |
-| Admin Assignments | ✅ | — | — |
-| Lecturer Internships workflow | — | ✅ | — |
-| Assign company | — | ✅ | — |
-| Review / Feedback / Grade | — | ✅ | — |
-| Export Excel | — | ✅ | — |
-| Student master (read) | ✅ | ✅ | — |
-| Company master (read) | ✅ | ✅ | — |
-| Submit weekly / product | — | — | ✅ |
-| View own feedback | — | — | ✅ |
-| Forgot / reset password | ✅ | ✅ | ✅ |
-
----
-
-# 6. Key User Flows (IA level)
-
-| Flow | Entry | Docs |
-|------|-------|------|
-| Admin import + invite | Admin → Students | [`application-flow/admin-import-invite.md`](images/application-flow/admin-import-invite.md) |
-| Admin bulk assign | Admin → Assignments | [`application-flow/admin-bulk-assign.md`](images/application-flow/admin-bulk-assign.md) |
-| Forgot password | Public | [`application-flow/forgot-password.md`](images/application-flow/forgot-password.md) |
-| Lecturer review | Lecturer → Internships | existing `lecturer-review-*.md` |
-| Student submit | Student → Weekly/Submission | existing `student-*.md` |
-
-Sequence (API-level): [`images/sequence/`](images/sequence/)
-
----
-
-# 7. Content Priority
-
-### SuperAdmin first viewport after login
-
-1. Assignments / Students cần xử lý  
-2. Shortcut Import  
-3. Users gần đây  
-
-### Lecturer
-
-1. Internships cần review / chậm tiến độ  
-2. Deadlines  
-
-### Student
-
-1. Trạng thái thực tập  
-2. Báo cáo tuần tới hạn  
-3. Feedback chưa đọc  
-
----
-
-# 8. Out of IA Scope (MVP UI)
-
-- Advanced Analytics / Rubric builder screens
-- Internship Log daily UI (entity Planned)
-- Multi-faculty switcher
-
----
-
-# 9. Summary
-
-IA v2 tách **ba portal** rõ ràng; Lecturer không còn là “super lecturer” quản trị master data. Frontend có thể wireframe theo sitemap trên + permission matrix.
+1. **Role-Based Redirection**:
+   - Khi đăng nhập thành công, hệ thống tự động nhận diện `Role` của người dùng để điều hướng:
+     - `SuperAdmin` $\rightarrow$ `/admin/dashboard`
+     - `Lecturer` $\rightarrow$ `/lecturer/dashboard`
+     - `Student` $\rightarrow$ `/student/dashboard`
+2. **First-Login Password Change Guard**:
+   - Nếu tài khoản có cờ `MustChangePassword = true`, hệ thống sẽ chặn tất cả các route khác và hiển thị Modal bắt buộc đổi mật khẩu mới.
+3. **Route Guards**:
+   - Bất kỳ truy cập trái quyền (VD: Sinh viên cố tình vào `/admin/*`) đều bị chuyển hướng về trang `/unauthorized` hoặc trang chủ của vai trò đó.

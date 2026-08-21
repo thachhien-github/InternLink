@@ -1,184 +1,62 @@
-# Domain Model
+# InternLink — Mô Hình Miền Nghiệp Vụ (Domain Model)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 1.3
-
-**Status:** Active — aligned with implementation (Admin module complete)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Danh Sách 14 Thực Thể Nghiệp Vụ Cốt Lõi (Domain Entities)
 
-Domain Model mô tả các đối tượng nghiệp vụ (Business Entities) của hệ thống và mối quan hệ giữa chúng.
+Hệ thống được thiết kế theo mô hình Clean Architecture (DDD-lite) với **14 thực thể miền**:
 
-Khác với ERD, Domain Model tập trung vào nghiệp vụ thay vì thiết kế cơ sở dữ liệu.
-
-**Quy ước triển khai:** C# entity dùng `Id`; cột DB map `{Entity}Id`. Chi tiết: `docs/05c-Data-Dictionary.md`.
-
----
-
-# 2. Core Domains
-
-## User
-
-Đại diện cho tài khoản đăng nhập hệ thống.
-
-Thuộc tính bổ sung: `MustChangePassword` (bắt đổi MK lần đầu sau invitation / admin reset).
-
-Vai trò:
-
-- **SuperAdmin** — quản trị hệ thống (phòng/khoa); không thay thế Giảng viên trong nghiệp vụ hàng ngày
-- **Lecturer** — hướng dẫn thực tập cho sinh viên được phân công
-- **Student** — sinh viên thực tập
-
-Quan hệ: 1 User có thể link 0..1 Lecturer hoặc 0..1 Student (qua `UserId`). SuperAdmin thường **không** link profile Lecturer/Student.
-
-### SuperAdmin — trách nhiệm nghiệp vụ
-
-- Import danh sách sinh viên, giảng viên, doanh nghiệp
-- Cấp và quản lý tài khoản (SV, GV): tạo, khóa/mở, reset mật khẩu
-- Gửi email mời tham gia hệ thống (link + username + password)
-- Phân công sinh viên cho giảng viên hướng dẫn
-- Quản lý profile giảng viên (`LecturerProfile`)
-
-**Không thuộc SuperAdmin:** duyệt báo cáo, gửi feedback, chấm điểm, export cuối kỳ — thuộc Lecturer.
-
-### Authorization policies (triển khai)
-
-| Policy | Role | Dùng cho |
-|--------|------|----------|
-| `RequireAdmin` | SuperAdmin | Module Admin mới (`/api/Admin/*`) |
-| `RequireSuperAdmin` | SuperAdmin | Alias — endpoint hiện có (vd. `LecturerProfile` write) |
-| `RequireLecturer` | Lecturer | Workflow GV — **không** gộp SuperAdmin |
-| `RequireStudent` | Student | Nộp báo cáo, xem phản hồi |
-
-Chi tiết triển khai: `docs/Admin-Implementation-Plan.md`.
+| STT | Thực Thể (Entity) | Ý Nghĩa Nghiệp Vụ & Vai Trò |
+| :---: | :--- | :--- |
+| **01** | `User` | Tài khoản xác thực trung tâm (Username, PasswordHash, Role, Email, MustChangePassword, IsActive). |
+| **02** | `RefreshToken` | Quản lý token làm mới phiên đăng nhập JWT của người dùng. |
+| **03** | `PasswordResetToken` | Mã xác thực đặt lại mật khẩu khi người dùng quên mật khẩu. |
+| **04** | `Semester` | Học kỳ thực tập (Code, Name, StartDate, EndDate, IsCurrent). Là ngữ cảnh phân chia dữ liệu toàn hệ thống. |
+| **05** | `Student` | Hồ sơ sinh viên (StudentCode - MSSV, FullName, Class, Major, Phone, GPA, UserId). |
+| **06** | `Lecturer` | Hồ sơ giảng viên hướng dẫn (StaffCode, FullName, Department, Title, AcademicRank, Phone, UserId). |
+| **07** | `Company` | Doanh nghiệp tiếp nhận thực tập (CompanyName, Address, Industry, ContactPerson, ContactEmail, ContactPhone). |
+| **08** | `Internship` | Bản ghi đợt thực tập liên kết giữa `Student`, `Lecturer`, `Company` và `Semester` (Status, Position, StartDate, EndDate). |
+| **09** | `WeeklyReport` | Nhật ký báo cáo tiến độ tuần (WeekNumber 1-12, Content, PlanNextWeek, Obstacles, Attachments, Status, ReviewNotes). |
+| **10** | `Submission` | Bài nộp đồ án / báo cáo cuối kỳ (Title, Type, Version, FileUrl, FileSize, Status, SubmittedAt). |
+| **11** | `Feedback` | Nhận xét, góp ý của GVHD dành cho bài nộp `Submission` của sinh viên. |
+| **12** | `Evaluation` | Bảng điểm đánh giá Rubric (TechnicalScore, AttitudeScore, SoftSkillsScore, FinalReportScore, TotalScore, FinalGrade, Comments, IsFinalized). |
+| **13** | `Document` | Tài liệu biểu mẫu của Khoa hoặc tài liệu đính kèm do sinh viên/GVHD tải lên (Title, Category, FilePath, MimeType, FileSize). |
+| **14** | `Notification` | Thông báo hệ thống và tin nhắn Broadcast thời gian thực (Title, Message, Type, IsRead, UserId). |
 
 ---
 
-## Lecturer
-
-Profile giảng viên (tách khỏi User).
-
-Thuộc tính nghiệp vụ: `StaffCode`, `FullName`, `Email`, `Department`.
-
-Responsibilities:
-
-- Theo dõi sinh viên **được phân công** (qua `Internship.LecturerId`)
-- Nhận xét, duyệt báo cáo, chấm điểm
-- Gán doanh nghiệp cho hồ sơ thực tập (trong phạm vi SV được giao)
-- Export báo cáo tổng kết cuối kỳ (Excel)
-
----
-
-## Student
-
-Đại diện cho sinh viên thực tập.
-
-Thuộc tính: `StudentCode` (MSSV), `FullName`, `Class`, `Major`.
-
-Responsibilities:
-
-- Cập nhật tiến độ, nộp báo cáo tuần / sản phẩm
-- Xem phản hồi và trạng thái thực tập
-
----
-
-## Company
-
-Đại diện cho doanh nghiệp tiếp nhận thực tập.
-
-Thuộc tính: `CompanyName`, `ContactPerson`, `Industry`, `Capacity`.
-
----
-
-## Internship
-
-Hồ sơ thực tập của một sinh viên (1 SV : 1 Internship).
-
-Thuộc tính: `Position`, `StartDate`, `EndDate`, `Status`, `LecturerId`, `CompanyId`.
-
-Quan hệ:
-
-- Student 1:1 Internship
-- Company 1:N Internship
-- Lecturer 1:N Internship
-
----
-
-# 3. Progress Domains
-
-## WeeklyReport
-
-Báo cáo tiến độ theo tuần (`WeekNumber`, `Content`, `Status`).
-
----
-
-## InternshipLog
-
-Nhật ký công việc — **planned**, chưa triển khai.
-
----
-
-## Submission
-
-Lần nộp báo cáo hoặc sản phẩm; hỗ trợ versioning và resubmit.
-
----
-
-## Feedback
-
-Nhận xét của giảng viên trên Submission. Liên kết `Lecturer` (không qua User).
-
----
-
-## Evaluation
-
-Đánh giá cuối kỳ: 4 tiêu chí (Technical, Communication, Teamwork, Initiative) + `FinalGrade`, `IsFinalized`.
-
----
-
-# 4. Supporting Domains
-
-## Document
-
-Tài liệu / biểu mẫu gắn Internship; upload file thật (metadata + path).
-
----
-
-## Notification
-
-Thông báo hệ thống (`Title`, `Content`, `IsRead`).
-
----
-
-## PasswordResetToken
-
-Token một lần cho luồng quên mật khẩu (hash, expiry, UsedAt).  
-Liên kết `User`; không lưu plaintext token trong DB.
-
----
-
-# 5. Domain Relationships
+## 2. Mối Quan Hệ Giữa Các Thực Thể (Entity Relationships)
 
 ```
-User ──0..1── Lecturer ──1:N── Internship
-User ──0..1── Student  ──1:1── Internship
-Company ──1:N── Internship
-Internship ──1:N── WeeklyReport | Submission | Document
-Internship ──0..1── Evaluation
-Submission ──1:N── Feedback
-User ──1:N── Notification
-User ──1:N── PasswordResetToken
+[ Semester ] ─── (1:N) ───► [ Internship ]
+                                │
+   ┌────────────────────────────┼────────────────────────────┐
+   │ (N:1)                      │ (N:1)                      │ (N:1)
+[ Student ]                  [ Lecturer ]                 [ Company ]
+   │                            │
+   │ (1:1)                      │ (1:1)
+[ User ]                     [ User ]
+   ▲
+   │ (1:N)
+[ Notification ]
+
+[ Internship ] ─── (1:N) ───► [ WeeklyReport ]
+[ Internship ] ─── (1:N) ───► [ Submission ] ─── (1:N) ───► [ Feedback ]
+[ Internship ] ─── (1:1) ───► [ Evaluation ]
+[ Internship ] ─── (1:N) ───► [ Document ]
 ```
 
 ---
 
-# 6. Summary
+## 3. Các Quy Tắc Nghiệp Vụ Bất Biến (Domain Invariants)
 
-InternLink gồm **13 miền nghiệp vụ** (12 đã triển khai + InternshipLog planned):
-
-User · Lecturer · Student · Company · Internship · WeeklyReport · Submission · Feedback · Evaluation · Document · Notification · PasswordResetToken · *(InternshipLog)*
-
-Database ops: [`database/README.md`](../database/README.md)
+1. **Một sinh viên chỉ có 1 đợt thực tập hoạt động trong 1 học kỳ**: Cặp `(StudentId, SemesterId)` là duy nhất.
+2. **Khóa điểm bất biến**: Khi `Evaluation.IsFinalized = true`, điểm số không thể bị thay đổi trừ khi SuperAdmin mở khóa.
+3. **Tuần báo cáo hợp lệ**: `WeeklyReport.WeekNumber` nhận giá trị từ `1` đến `12`.
+4. **Trọng số tính điểm tổng kết**:
+   $$\text{TotalScore} = (\text{Technical} \times 0.4) + (\text{Attitude} \times 0.2) + (\text{SoftSkills} \times 0.2) + (\text{FinalReport} \times 0.2)$$
+5. **Soft Delete chuẩn hóa**: Tất cả các thực thể đều kế thừa `BaseEntity` với cờ `IsDeleted`, `CreatedAt`, `UpdatedAt` để bảo đảm truy vết lịch sử.

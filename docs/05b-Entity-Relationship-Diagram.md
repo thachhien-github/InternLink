@@ -1,126 +1,204 @@
-# Entity Relationship Diagram (ERD)
+# InternLink — Sơ Đồ Thực Thể Quan Hệ (Entity Relationship Diagram - ERD)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 1.2
-
-**Status:** Active — aligned with EF Core / SQL Server (12 tables)
-
-**Diagram (Mermaid):** [`database/diagrams/erd.md`](../database/diagrams/erd.md)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Sơ Đồ ERD Chi Tiết (Mermaid Diagram)
 
-ERD mô tả cấu trúc dữ liệu của hệ thống InternLink.
+```mermaid
+erDiagram
+    Users ||--o| Students : "has profile"
+    Users ||--o| Lecturers : "has profile"
+    Users ||--o{ RefreshTokens : "owns"
+    Users ||--o{ PasswordResetTokens : "requests"
+    Users ||--o{ Notifications : "receives"
 
-**Quy ước triển khai:**
+    Semesters ||--o{ Internships : "contains"
+    Students ||--o{ Internships : "participates in"
+    Lecturers ||--o{ Internships : "supervises"
+    Companies ||--o{ Internships : "hosts"
 
-- Bảng SQL: PascalCase **số nhiều** (`Students`, `Companies`, …)
-- PK cột DB: `{Entity}Id`
-- C# entity: property `Id` (map qua Fluent API)
+    Internships ||--o{ WeeklyReports : "has 12 weeks"
+    Internships ||--o{ Submissions : "has final reports"
+    Internships ||--o| Evaluations : "evaluated by rubric"
+    Internships ||--o{ Documents : "contains attachments"
 
----
+    Submissions ||--o{ Feedbacks : "reviewed by"
 
-# 2. Entities (implemented)
+    Users {
+        uuid Id PK
+        string Username UK
+        string PasswordHash
+        string Email
+        string FullName
+        int Role
+        bool MustChangePassword
+        bool IsActive
+        datetime LastLoginAt
+        bool IsDeleted
+        datetime CreatedAt
+    }
 
-## User
+    Semesters {
+        uuid Id PK
+        string Code UK
+        string Name
+        datetime StartDate
+        datetime EndDate
+        bool IsCurrent
+        bool IsDeleted
+    }
 
-- UserId, Username, PasswordHash, FullName, Email, Role
-- IsActive, **MustChangePassword**, LastLoginAt
+    Students {
+        uuid Id PK
+        uuid UserId FK
+        string StudentCode UK
+        string FullName
+        string Class
+        string Major
+        string Phone
+        string Email
+        decimal GPA
+        bool IsDeleted
+    }
 
-## PasswordResetToken
+    Lecturers {
+        uuid Id PK
+        uuid UserId FK
+        string StaffCode UK
+        string FullName
+        string Department
+        string AcademicRank
+        string Title
+        string Phone
+        string Email
+        bool IsDeleted
+    }
 
-- PasswordResetTokenId, UserId, TokenHash, ExpiresAt, UsedAt
+    Companies {
+        uuid Id PK
+        string CompanyName
+        string TaxCode
+        string Address
+        string Industry
+        string ContactPerson
+        string ContactEmail
+        string ContactPhone
+        int Capacity
+        bool IsActive
+        bool IsDeleted
+    }
 
-## Lecturer
+    Internships {
+        uuid Id PK
+        uuid SemesterId FK
+        uuid StudentId FK
+        uuid LecturerId FK
+        uuid CompanyId FK
+        string Position
+        string TopicTitle
+        datetime StartDate
+        datetime EndDate
+        int Status
+        bool IsDeleted
+    }
 
-- LecturerId, UserId, StaffCode, FullName, Email, Department
+    WeeklyReports {
+        uuid Id PK
+        uuid InternshipId FK
+        int WeekNumber
+        string Content
+        string PlanNextWeek
+        string Obstacles
+        string Attachments
+        int Status
+        string ReviewNotes
+        decimal Score
+        datetime SubmittedAt
+        bool IsDeleted
+    }
 
-## Student
+    Submissions {
+        uuid Id PK
+        uuid InternshipId FK
+        string Title
+        string Description
+        int Type
+        int Version
+        string FileUrl
+        string MimeType
+        long FileSize
+        int Status
+        datetime SubmittedAt
+        bool IsDeleted
+    }
 
-- StudentId, UserId, StudentCode, FullName, Class, Major
+    Feedbacks {
+        uuid Id PK
+        uuid SubmissionId FK
+        uuid LecturerId FK
+        string Content
+        int Rating
+        datetime CreatedAt
+    }
 
-## Company
+    Evaluations {
+        uuid Id PK
+        uuid InternshipId FK
+        uuid LecturerId FK
+        decimal TechnicalScore
+        decimal AttitudeScore
+        decimal SoftSkillsScore
+        decimal FinalReportScore
+        decimal TotalScore
+        string FinalGrade
+        string LecturerComments
+        string EnterpriseComments
+        bool IsFinalized
+        datetime FinalizedAt
+        bool IsDeleted
+    }
 
-- CompanyId, CompanyName, Industry, Capacity, IsActive
+    Documents {
+        uuid Id PK
+        uuid InternshipId FK
+        uuid UploadedById FK
+        string Title
+        string Category
+        string FileName
+        string FilePath
+        string MimeType
+        long FileSize
+        bool IsRequired
+        datetime UploadedAt
+        bool IsDeleted
+    }
 
-## Internship
-
-- InternshipId, StudentId, LecturerId, CompanyId, Status, StartDate, EndDate
-
-## WeeklyReport
-
-- WeeklyReportId, InternshipId, WeekNumber, Content, Status
-
-## Submission
-
-- SubmissionId, InternshipId, Type, Status, Version, FileUrl
-
-## Feedback
-
-- FeedbackId, SubmissionId, LecturerId, Comment
-
-## Evaluation
-
-- EvaluationId, InternshipId, EvaluatedById
-- TechnicalScore, CommunicationScore, TeamworkScore, InitiativeScore
-- FinalGrade, IsFinalized
-
-## Document
-
-- DocumentId, InternshipId, Title, Category, FilePath, MimeType
-
-## Notification
-
-- NotificationId, UserId, Title, Content, IsRead
-
----
-
-# 3. Planned
-
-## InternshipLog
-
-- InternshipLogId, InternshipId, WorkDate, Description
-
----
-
-# 4. Relationships
-
+    Notifications {
+        uuid Id PK
+        uuid UserId FK
+        string Title
+        string Message
+        int Type
+        bool IsRead
+        datetime CreatedAt
+    }
 ```
-User (1) ──0..1── Lecturer
-User (1) ──0..1── Student
-User (1) ──*──── PasswordResetToken
-User (1) ──*──── Notification
-
-Lecturer (1) ──*── Internship
-Student (1) ──1── Internship
-Company (1) ──*── Internship
-
-Internship (1) ──*── WeeklyReport
-Internship (1) ──*── Submission
-Internship (1) ──*── Document
-Internship (1) ──0..1── Evaluation
-
-Submission (1) ──*── Feedback
-Lecturer (1) ──*── Feedback
-```
 
 ---
 
-# 5. Business Rules
+## 2. Ràng Buộc Khóa Ngoại & Tính Toàn Vẹn Tham Chiếu (Foreign Key Constraints)
 
-- Một sinh viên một hồ sơ thực tập (1:1) trong đợt.
-- Admin phân công `Internship.LecturerId`; Lecturer gán `CompanyId`.
-- Một submission có thể có nhiều feedback.
-- Một internship tối đa một evaluation đã finalize.
-
----
-
-# 6. Related Documents
-
-| Doc | Content |
-|-----|---------|
-| `docs/05c-Data-Dictionary.md` | Column-level detail |
-| `docs/05d-Database-Design.md` | Design decisions |
-| `database/README.md` | Ops guide, seed, migrate |
+1. **`Internships`**:
+   - `FK_Internships_Semesters`: `SemesterId` $\rightarrow$ `Semesters(Id)` (Restricted Delete).
+   - `FK_Internships_Students`: `StudentId` $\rightarrow$ `Students(Id)` (Restricted Delete).
+   - `FK_Internships_Lecturers`: `LecturerId` $\rightarrow$ `Lecturers(Id)` (Null on Delete).
+   - `FK_Internships_Companies`: `CompanyId` $\rightarrow$ `Companies(Id)` (Null on Delete).
+2. **`WeeklyReports`**:
+   - `FK_WeeklyReports_Internships`: `InternshipId` $\rightarrow$ `Internships(Id)` (Cascade Delete / Soft Delete).
+   - Index duy nhất: `(InternshipId, WeekNumber)` để bảo đảm mỗi sinh viên chỉ có 1 báo cáo cho mỗi tuần.
+3. **`Evaluations`**:
+   - `FK_Evaluations_Internships`: `InternshipId` $\rightarrow$ `Internships(Id)` (Unique 1:1).

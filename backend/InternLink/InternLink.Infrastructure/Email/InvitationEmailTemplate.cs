@@ -18,8 +18,8 @@ public static class InvitationEmailTemplate
         var isLecturer = request.Role == InvitationRole.Lecturer;
         var roleLabel = isLecturer ? "Giảng viên hướng dẫn" : "Sinh viên thực tập";
         var greeting = isLecturer
-            ? $"Kính gửi Anh/Chị {request.FullName},"
-            : $"Xin chào bạn {request.FullName},";
+            ? $"Kính gửi Giảng viên {request.FullName},"
+            : $"Kính gửi Sinh viên {request.FullName},";
 
         var subject = isLecturer
             ? "[InternLink] Thư mời tham gia hệ thống hướng dẫn thực tập"

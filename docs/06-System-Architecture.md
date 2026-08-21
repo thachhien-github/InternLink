@@ -1,256 +1,100 @@
-# System Architecture
+# InternLink — Kiến Trúc Hệ Thống (System Architecture)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 2.0
-
-**Status:** Active — aligned with MVP + SuperAdmin + Email
-
-**Diagrams:** [`images/architecture/`](images/architecture/)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Sơ Đồ Kiến Trúc Tổng Thể (High-Level Architecture)
 
-InternLink dùng kiến trúc **Client–Server** + backend **4-layer**.
+Hệ thống được thiết kế theo mô hình **Client - Server Phân Tầng Hiện Đại (SPA + RESTful API)** kết hợp giao tiếp thời gian thực:
 
-Thành phần chính:
-
-- Frontend (React)
-- Backend (ASP.NET Core Web API)
-- Database (SQL Server)
-- Email (SMTP hoặc Logging stub)
-
----
-
-# 2. High-Level Architecture
-
-```mermaid
-flowchart LR
-  SA[SuperAdmin]
-  L[Lecturer]
-  S[Student]
-
-  SA --> FE
-  L --> FE
-  S --> FE
-
-  subgraph Client
-    FE[React + TypeScript + Vite]
-  end
-
-  subgraph API["ASP.NET Core Web API"]
-    CTRL[Controllers<br/>Auth / Admin / Lecturer / Student…]
-    APP[Application<br/>DTOs · Services · Validators]
-    DOM[Domain<br/>Entities · Enums]
-    INF[Infrastructure<br/>EF Core · Email · JWT]
-  end
-
-  subgraph Data
-    DB[(SQL Server)]
-    FS[File storage]
-  end
-
-  subgraph Mail
-    SMTP[SmtpEmailService]
-    LOG[LoggingEmailService]
-  end
-
-  FE -->|HTTPS JSON + JWT| CTRL
-  CTRL --> APP
-  APP --> DOM
-  APP --> INF
-  INF --> DB
-  INF --> FS
-  INF -->|Email:Enabled| SMTP
-  INF -->|Email:Enabled=false| LOG
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND PRESENTATION LAYER                     │
+│               React 18 + TypeScript + Vite + Tailwind CSS               │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ SuperAdmin Portal ]   │   [ Lecturer Portal ]   │ [ Student Portal ]│
+│  - Quản lý Học kỳ & User │   - Duyệt Báo cáo 12 Tuần│ - Nhật ký tuần   │
+│  - Import/Export Excel   │   - Chấm điểm Rubric    │ - Nộp đồ án       │
+│  - Phân công & Gửi Mail  │   - Xuất PDF / Excel    │ - Tra cứu điểm    │
+└───────────────────▲──────────────────────────────────────▲─────────────┘
+                    │ HTTPS / RESTful API (JSON)           │ WSS / SignalR
+┌───────────────────▼──────────────────────────────────────▼─────────────┐
+│                         BACKEND APPLICATION LAYER                       │
+│                         ASP.NET Core 10 Web API                         │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Controllers / API Layer ]                                           │
+│  - Auth, Semesters, Users, Lecturers, Students, Assignments            │
+│  - WeeklyReports, Submissions, Evaluations, Documents, Exports         │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Application Core / Business Logic ]                                 │
+│  - Services, DTOs, AutoMapper, FluentValidation, Exceptions            │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Infrastructure Layer ]                                              │
+│  - EF Core 10 DbContext & Repositories                                 │
+│  - Server-side PDF Binary Generator Engine                             │
+│  - ClosedXML Excel Processing Engine                                   │
+│  - MailKit SMTP Client (Gmail Email Dispatcher)                        │
+│  - SignalR Hubs (`/hubs/notifications`)                                │
+│  - Local Server File Storage Provider (`uploads/documents`)            │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼───────────────────────────────────┐
+│                          DATA PERSISTENCE LAYER                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Microsoft SQL Server 2022 ]      │  [ Docker Persistent Storage ]  │
+│  - 14 Bảng dữ liệu quan hệ          │  - Volume: `internlink_uploads`  │
+│  - Soft Delete & Indexing           │  - Báo cáo, Minh chứng, Đồ án    │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-Canonical Mermaid: [`images/architecture/overall-architecture.md`](images/architecture/overall-architecture.md)
-
 ---
 
-# 3. Technology Stack
+## 2. Kiến Trúc Backend: Clean Architecture 5 Phân Tầng
 
-| Layer | Technology |
-|--------|------------|
-| Frontend | React, TypeScript, Vite, Tailwind |
-| Backend | ASP.NET Core Web API (.NET 10) |
-| ORM | Entity Framework Core |
-| Database | SQL Server / LocalDB |
-| Auth | JWT Bearer |
-| Email | MailKit (SMTP) / LoggingEmailService |
-| Docs API | Swagger / OpenAPI |
-| Tests | xUnit + Moq + FluentAssertions |
+Mã nguồn Backend được tổ chức nghiêm ngặt theo mô hình Clean Architecture trong `backend/InternLink/`:
 
----
-
-# 4. Frontend Architecture
-
-Page-based (planned / in progress):
-
-```text
-src/
-├── pages/          # Admin | Lecturer | Student portals
-├── layouts/
-├── services/       # Axios + JWT
-├── routes/         # role guards
-└── …
+```
+InternLink.slnx
+├── InternLink.Domain/         # Thực thể cốt lõi (Entities), Enums, BaseEntity
+├── InternLink.Application/    # DTOs, Service Interfaces, Mappings
+├── InternLink.Infrastructure/ # Persistence (DbContext), EF Configurations, Email, PDF, Excel, Storage
+├── InternLink.API/            # Controllers, Middlewares, Extensions, Hubs, Startup config
+├── InternLink.Shared/         # Standard API Response wrapper (ApiResponse<T>), Error codes
+└── InternLink.Tests/          # Unit Tests & Integration Tests
 ```
 
-Client lưu JWT; gửi `Authorization: Bearer`. Nếu `MustChangePassword` → redirect đổi MK.
+---
+
+## 3. Kiến Trúc Bảo Mật & Xác Thực (Security & Authentication)
+
+1. **JWT Authentication & Token Lifecycle**:
+   - Khi đăng nhập thành công, Server phát hành cặp Token:
+     - `AccessToken`: Thời hạn 60 phút, chứa Claims (`sub`, `name`, `role`, `userId`).
+     - `RefreshToken`: Thời hạn 7 ngày, lưu trong CSDL để cấp lại AccessToken mà không cần đăng nhập lại.
+2. **Role-Based Access Control (RBAC)**:
+   - Các API Endpoint được bảo vệ bằng Policy:
+     - `[Authorize(Policy = "RequireAdmin")]`
+     - `[Authorize(Policy = "RequireLecturerOrAdmin")]`
+     - `[Authorize(Policy = "RequireStudent")]`
+3. **Mã Hóa Mật Khẩu**:
+   - Sử dụng giải thuật băm mật khẩu chuẩn công nghiệp **PBKDF2** với 100.000 vòng lặp và khóa muối 128-bit.
 
 ---
 
-# 5. Backend Architecture (4 layers)
+## 4. Kiến Trúc Giao Tiếp Thời Gian Thực (SignalR Real-time Hubs)
 
-```text
-InternLink.API            Controllers, middleware, Swagger
-        │
-InternLink.Application    DTOs, interfaces, validators, mappings
-        │
-InternLink.Domain         Entities, enums (no framework deps)
-        │
-InternLink.Infrastructure EF Core, Email, JWT, Seed, Services impl
-```
-
-### API surface (groups)
-
-| Group | Route prefix | Policy |
-|-------|--------------|--------|
-| Auth | `/api/Auth` | Anonymous / Authorize |
-| Admin | `/api/Admin/*` | `RequireAdmin` (SuperAdmin) |
-| Lecturer workflow | `/api/Lecturer`, … | `RequireLecturer` |
-| Student / shared | `/api/WeeklyReport`, … | Role-specific |
-| Master read | `/api/Student`, `/api/Company` | Lecturer (read-only) |
-
-Chi tiết: [`Backend-Plan.md`](Backend-Plan.md)
+- **Endpoint Hub**: `/hubs/notifications`
+- **Cơ chế**: Khi Giảng viên phê duyệt báo cáo tuần hoặc Admin phát thông báo Broadcast, Backend sẽ bắn sự kiện `ReceiveNotification` trực tiếp đến WebSocket client của sinh viên mục tiêu mà không cần người dùng phải tải lại trang.
 
 ---
 
-# 6. Database Architecture
+## 5. Kiến Trúc Lưu Trữ & Sinh Báo Cáo (Storage & Reporting)
 
-- 12 bảng nghiệp vụ (+ `__EFMigrationsHistory`)
-- Soft delete + audit trên `BaseEntity`
-- Migrations code-first
-
-Xem: [`database/README.md`](../database/README.md) · [`05d-Database-Design.md`](05d-Database-Design.md)
-
----
-
-# 7. Authentication & Authorization
-
-1. `POST /api/Auth/login` → JWT + `Role` + `MustChangePassword`
-2. Client gắn Bearer token
-3. Policies:
-
-| Policy | Role |
-|--------|------|
-| `RequireAdmin` / `RequireSuperAdmin` | SuperAdmin |
-| `RequireLecturer` | Lecturer only |
-| `RequireStudent` | Student only |
-
-Password: ASP.NET Identity hasher.  
-Reset token: SHA-256 hash trong `PasswordResetTokens`.
-
----
-
-# 8. Email Architecture
-
-| Setting | Behavior |
-|---------|----------|
-| `Email:Enabled=true` | `SmtpEmailService` (MailKit) |
-| `Email:Enabled=false` | `LoggingEmailService` → Serilog (dev) |
-
-Templates:
-
-- Invitation (username + temp password)
-- Admin password reset notification
-- Forgot-password **link only**
-
-Config: `PortalUrl`, `PasswordResetPath`, `InstitutionName`, SMTP credentials (secrets).
-
----
-
-# 9. Request Flow
-
-```text
-React → Controller → Application Service → Infrastructure (EF / Email)
-                         ↓
-                    Domain entities
-                         ↓
-                    SQL Server / SMTP
-```
-
-Sequence chi tiết: [`images/architecture/request-lifecycle.md`](images/architecture/request-lifecycle.md)
-
----
-
-# 10. Security
-
-- JWT + role policies
-- Password hashing; reset token hashing + expiry + one-time
-- Không trả mật khẩu tạm trong JSON
-- Soft delete; SuperAdmin protected trên Admin Users API
-- Input validation (FluentValidation)
-- HTTPS (production)
-
----
-
-# 11. File Storage
-
-DB chỉ metadata (`FileName`, `FilePath`/`FileUrl`, `MimeType`, `FileSize`).  
-Binary trên filesystem (hoặc object storage sau này).
-
----
-
-# 12. Deployment
-
-### Development
-
-```text
-React (Vite)  →  http://localhost:5173
-API           →  http://localhost:7109  (+ Swagger)
-SQL Server    →  LocalDB InternLink
-Email         →  LoggingEmailService
-```
-
-### Production (target)
-
-```text
-Browser → Static React → ASP.NET Core → SQL Server
-                              ↓
-                         SMTP (Email:Enabled=true)
-```
-
-Secrets qua environment / user secrets — không commit.
-
-Deployment notes: [`images/architecture/deployment-architecture.md`](images/architecture/deployment-architecture.md)
-
----
-
-# 13. Future Architecture
-
-| Item | Status |
-|------|--------|
-| Email Service | ✅ Implemented |
-| Notification (in-app) | ✅ Implemented |
-| Hangfire / mail queue | Planned |
-| AI services | Future |
-| Docker / cloud storage | Future |
-
----
-
-# 14. Architecture Principles
-
-- Separation of Concerns / SRP
-- Layered + RESTful
-- Policy-based authorization (Admin ≠ Lecturer)
-- Config-driven email
-- Migrations as schema source of truth
-
----
-
-# 15. Summary
-
-Kiến trúc MVP hỗ trợ đủ 3 portal (Admin / Lecturer / Student), JWT, email invitation & reset, và EF Core SQL Server — sẵn sàng gắn frontend.
+1. **Local Server Storage Engine**:
+   - Lưu trữ trực tiếp trên file system của container tại `/app/uploads`.
+   - Mount với Docker Named Volume `internlink_uploads_data` đảm bảo dữ liệu không bị mất khi container restart.
+2. **Server-side Binary PDF Engine**:
+   - Tự động sinh file PDF nhị phân (PDF 1.4 specification) trực tiếp trên memory stream, không phụ thuộc vào thư viện ngoài, tối ưu 100% khi chạy trong container Linux.

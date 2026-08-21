@@ -1,200 +1,93 @@
-# Business Workflow
+# InternLink — Quy Trình Nghiệp Vụ Thực Tập (Business Workflow)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 2.0
-
-**Status:** Active — aligned with MVP + SuperAdmin module
-
-**Diagrams:** [`images/workflow/`](images/workflow/) · Sequences: [`images/sequence/`](images/sequence/)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Tổng Quan Quy Trình 5 Giai Đoạn (End-to-End Workflow)
 
-Mô tả quy trình hướng dẫn thực tập **AS-IS** (thủ công) và **TO-BE** (với InternLink), gồm vai trò **SuperAdmin**, **Lecturer**, **Student**.
+Toàn bộ quá trình thực tập tốt nghiệp được số hóa thành **5 giai đoạn tuần tự**:
 
----
-
-# 2. AS-IS Workflow (Current Process)
-
-Công cụ: Excel, Zalo, Google Drive, Email, Word.
-
-## Bước 1. Chuẩn bị
-
-- Khoa/GV nhận danh sách SV (Excel).
-- Cấp tài khoản / gửi mật khẩu thủ công (nếu có portal khác).
-- Phân công GV hướng dẫn bằng Excel/email.
-- Gửi biểu mẫu qua Zalo / Drive.
-
-## Bước 2. Doanh nghiệp
-
-- SV đăng ký DN; GV ghi nhận Excel.
-- Thông tin DN không tập trung.
-
-## Bước 3. Thực hiện
-
-- SV gửi nhật ký / báo cáo / sản phẩm qua Zalo, Drive, Email.
-- GV phản hồi Word/Zalo; nhiều phiên bản khó kiểm soát.
-
-## Bước 4. Kết thúc
-
-- Nộp hồ sơ cuối kỳ rải rác.
-- GV chấm và tổng hợp Excel thủ công → nhập điểm hệ thống trường.
-
----
-
-# 3. Existing Problems
-
-| ID | Problem |
-|----|---------|
-| P1 | Thông tin phân tán |
-| P2 | Khó theo dõi tiến độ từng SV |
-| P3 | Khó xác định phiên bản báo cáo mới nhất |
-| P4 | Khó quản lý / kế thừa DN |
-| P5 | Tốn thời gian tổng hợp cuối kỳ |
-| P6 | Cấp TK + phân công GV thủ công, dễ sai |
-
----
-
-# 4. TO-BE Workflow (With InternLink)
-
-## Swimlane tổng quan
-
-```mermaid
-flowchart TD
-  subgraph Admin["SuperAdmin"]
-    A1[Import SV / GV / DN]
-    A2[Tạo TK + Invitation email]
-    A3[Bulk assign SV → GV]
-  end
-
-  subgraph Lect["Lecturer"]
-    L1[Xem SV được phân công]
-    L2[Gán doanh nghiệp]
-    L3[Duyệt báo cáo / Feedback]
-    L4[Chấm điểm + Export Excel]
-  end
-
-  subgraph Stud["Student"]
-    S1[Login / đổi MK nếu bắt buộc]
-    S2[Nộp weekly report / sản phẩm]
-    S3[Xem feedback / nộp lại]
-  end
-
-  A1 --> A2 --> A3
-  A3 --> L1 --> L2
-  S1 --> S2
-  L2 --> S2
-  S2 --> L3
-  L3 -->|RevisionRequested| S3
-  S3 --> L3
-  L3 -->|OK| L4
+```
+┌─────────────────┐     ┌──────────────────┐     ┌───────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  GIAI ĐOẠN 1    │     │   GIAI ĐOẠN 2    │     │   GIAI ĐOẠN 3     │     │   GIAI ĐOẠN 4    │     │  GIAI ĐOẠN 5    │
+│ Khởi tạo Học kỳ ├────►│ Đăng ký Địa điểm ├────►│  Giám sát Tiến độ ├────►│ Chấm điểm Rubric ├────►│ Tổng kết & Xuất │
+│ & Phân công GV  │     │ Thực tập (DN)    │     │  Nhật ký 12 Tuần  │     │ & Phản hồi Đồ án │     │ Báo cáo Excel/PDF│
+└─────────────────┘     └──────────────────┘     └───────────────────┘     └──────────────────┘     └─────────────────┘
 ```
 
 ---
 
-## Bước 0. Vận hành Admin (mới so với v1)
+## 2. Chi Tiết Từng Giai Đoạn Nghiệp Vụ
 
-| Ai | Việc |
-|----|------|
-| SuperAdmin | Import / CRUD Students, Lecturers, Companies |
-| SuperAdmin | Tạo User + gửi invitation (username + MK tạm) |
-| SuperAdmin | `POST /api/Admin/assignments` — gán SV → GV |
-| Hệ thống | Tạo Internship stub nếu chưa có; DN placeholder nếu chưa gán DN |
+### 2.1. Giai Đoạn 1: Khởi Tạo Học Kỳ & Phân Công Giảng Viên (SuperAdmin)
 
-**Ranh giới:** chỉ SuperAdmin đổi `LecturerId`. Lecturer **không** gọi `/api/Admin/*`.
-
-Sequence: [`bulk-assign.md`](images/sequence/bulk-assign.md) · [`invitation-email.md`](images/sequence/invitation-email.md)
-
----
-
-## Bước 1. Sinh viên / Giảng viên vào hệ thống
-
-- Login JWT; nếu `MustChangePassword` → đổi MK.
-- Quên MK: email link reset (self-service).
-
-Sequence: [`forgot-password.md`](images/sequence/forgot-password.md)
+1. **Khởi tạo Học kỳ**:
+   - SuperAdmin tạo học kỳ mới (VD: `HK I 2025-2026`), thiết lập ngày bắt đầu, ngày kết thúc và đặt làm học kỳ hoạt động (`IsCurrent = true`).
+2. **Import Danh sách Sinh viên & Giảng viên**:
+   - Admin tải file Excel mẫu, điền danh sách SV và GVHD, sau đó tải lên hệ thống.
+   - Hệ thống tự động kiểm tra trùng lặp MSSV / Mã GV, sinh mã định danh và tạo tài khoản mặc định.
+3. **Phân công Hướng dẫn (Assignments)**:
+   - Admin chọn danh sách SV và gán cho GVHD phụ trách.
+   - Hệ thống tự động tạo các bản ghi `Internship` tương ứng trong CSDL.
+4. **Gửi Email Thư mời Tự động (Invitation Emails)**:
+   - Admin bấm nút "Gửi Email Kích hoạt".
+   - Hệ thống kích hoạt dịch vụ Email SMTP gửi tài khoản, mật khẩu tạm thời và link đăng nhập đến từng sinh viên và giảng viên.
 
 ---
 
-## Bước 2. Gán doanh nghiệp (Lecturer)
+### 2.2. Giai Đoạn 2: Đăng Nhập Lần Đầu & Khai Báo Doanh Nghiệp (Sinh Viên)
 
-- Lecturer xem DN (read-only master data).
-- `PUT /api/Internship/{id}/company` trên internship mình phụ trách.
-- Upload / công bố tài liệu biểu mẫu.
-
----
-
-## Bước 3. Theo dõi tiến độ & nộp bài
-
-| Student | Lecturer | Hệ thống |
-|---------|----------|----------|
-| Nộp Weekly Report | Review + comment | Status workflow |
-| Nộp Submission / sản phẩm | Feedback, yêu cầu sửa | Version history |
-| Resubmit | Duyệt lại | Notifications |
+1. **Đăng nhập & Đổi mật khẩu**:
+   - Sinh viên nhận thông tin đăng nhập qua Email, truy cập hệ thống tại `http://localhost:5173`.
+   - Hệ thống nhận diện `MustChangePassword = true` và bắt buộc sinh viên đổi mật khẩu mới để bảo mật tài khoản.
+2. **Khai báo Thông tin Nơi Thực tập**:
+   - Sinh viên vào mục "Thông tin Thực tập" trên Cổng Sinh viên.
+   - Chọn Doanh nghiệp từ danh mục có sẵn hoặc nhập thông tin doanh nghiệp mới (Tên công ty, Địa chỉ, Vị trí thực tập, Thông tin Mentor).
+   - Hệ thống cập nhật trạng thái thực tập sang `InProgress` (Đang thực tập).
 
 ---
 
-## Bước 4. Kết thúc đợt
+### 2.3. Giai Đoạn 3: Nhật Ký 12 Tuần & Giám Sát Tiến Độ (Sinh Viên - GVHD)
 
-- Student nộp báo cáo / sản phẩm cuối (nếu yêu cầu).
-- Lecturer Evaluation (4 tiêu chí) → Finalize.
-- Export Excel cuối kỳ (`GET /api/Lecturer/export/end-of-term`).
-
----
-
-# 5. Responsibility Matrix (RACI rút gọn)
-
-| Hoạt động | SuperAdmin | Lecturer | Student |
-|-----------|------------|----------|---------|
-| Import master data | **R** | — | — |
-| Cấp TK + email mời | **R** | — | — |
-| Phân công SV→GV | **R** | C (nhận SV) | — |
-| Gán DN cho internship | — | **R** | C |
-| Nộp báo cáo | — | A (duyệt) | **R** |
-| Feedback / chấm điểm | — | **R** | I |
-| Export cuối kỳ | — | **R** | — |
-| Forgot password | — | **R** (self) | **R** (self) |
-
-R = Responsible, A = Accountable (duyệt), C = Consulted, I = Informed
+1. **Nộp Báo cáo Tuần (Sinh viên)**:
+   - Mỗi tuần (từ Tuần 1 đến Tuần 12), sinh viên vào hệ thống ghi chép:
+     - Công việc đã hoàn thành trong tuần.
+     - Kế hoạch tuần kế tiếp.
+     - Khó khăn gặp phải & đề xuất.
+     - Đính kèm file minh chứng (ảnh sản phẩm, tài liệu phân tích, phiếu xác nhận).
+   - Nhấn "Nộp báo cáo tuần".
+2. **Duyệt & Phản hồi Báo cáo Tuần (GVHD)**:
+   - GVHD nhận thông báo trên Dashboard về các báo cáo tuần mới nộp.
+   - Xem chi tiết nội dung và tải file minh chứng.
+   - Chọn **Duyệt (`Approved`)** hoặc **Yêu cầu sửa đổi (`Rejected`)** kèm lời nhắc nhở.
 
 ---
 
-# 6. Workflow Comparison
+### 2.4. Giai Đoạn 4: Nộp Báo Cáo Cuối Kỳ & Đánh Giá Rubric (Sinh Viên - GVHD)
 
-| AS-IS | TO-BE (InternLink) |
-|-------|---------------------|
-| Excel danh sách SV/GV | Admin import + DB |
-| Gửi MK qua Zalo/email lẻ | Invitation / reset email chuẩn |
-| Phân công GV bằng Excel | Bulk assign API |
-| DN trong Excel | Company master + assign company |
-| Báo cáo Zalo/Drive | Submission + WeeklyReport |
-| Comment Word | Feedback + version |
-| Tổng hợp Excel tay | Evaluation + Export Excel |
-
-Diagram so sánh: [`images/workflow/workflow-comparison.md`](images/workflow/workflow-comparison.md)
-
----
-
-# 7. Business Value
-
-| Stakeholder | Giá trị |
-|-------------|---------|
-| SuperAdmin | Vận hành tập trung: data, TK, phân công |
-| Lecturer | Chỉ làm nghiệp vụ hướng dẫn trên SV được giao |
-| Student | Một cổng nộp bài + feedback + tự reset MK |
-| Khoa | Company DB + dữ liệu kế thừa |
+1. **Nộp Đồ án / Báo cáo Tổng kết (Sinh viên)**:
+   - Khi kết thúc 12 tuần, sinh viên nộp báo cáo hoàn chỉnh (Đồ án, Source Code link, Slide báo cáo).
+   - Hệ thống đánh dấu phiên bản `v1.0`. Nếu GVHD yêu cầu chỉnh sửa, sinh viên có thể nộp phiên bản `v2.0`, `v3.0`.
+2. **Chấm điểm theo Rubric 4 Tiêu chí (GVHD)**:
+   - GVHD mở bảng chấm điểm chi tiết của từng sinh viên:
+     - **Tiêu chí 1: Kiến thức Chuyên môn & Sản phẩm (Trọng số 40%)**
+     - **Tiêu chí 2: Tính Kỷ luật & Chuyên cần (Trọng số 20%)**
+     - **Tiêu chí 3: Kỹ năng Mềm & Giao tiếp Doanh nghiệp (Trọng số 20%)**
+     - **Tiêu chí 4: Chất lượng Báo cáo & Thuyết trình (Trọng số 20%)**
+   - Hệ thống tự động tính điểm tổng kết thang 10 và quy đổi sang thang điểm 4 cùng xếp loại học lực (Xuất sắc, Giỏi, Khá, Trung bình, Không đạt).
+3. **Chốt Điểm (Finalize Evaluation)**:
+   - GVHD ghi nhận xét tổng quan và bấm "Lưu & Chốt điểm". Bản ghi đánh giá được khóa lại để bảo đảm tính pháp lý.
 
 ---
 
-# 8. Summary
+### 2.5. Giai Đoạn 5: Xuất Báo Cáo, Bảng Điểm & Lưu Trữ (GVHD & Khoa)
 
-TO-BE MVP gồm **bốn** khối quy trình:
-
-1. **Admin ops** — import, TK, email, assign  
-2. **Company assign** — Lecturer gán DN  
-3. **Progress & feedback** — nộp / duyệt / sửa  
-4. **Evaluation & export** — chấm + Excel  
-
-Chi tiết UC: [`04-Use-Case-Specification.md`](04-Use-Case-Specification.md)
+1. **Xuất Bảng Điểm Excel Tổng hợp**:
+   - GVHD xuất file `tong-ket-cuoi-ky.xlsx` chứa đầy đủ điểm thành phần của toàn bộ sinh viên phụ trách để gửi về cho Giáo vụ Khoa nhập điểm.
+2. **Xuất Phiếu Đánh Giá & Báo Cáo PDF Chuẩn Bộ GD&ĐT**:
+   - GVHD xuất file PDF Bảng tổng hợp hoặc Phiếu đánh giá cá nhân của từng sinh viên trực tiếp từ Server (có Quốc hiệu, Bảng Rubric, ô chữ ký của Doanh nghiệp, GVHD và Trưởng khoa).
+3. **Lưu trữ Bền vững**:
+   - Toàn bộ hồ sơ báo cáo, tài liệu và điểm số được lưu trữ an toàn trong Database và Docker Volume của Khoa.

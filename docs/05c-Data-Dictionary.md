@@ -1,287 +1,144 @@
-# Data Dictionary
+# InternLink — Từ Điển Dữ Liệu (Data Dictionary)
 
-**Project:** InternLink – Internship Management & Collaboration Platform
-
-**Version:** 1.2
-
-**Status:** Active — aligned with EF Core implementation (Admin module complete)
+**Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
+**Phiên bản:** 3.0  
+**Ngày cập nhật:** Tháng 8/2026
 
 ---
 
-# 1. Overview
+## 1. Bảng `Users` (Người dùng hệ thống)
 
-Data Dictionary mô tả chi tiết cấu trúc dữ liệu của hệ thống InternLink.
-
-Tài liệu này là cầu nối giữa Entity Relationship Diagram (ERD) và quá trình triển khai cơ sở dữ liệu bằng SQL Server và Entity Framework Core.
-
----
-
-# 2. Naming Convention
-
-## Table
-
-- PascalCase, **số nhiều** (EF Core / SQL Server convention)
-- Ví dụ: `Students`, `Companies`, `Internships`
-
-## Column
-
-- PascalCase
-- Ví dụ: `StudentCode`, `CompanyName`, `CreatedAt`
-
-## Primary Key (Database)
-
-```
-{EntityName}Id
-```
-
-Ví dụ: `StudentId`, `CompanyId`, `LecturerId`
-
-## Foreign Key
-
-```
-{ReferencedEntity}Id
-```
-
-Ví dụ: `StudentId`, `CompanyId`, `LecturerId`, `UserId`
-
-## Implementation Note (C#)
-
-- Entity C# kế thừa `BaseEntity` với property `Id`
-- EF Fluent API map `Id` → cột `{EntityName}Id` trong database
-- Ví dụ: `Student.Id` ↔ `Students.StudentId`
-
-## Common Audit Fields
-
-| Column | Data Type | Description |
-|--------|-----------|-------------|
-| CreatedAt | DATETIME2 | Ngày tạo |
-| UpdatedAt | DATETIME2 | Ngày cập nhật |
-| CreatedBy | NVARCHAR | Người tạo (optional) |
-| UpdatedBy | NVARCHAR | Người cập nhật (optional) |
-| IsDeleted | BIT | Xóa mềm |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK), GUID tự sinh. |
+| `Username` | `nvarchar(50)` | No | Tên đăng nhập (MSSV / Mã GV / `admin`), Unique Index. |
+| `PasswordHash` | `nvarchar(500)` | No | Chuỗi mã hóa mật khẩu theo chuẩn PBKDF2. |
+| `Email` | `nvarchar(150)` | No | Email liên hệ chính của người dùng. |
+| `FullName` | `nvarchar(150)` | No | Họ và tên đầy đủ. |
+| `Role` | `int` | No | Vai trò: `0 = Student`, `1 = Lecturer`, `2 = SuperAdmin`. |
+| `MustChangePassword` | `bit` | No | Cờ bắt buộc đổi mật khẩu khi đăng nhập lần đầu (`1 = True`). |
+| `IsActive` | `bit` | No | Trạng thái kích hoạt tài khoản (`1 = Active`, `0 = Locked`). |
+| `LastLoginAt` | `datetime2` | Yes | Thời điểm đăng nhập gần nhất. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm (`0 = Active`, `1 = Deleted`). |
+| `CreatedAt` | `datetime2` | No | Thời điểm tạo bản ghi (UTC). |
 
 ---
 
-# 3. Data Dictionary
+## 2. Bảng `Semesters` (Học kỳ thực tập)
+
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `Code` | `nvarchar(20)` | No | Mã học kỳ (VD: `2025_2026_HK1`), Unique Index. |
+| `Name` | `nvarchar(100)` | No | Tên hiển thị (VD: `Học kỳ 1 - Năm học 2025-2026`). |
+| `StartDate` | `datetime2` | No | Ngày bắt đầu học kỳ thực tập. |
+| `EndDate` | `datetime2` | No | Ngày kết thúc học kỳ thực tập. |
+| `IsCurrent` | `bit` | No | Đánh dấu học kỳ hiện tại đang hoạt động (`1 = True`). |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## Users
+## 3. Bảng `Students` (Hồ sơ Sinh viên)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| UserId | UNIQUEIDENTIFIER | No | Primary Key |
-| Username | NVARCHAR(100) | No | Tên đăng nhập |
-| PasswordHash | NVARCHAR(MAX) | No | Mật khẩu đã mã hóa |
-| FullName | NVARCHAR(200) | Yes | Họ tên |
-| Email | NVARCHAR(200) | Yes | Email |
-| Role | INT | No | SuperAdmin / Lecturer / Student |
-| IsActive | BIT | No | Tài khoản hoạt động |
-| MustChangePassword | BIT | No | Bắt đổi MK lần đầu (default 0) |
-| LastLoginAt | DATETIME2 | Yes | Lần đăng nhập cuối |
-| CreatedAt | DATETIME2 | No | Ngày tạo |
-| UpdatedAt | DATETIME2 | Yes | Ngày cập nhật |
-| IsDeleted | BIT | No | Xóa mềm |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `UserId` | `uniqueidentifier` | No | Khóa ngoại tham chiếu `Users(Id)`. |
+| `StudentCode` | `nvarchar(20)` | No | Mã số sinh viên (MSSV), Unique Index. |
+| `FullName` | `nvarchar(150)` | No | Họ và tên sinh viên. |
+| `Class` | `nvarchar(50)` | Yes | Lớp sinh hoạt (VD: `CNTT-K15A`). |
+| `Major` | `nvarchar(100)` | Yes | Chuyên ngành đào tạo (VD: `Kỹ thuật phần mềm`). |
+| `Phone` | `nvarchar(20)` | Yes | Số điện thoại liên lạc. |
+| `GPA` | `decimal(4,2)` | Yes | Điểm trung bình tích lũy hiện tại. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## Lecturers
+## 4. Bảng `Lecturers` (Hồ sơ Giảng viên)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| LecturerId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | Yes | FK → Users (unique khi có) |
-| StaffCode | NVARCHAR(50) | No | Mã giảng viên (unique) |
-| FullName | NVARCHAR(200) | No | Họ tên |
-| Email | NVARCHAR(200) | Yes | Email |
-| Phone | NVARCHAR(50) | Yes | Số điện thoại |
-| Department | NVARCHAR(150) | Yes | Khoa / bộ môn |
-
----
-
-## Students
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| StudentId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | Yes | FK → Users (unique khi có) |
-| StudentCode | NVARCHAR(50) | No | MSSV |
-| FullName | NVARCHAR(200) | No | Họ tên |
-| Class | NVARCHAR(100) | Yes | Lớp |
-| Major | NVARCHAR(150) | Yes | Chuyên ngành |
-| Email | NVARCHAR(200) | Yes | Email |
-| Phone | NVARCHAR(50) | Yes | Số điện thoại |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `UserId` | `uniqueidentifier` | No | Khóa ngoại tham chiếu `Users(Id)`. |
+| `StaffCode` | `nvarchar(20)` | No | Mã cán bộ / Giảng viên (VD: `gv001`), Unique Index. |
+| `FullName` | `nvarchar(150)` | No | Họ và tên giảng viên. |
+| `Department` | `nvarchar(100)` | Yes | Bộ môn / Khoa trực thuộc. |
+| `AcademicRank` | `nvarchar(50)` | Yes | Học hàm, học vị (VD: `Thạc sĩ`, `Tiến sĩ`). |
+| `Title` | `nvarchar(50)` | Yes | Chức vụ trong Khoa. |
+| `Phone` | `nvarchar(20)` | Yes | Số điện thoại liên hệ. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## Companies
+## 5. Bảng `Internships` (Đợt Thực tập)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| CompanyId | UNIQUEIDENTIFIER | No | Primary Key |
-| CompanyName | NVARCHAR(250) | No | Tên doanh nghiệp |
-| Website | NVARCHAR(250) | Yes | Website |
-| Address | NVARCHAR(500) | Yes | Địa chỉ |
-| Industry | NVARCHAR(150) | Yes | Lĩnh vực |
-| ContactPerson | NVARCHAR(200) | Yes | Người liên hệ |
-| ContactEmail | NVARCHAR(200) | Yes | Email liên hệ |
-| ContactPhone | NVARCHAR(50) | Yes | SĐT liên hệ |
-| Capacity | INT | Yes | Số lượng tiếp nhận |
-| IsActive | BIT | No | Trạng thái hoạt động |
-
----
-
-## Internships
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| InternshipId | UNIQUEIDENTIFIER | No | Primary Key |
-| StudentId | UNIQUEIDENTIFIER | No | FK → Students |
-| LecturerId | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
-| CompanyId | UNIQUEIDENTIFIER | No | FK → Companies |
-| Position | NVARCHAR(200) | Yes | Vị trí thực tập |
-| StartDate | DATE | Yes | Ngày bắt đầu |
-| EndDate | DATE | Yes | Ngày kết thúc |
-| Status | INT | No | Trạng thái thực tập |
-| SupervisorName | NVARCHAR(200) | Yes | Người hướng dẫn tại DN |
-| Notes | NVARCHAR(MAX) | Yes | Ghi chú |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `SemesterId` | `uniqueidentifier` | No | Khóa ngoại `Semesters(Id)`. |
+| `StudentId` | `uniqueidentifier` | No | Khóa ngoại `Students(Id)`. |
+| `LecturerId` | `uniqueidentifier` | Yes | Khóa ngoại `Lecturers(Id)`. |
+| `CompanyId` | `uniqueidentifier` | Yes | Khóa ngoại `Companies(Id)`. |
+| `Position` | `nvarchar(100)` | Yes | Vị trí thực tập (VD: `Backend Developer Intern`). |
+| `TopicTitle` | `nvarchar(255)` | Yes | Tên đề tài đồ án thực tập. |
+| `StartDate` | `datetime2` | Yes | Ngày bắt đầu thực tập tại doanh nghiệp. |
+| `EndDate` | `datetime2` | Yes | Ngày kết thúc thực tập. |
+| `Status` | `int` | No | Trạng thái: `0 = Assigned`, `1 = InProgress`, `2 = Completed`, `3 = Suspended`. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## WeeklyReports
+## 6. Bảng `WeeklyReports` (Nhật ký 12 Tuần)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| WeeklyReportId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
-| WeekNumber | INT | No | Tuần báo cáo |
-| Title | NVARCHAR(250) | No | Tiêu đề |
-| Content | NVARCHAR(8000) | No | Nội dung |
-| Status | INT | No | Draft / Submitted / Reviewed |
-| SubmittedAt | DATETIME2 | Yes | Thời gian nộp |
-| LecturerComment | NVARCHAR(2000) | Yes | Nhận xét GV |
-
----
-
-## Submissions
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| SubmissionId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
-| Type | INT | No | Loại nộp (WeeklyReport, …) |
-| Status | INT | No | Trạng thái nộp |
-| Title | NVARCHAR(250) | Yes | Tiêu đề |
-| Description | NVARCHAR(1000) | Yes | Mô tả |
-| FileName | NVARCHAR(250) | Yes | Tên file |
-| FileUrl | NVARCHAR(1000) | Yes | Đường dẫn tệp |
-| Version | INT | No | Phiên bản |
-| SubmittedAt | DATETIME2 | No | Thời gian nộp |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `InternshipId` | `uniqueidentifier` | No | Khóa ngoại `Internships(Id)`. |
+| `WeekNumber` | `int` | No | Số thứ tự tuần (từ `1` đến `12`). |
+| `Content` | `nvarchar(max)` | No | Nội dung công việc đã làm trong tuần. |
+| `PlanNextWeek` | `nvarchar(max)` | Yes | Kế hoạch tuần tiếp theo. |
+| `Obstacles` | `nvarchar(max)` | Yes | Khó khăn, vướng mắc cần hỗ trợ. |
+| `Attachments` | `nvarchar(max)` | Yes | Danh sách link/tên tệp minh chứng đính kèm. |
+| `Status` | `int` | No | Trạng thái duyệt: `0 = Draft`, `1 = Submitted`, `2 = Approved`, `3 = Rejected`. |
+| `ReviewNotes` | `nvarchar(max)` | Yes | Nhận xét góp ý của GVHD. |
+| `Score` | `decimal(4,2)` | Yes | Điểm tuần (thang điểm 10). |
+| `SubmittedAt` | `datetime2` | Yes | Thời điểm nộp báo cáo. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## Feedbacks
+## 7. Bảng `Evaluations` (Đánh giá Rubric & Tổng kết)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| FeedbackId | UNIQUEIDENTIFIER | No | Primary Key |
-| SubmissionId | UNIQUEIDENTIFIER | No | FK → Submissions |
-| LecturerId | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
-| Comment | NVARCHAR(2000) | No | Nhận xét |
-| IsPublic | BIT | No | Hiển thị cho sinh viên |
-| CreatedAt | DATETIME2 | No | Thời gian phản hồi |
-
----
-
-## Evaluations
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| EvaluationId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships (1:1) |
-| EvaluatedById | UNIQUEIDENTIFIER | Yes | FK → Users (GV thực hiện) |
-| TechnicalScore | INT | No | Điểm kỹ thuật (0–10) |
-| CommunicationScore | INT | No | Điểm giao tiếp |
-| TeamworkScore | INT | No | Điểm làm việc nhóm |
-| InitiativeScore | INT | No | Điểm chủ động |
-| FinalGrade | DECIMAL(5,2) | No | Điểm tổng |
-| Comments | NVARCHAR(3000) | Yes | Nhận xét |
-| Strengths | NVARCHAR(2000) | Yes | Điểm mạnh |
-| AreasForImprovement | NVARCHAR(2000) | Yes | Cần cải thiện |
-| EvaluatedAt | DATETIME2 | No | Ngày đánh giá |
-| IsFinalized | BIT | No | Đã chốt điểm |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `InternshipId` | `uniqueidentifier` | No | Khóa ngoại `Internships(Id)`, Unique Index (1:1). |
+| `LecturerId` | `uniqueidentifier` | No | Khóa ngoại `Lecturers(Id)`. |
+| `TechnicalScore` | `decimal(4,2)` | No | Điểm Chuyên môn & Kỹ thuật (Trọng số 40%). |
+| `AttitudeScore` | `decimal(4,2)` | No | Điểm Thái độ & Kỷ luật (Trọng số 20%). |
+| `SoftSkillsScore` | `decimal(4,2)` | No | Điểm Kỹ năng mềm & Giao tiếp (Trọng số 20%). |
+| `FinalReportScore`| `decimal(4,2)` | No | Điểm Báo cáo & Thuyết trình cuối kỳ (Trọng số 20%). |
+| `TotalScore` | `decimal(4,2)` | No | Điểm tổng kết hệ 10 = $\sum(\text{Điểm} \times \text{Trọng số})$. |
+| `FinalGrade` | `nvarchar(20)` | No | Xếp loại học lực: `Xuất sắc`, `Giỏi`, `Khá`, `Trung bình`, `Không đạt`. |
+| `LecturerComments`| `nvarchar(max)`| Yes | Nhận xét chi tiết của GVHD. |
+| `IsFinalized` | `bit` | No | Trạng thái chốt điểm (`1 = Đã khóa điểm`). |
+| `FinalizedAt` | `datetime2` | Yes | Thời điểm khóa điểm chính thức. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
 
 ---
 
-## Documents
+## 8. Bảng `Documents` (Tài liệu & Biểu mẫu)
 
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| DocumentId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
-| Title | NVARCHAR(300) | No | Tiêu đề |
-| Description | NVARCHAR(2000) | Yes | Mô tả |
-| Category | NVARCHAR(100) | Yes | Loại biểu mẫu |
-| FileName | NVARCHAR(250) | No | Tên file gốc |
-| FilePath | NVARCHAR(500) | No | Đường dẫn lưu trữ |
-| FileSize | BIGINT | No | Kích thước (bytes) |
-| MimeType | NVARCHAR(100) | No | MIME type |
-| UploadedById | UNIQUEIDENTIFIER | Yes | FK → Lecturers |
-| UploadedAt | DATETIME2 | No | Ngày tải lên |
-| IsRequired | BIT | No | Bắt buộc hay không |
-
----
-
-## Notifications
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| NotificationId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | No | FK → Users |
-| Title | NVARCHAR(200) | No | Tiêu đề |
-| Content | NVARCHAR(2000) | No | Nội dung |
-| Link | NVARCHAR(500) | Yes | Liên kết |
-| IsRead | BIT | No | Đã đọc |
-| ReadAt | DATETIME2 | Yes | Thời gian đọc |
-| CreatedAt | DATETIME2 | No | Thời gian tạo |
-
----
-
-## PasswordResetTokens
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| PasswordResetTokenId | UNIQUEIDENTIFIER | No | Primary Key |
-| UserId | UNIQUEIDENTIFIER | No | FK → Users (CASCADE delete) |
-| TokenHash | NVARCHAR(64) | No | SHA-256 hex hash của token (unique index) |
-| ExpiresAt | DATETIME2 | No | Thời điểm hết hạn |
-| UsedAt | DATETIME2 | Yes | Thời điểm đã sử dụng (one-time) |
-| CreatedAt | DATETIME2 | No | Ngày tạo |
-| UpdatedAt | DATETIME2 | Yes | Ngày cập nhật |
-| IsDeleted | BIT | No | Xóa mềm / vô hiệu token cũ |
-
-**Index:** `IX_PasswordResetTokens_TokenHash` (unique), `IX_PasswordResetTokens_UserId_UsedAt`
-
----
-
-# 4. Planned (not yet implemented)
-
-## InternshipLogs
-
-| Column | Data Type | Nullable | Description |
-|--------|-----------|----------|-------------|
-| InternshipLogId | UNIQUEIDENTIFIER | No | Primary Key |
-| InternshipId | UNIQUEIDENTIFIER | No | FK → Internships |
-| WorkDate | DATE | No | Ngày làm việc |
-| Description | NVARCHAR(MAX) | No | Nội dung công việc |
-
----
-
-# 5. Notes
-
-- Sử dụng `UNIQUEIDENTIFIER` làm khóa chính.
-- Các trường văn bản sử dụng `NVARCHAR` để hỗ trợ tiếng Việt.
-- Mật khẩu chỉ lưu dưới dạng `PasswordHash` — token reset lưu **hash**, không lưu plaintext.
-- Enum lưu DB dạng `int`; API trả về dạng `string`.
-- Feedback và Document upload liên kết trực tiếp `Lecturers`, không qua `Users`.
-- Migration history & verify script: [`database/`](../database/README.md)
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả / Ràng Buộc |
+| :--- | :--- | :---: | :--- |
+| `Id` | `uniqueidentifier` | No | Khóa chính (PK). |
+| `InternshipId` | `uniqueidentifier` | Yes | Khóa ngoại `Internships(Id)` (Null nếu là tài liệu chung của Khoa). |
+| `UploadedById` | `uniqueidentifier` | Yes | Khóa ngoại người tải lên (`Lecturers` hoặc `Students`). |
+| `Title` | `nvarchar(255)` | No | Tên tài liệu. |
+| `Category` | `nvarchar(50)` | No | Danh mục: `Template`, `Report`, `Contract`, `Evidence`. |
+| `FileName` | `nvarchar(255)` | No | Tên file gốc người dùng tải lên. |
+| `FilePath` | `nvarchar(500)` | No | Đường dẫn lưu trữ vật lý trên server (`uploads/documents/...`). |
+| `MimeType` | `nvarchar(100)` | No | Định dạng MIME (`application/pdf`, `image/png`...). |
+| `FileSize` | `bigint` | No | Dung lượng file tính bằng Bytes. |
+| `IsRequired` | `bit` | No | Cờ đánh dấu tài liệu bắt buộc nộp. |
+| `IsDeleted` | `bit` | No | Cờ xóa mềm. |
