@@ -357,7 +357,12 @@ export const StudentsView = ({
         onChat={() =>
           showToast(`Đã mở khung trao đổi với ${detailStudent.name}`)
         }
-        onGrade={() => showToast(`Đã ghi nhận điểm cho ${detailStudent.name}`)}
+        onGrade={(updatedStudent) => {
+          if (updatedStudent) {
+            setDetailStudent((prev) => (prev ? { ...prev, ...updatedStudent } : prev));
+          }
+          showToast(`Đã ghi nhận điểm & kết quả đánh giá cho ${detailStudent.name}`);
+        }}
         onReviewSubmission={() =>
           showToast(`Mở duyệt bài nộp của ${detailStudent.name}`)
         }
@@ -460,9 +465,11 @@ export const StudentsView = ({
               className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
               <option value="Tất cả">Tất cả Lớp</option>
-              <option value="CNTT-K15A">CNTT-K15A</option>
-              <option value="CNTT-K15B">CNTT-K15B</option>
-              <option value="CNTT-02">CNTT-02</option>
+              {Array.from(new Set(students.map((s) => s.class).filter(Boolean))).map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -473,12 +480,18 @@ export const StudentsView = ({
               className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
               <option value="Tất cả">Tất cả Doanh nghiệp</option>
-              <option value="FPT Software">FPT Software</option>
-              <option value="VNG Corporation">VNG Corp</option>
-              <option value="Viettel Group">Viettel Group</option>
-              <option value="VinFast">VinFast</option>
-              <option value="MB Bank">MB Bank</option>
-              <option value="Chưa có">Chưa có DN</option>
+              {Array.from(
+                new Set(
+                  [
+                    ...students.map((s) => s.company),
+                    ...enterprises.map((e) => e.name),
+                  ].filter(Boolean),
+                ),
+              ).map((comp) => (
+                <option key={comp} value={comp}>
+                  {comp}
+                </option>
+              ))}
             </select>
           </div>
 

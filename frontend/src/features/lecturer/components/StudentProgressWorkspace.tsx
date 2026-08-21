@@ -64,7 +64,7 @@ export const StudentProgressWorkspace = ({
     },
     {
       week: 5,
-      name: "Tuần 5: Báo cáo giữa kỳ & Đánh giá Doanh nghiệp",
+      name: "Tuần 5: Kiểm thử hệ thống & Tối ưu hiệu năng",
       date: "29/09 - 05/10",
       status: student.riskFlag ? "overdue" : "completed",
       score: student.riskFlag ? undefined : 8.0,
@@ -72,22 +72,11 @@ export const StudentProgressWorkspace = ({
     },
     {
       week: 6,
-      name: "Tuần 6: Tích hợp Payment & Cổng thanh toán",
+      name: "Tuần 6: Hoàn thiện báo cáo, đóng dấu doanh nghiệp & Tổng kết",
       date: "06/10 - 12/10",
-      status: "in_progress",
-      note: "Đang thực hiện (Hạn nộp 23:59 Chủ nhật)",
-    },
-    {
-      week: 7,
-      name: "Tuần 7: Kiểm thử Hệ thống & Tối ưu Performance",
-      date: "13/10 - 19/10",
-      status: "upcoming",
-    },
-    {
-      week: 8,
-      name: "Tuần 8: Hoàn thiện Cuốn Báo cáo & Tổng kết",
-      date: "20/10 - 26/10",
-      status: "upcoming",
+      status: "completed",
+      score: 9.0,
+      note: "Đã nộp đầy đủ quyển báo cáo & phiếu nhận xét",
     },
   ];
 

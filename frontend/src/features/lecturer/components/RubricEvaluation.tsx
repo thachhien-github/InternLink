@@ -1,176 +1,259 @@
 import { useState } from "react";
 import { Toast } from "../../../components/common/Toast";
-import { Save, Award, ArrowLeft, Building2, Printer } from "lucide-react";
-const DEFAULT_STUDENT = {
-  id: "eval-1",
-  name: "Nguy\u1EC5n V\u0103n An",
-  mssv: "20210001",
-  avatar:
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  class: "CNTT-K15A",
-  major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-  company: "FPT Software",
-  supervisor: "Nguy\u1EC5n V\u0103n H\u1EA3i (Mentor)",
-  progress: 100,
-  enterpriseScore: 9.2,
-  lecturerScore: 9,
-  presentationScore: 9.5,
-  totalScore: 9.2,
-  status: "Ho\xE0n th\xE0nh",
-  weeklyReportCount: "12/12",
-  finalReportSubmitted: true,
-  enterpriseFeedbackSubmitted: true,
-  lecturerComments:
-    "Sinh vi\xEAn ho\xE0n th\xE0nh xu\u1EA5t s\u1EAFc \u0111\u1EC1 t\xE0i.",
-  gradeClassification: "Xu\u1EA5t s\u1EAFc",
-};
+import {
+  Save,
+  Award,
+  ArrowLeft,
+  Building2,
+  Printer,
+  CheckCircle2,
+  CalendarCheck,
+  Calculator,
+  ExternalLink,
+  Sparkles,
+} from "lucide-react";
+
 export const RubricEvaluation = ({
-  student = DEFAULT_STUDENT,
+  student = {
+    id: "eval-1",
+    name: "Nguyễn Văn An",
+    mssv: "20210001",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    class: "CNTT-K15A",
+    major: "Kỹ thuật Phần mềm",
+    company: "FPT Software",
+    supervisor: "Nguyễn Văn Hải (Mentor)",
+    progress: 100,
+    enterpriseScore: 9.2,
+    lecturerScore: 9.0,
+    presentationScore: 9.5,
+    totalScore: 9.2,
+    status: "Hoàn thành",
+    weeklyReportCount: "6/6",
+    finalReportSubmitted: true,
+    enterpriseFeedbackSubmitted: true,
+    lecturerComments:
+      "Sinh viên hoàn thành xuất sắc đề tài, sản phẩm hoàn thiện và có tính ứng dụng cao.",
+    gradeClassification: "Xuất sắc",
+  },
   onBack,
   onSave,
+}: {
+  student?: any;
+  onBack?: () => void;
+  onSave?: (data: any) => void;
 }) => {
+  // Trọng số tiêu chuẩn (Chuẩn Khoa CNTT)
+  const [weights] = useState({
+    weeklyReports: 20, // 1. Báo cáo tuần & Chuyên cần (5–6 tuần)
+    enterprise: 30, // 2. Doanh nghiệp đánh giá
+    finalReportAndProduct: 30, // 3. Báo cáo cuối kỳ & Sản phẩm
+    lecturerDefense: 20, // 4. Đánh giá chuyên môn GV & Vấn đáp
+  });
+
+  const [includeDefense, setIncludeDefense] = useState(true);
+
+  // Điểm thành phần chi tiết của 4 trụ cột
   const [scores, setScores] = useState({
-    awareness: 9.5,
-    // 1. Ý thức
-    progress: 9,
-    // 2. Tiến độ
-    quality: 9.2,
-    // 3. Chất lượng công việc
-    report: 8.8,
-    // 4. Báo cáo
-    enterprise: 9.2,
-    // 5. Doanh nghiệp đánh giá
-    presentation: 9,
-    // 6. Thuyết trình (Optional)
+    // Trụ cột 1: Quá trình & Báo cáo tuần (20%)
+    weeklyAttendance: 10.0, // Tỷ lệ nộp báo cáo tuần đúng hạn (6/6 tuần)
+    weeklyContentQuality: 9.0, // Chất lượng nhật ký công việc & giải quyết vấn đề
+
+    // Trụ cột 2: Doanh nghiệp tiếp nhận (30%)
+    enterpriseWorkEthic: 9.5, // Kỷ luật & tác phong tại công ty
+    enterpriseTechnicalOutput: 9.0, // Đóng góp thực tế vào dự án DN
+
+    // Trụ cột 3: Báo cáo cuối kỳ & Sản phẩm hoàn thành (30%)
+    reportAcademicQuality: 9.0, // Bố cục, phân tích yêu cầu, kiến trúc hệ thống
+    practicalProductDemo: 9.2, // Tính năng sản phẩm, source code, chạy demo thực tế
+
+    // Trụ cột 4: Đánh giá GV & Vấn đáp bảo vệ (20%)
+    lecturerHolistic: 9.0, // Đánh giá của GV về mức độ hiểu bài & năng lực
+    oralDefenseResponse: 9.5, // Trả lời câu hỏi phản biện / bảo vệ đề tài
   });
-  const [includePresentation, setIncludePresentation] = useState(true);
+
   const [comments, setComments] = useState({
-    awareness:
-      "T\xE1c phong r\u1EA5t chuy\xEAn nghi\u1EC7p, \u0111i l\xE0m \u0111\xFAng gi\u1EDD, ch\u1EA5p h\xE0nh t\u1ED1t n\u1ED9i quy.",
-    progress:
-      "N\u1ED9p \u0111\u1EA7y \u0111\u1EE7 12/12 nh\u1EADt k\xFD th\u1EF1c t\u1EADp \u0111\xFAng th\u1EDDi h\u1EA1n.",
-    quality:
-      "Code s\u1EA1ch, tu\xE2n th\u1EE7 Clean Architecture, ho\xE0n th\xE0nh c\xE1c API \u0111\xFAng ti\u1EBFn \u0111\u1ED9.",
-    report:
-      "C\u1EA5u tr\xFAc b\xE1o c\xE1o khoa h\u1ECDc, ph\xE2n t\xEDch y\xEAu c\u1EA7u \u0111\u1EA7y \u0111\u1EE7.",
+    weeklyReports:
+      "Nộp đầy đủ 6/6 báo cáo tuần đúng tiến độ, ghi chép nhật ký công việc rõ ràng, trung thực.",
     enterprise:
-      "Mentor \u0111\xE1nh gi\xE1 r\u1EA5t cao tinh th\u1EA7n l\xE0m vi\u1EC7c v\xE0 k\u1EF9 n\u0103ng giao ti\u1EBFp.",
-    presentation:
-      "Thuy\u1EBFt tr\xECnh t\u1EF1 tin, tr\u1EA3 l\u1EDDi ch\xEDnh x\xE1c c\xE1c c\xE2u h\u1ECFi c\u1EE7a H\u1ED9i \u0111\u1ED3ng.",
+      "Mentor FPT Software đánh giá cao tinh thần trách nhiệm, hòa nhập nhanh với quy trình Scrum của dự án.",
+    finalReportAndProduct:
+      "Quyển báo cáo cấu trúc chuẩn khoa học, sản phẩm phần mềm chạy mượt mà, áp dụng đúng Clean Architecture.",
+    lecturerDefense:
+      "Nắm vững kiến thức nền tảng, giải thích logic kiến trúc và trả lời tự tin các câu hỏi của giảng viên.",
   });
-  const [toastMessage, setToastMessage] = useState(null);
-  const showToast = (msg) => {
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3e3);
+    setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Tính điểm từng trụ cột
+  const pillar1Score = parseFloat(
+    ((scores.weeklyAttendance * 0.5 + scores.weeklyContentQuality * 0.5)).toFixed(2),
+  );
+  const pillar2Score = parseFloat(
+    ((scores.enterpriseWorkEthic * 0.4 + scores.enterpriseTechnicalOutput * 0.6)).toFixed(2),
+  );
+  const pillar3Score = parseFloat(
+    ((scores.reportAcademicQuality * 0.5 + scores.practicalProductDemo * 0.5)).toFixed(2),
+  );
+  const pillar4Score = parseFloat(
+    ((scores.lecturerHolistic * 0.4 + scores.oralDefenseResponse * 0.6)).toFixed(2),
+  );
+
+  // Tính điểm tổng kết
   const calculateFinalScore = () => {
-    if (includePresentation) {
+    if (includeDefense) {
+      const w1 = weights.weeklyReports / 100;
+      const w2 = weights.enterprise / 100;
+      const w3 = weights.finalReportAndProduct / 100;
+      const w4 = weights.lecturerDefense / 100;
       const total =
-        scores.awareness * 0.1 +
-        scores.progress * 0.1 +
-        scores.quality * 0.25 +
-        scores.report * 0.25 +
-        scores.enterprise * 0.15 +
-        scores.presentation * 0.15;
+        pillar1Score * w1 +
+        pillar2Score * w2 +
+        pillar3Score * w3 +
+        pillar4Score * w4;
       return parseFloat(total.toFixed(2));
     } else {
+      // Khi không tổ chức vấn đáp: 25% Tuần - 35% DN - 40% Báo cáo & SP
       const total =
-        scores.awareness * 0.15 +
-        scores.progress * 0.15 +
-        scores.quality * 0.25 +
-        scores.report * 0.25 +
-        scores.enterprise * 0.2;
+        pillar1Score * 0.25 + pillar2Score * 0.35 + pillar3Score * 0.4;
       return parseFloat(total.toFixed(2));
     }
   };
+
   const finalScore = calculateFinalScore();
-  const getClassification = (score) => {
+
+  const getClassification = (score: number) => {
     if (score >= 9)
       return {
-        label: "Xu\u1EA5t s\u1EAFc",
-        color: "bg-slate-100 text-slate-800 border-slate-200",
+        label: "Xuất sắc",
+        color: "bg-emerald-100 text-emerald-800 border-emerald-300",
+        desc: "Đạt chuẩn xuất sắc toàn diện cả quá trình, doanh nghiệp và sản phẩm",
       };
     if (score >= 8)
       return {
-        label: "Gi\u1ECFi",
+        label: "Giỏi",
         color: "bg-blue-100 text-blue-800 border-blue-300",
+        desc: "Hoàn thành tốt yêu cầu thực tập, sản phẩm đạt yêu cầu kỹ thuật cao",
       };
     if (score >= 6.5)
       return {
-        label: "Kh\xE1",
-        color: "bg-emerald-100 text-emerald-800 border-emerald-300",
+        label: "Khá",
+        color: "bg-sky-100 text-sky-800 border-sky-300",
+        desc: "Đạt yêu cầu thực tập, báo cáo và sản phẩm ở mức khá",
       };
     if (score >= 5)
       return {
-        label: "Trung b\xECnh",
+        label: "Trung bình",
         color: "bg-amber-100 text-amber-800 border-amber-300",
+        desc: "Đủ điều kiện qua môn, cần cải thiện tính chủ động và chất lượng sản phẩm",
       };
     return {
-      label: "Kh\xF4ng \u0111\u1EA1t",
+      label: "Không đạt",
       color: "bg-rose-100 text-rose-800 border-rose-300",
+      desc: "Chưa hoàn thành đủ khối lượng hoặc vi phạm quy định thực tập",
     };
   };
+
   const classification = getClassification(finalScore);
-  const handleApplyPreset = (type) => {
+
+  // Tự động tính điểm quá trình từ số tuần nộp
+  const handleAutoCalculateWeekly = () => {
+    const parts = (student.weeklyReportCount || "6/6").split("/");
+    const submitted = parseInt(parts[0], 10) || 6;
+    const total = parseInt(parts[1], 10) || 6;
+    const ratio = Math.min(1, submitted / total);
+    const calculatedScore = parseFloat((ratio * 10).toFixed(1));
+
+    setScores((prev) => ({
+      ...prev,
+      weeklyAttendance: calculatedScore,
+      weeklyContentQuality: Math.min(10, calculatedScore >= 9 ? 9.2 : calculatedScore),
+    }));
+    showToast(
+      `Đã tự động tính điểm Chuyên cần: ${calculatedScore}/10 dựa trên ${submitted}/${total} tuần báo cáo!`,
+    );
+  };
+
+  // Lấy điểm từ Doanh nghiệp
+  const handleAutoFetchEnterprise = () => {
+    const eScore = student.enterpriseScore || 9.2;
+    setScores((prev) => ({
+      ...prev,
+      enterpriseWorkEthic: parseFloat(Math.min(10, eScore + 0.2).toFixed(1)),
+      enterpriseTechnicalOutput: eScore,
+    }));
+    showToast(
+      `Đã đồng bộ điểm Doanh nghiệp ${eScore}/10 từ Phiếu nhận xét của Mentor!`,
+    );
+  };
+
+  const handleApplyPreset = (type: "excellent" | "good" | "average") => {
     if (type === "excellent") {
       setScores({
-        awareness: 9.5,
-        progress: 9.5,
-        quality: 9.2,
-        report: 9,
-        enterprise: 9.5,
-        presentation: 9.2,
+        weeklyAttendance: 10.0,
+        weeklyContentQuality: 9.5,
+        enterpriseWorkEthic: 9.5,
+        enterpriseTechnicalOutput: 9.2,
+        reportAcademicQuality: 9.2,
+        practicalProductDemo: 9.5,
+        lecturerHolistic: 9.2,
+        oralDefenseResponse: 9.5,
       });
-      showToast(
-        "\u0110\xE3 \xE1p d\u1EE5ng khung \u0111i\u1EC3m m\u1EABu: Xu\u1EA5t s\u1EAFc",
-      );
+      showToast("Đã áp dụng mẫu đánh giá: Xuất sắc (Toàn diện)");
     } else if (type === "good") {
       setScores({
-        awareness: 8.5,
-        progress: 8.5,
-        quality: 8.2,
-        report: 8,
-        enterprise: 8.5,
-        presentation: 8.2,
+        weeklyAttendance: 9.0,
+        weeklyContentQuality: 8.5,
+        enterpriseWorkEthic: 8.8,
+        enterpriseTechnicalOutput: 8.5,
+        reportAcademicQuality: 8.5,
+        practicalProductDemo: 8.8,
+        lecturerHolistic: 8.5,
+        oralDefenseResponse: 8.5,
       });
-      showToast(
-        "\u0110\xE3 \xE1p d\u1EE5ng khung \u0111i\u1EC3m m\u1EABu: Gi\u1ECFi",
-      );
+      showToast("Đã áp dụng mẫu đánh giá: Giỏi");
     } else {
       setScores({
-        awareness: 6.5,
-        progress: 6.5,
-        quality: 6,
-        report: 6,
-        enterprise: 6.5,
-        presentation: 6,
+        weeklyAttendance: 7.5,
+        weeklyContentQuality: 6.5,
+        enterpriseWorkEthic: 7.0,
+        enterpriseTechnicalOutput: 6.5,
+        reportAcademicQuality: 6.5,
+        practicalProductDemo: 6.5,
+        lecturerHolistic: 6.5,
+        oralDefenseResponse: 6.0,
       });
-      showToast(
-        "\u0110\xE3 \xE1p d\u1EE5ng khung \u0111i\u1EC3m m\u1EABu: Trung b\xECnh",
-      );
+      showToast("Đã áp dụng mẫu đánh giá: Trung bình");
     }
   };
+
   const handleSave = () => {
     const data = {
       studentId: student.id,
-      scores,
+      scores: {
+        pillar1_weekly: pillar1Score,
+        pillar2_enterprise: pillar2Score,
+        pillar3_report_product: pillar3Score,
+        pillar4_defense: pillar4Score,
+      },
+      detailedScores: scores,
       comments,
       finalScore,
       classification: classification.label,
     };
     if (onSave) onSave(data);
     showToast(
-      `\u0110\xE3 l\u01B0u phi\u1EBFu \u0111\xE1nh gi\xE1 cho sinh vi\xEAn ${student.name} (${finalScore} \u0111i\u1EC3m)`,
+      `Đã lưu bảng điểm chuẩn hóa cho sinh viên ${student.name} (${finalScore} điểm - ${classification.label})`,
     );
   };
-  const handleExportPDF = () => {
-    showToast(
-      `\u0110\xE3 xu\u1EA5t phi\u1EBFu \u0111\xE1nh gi\xE1 ti\xEAu chu\u1EA9n cho ${student.name} d\u01B0\u1EDBi \u0111\u1ECBnh d\u1EA1ng PDF!`,
-    );
-  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-16 font-sans">
-      {/* Toast Alert */}
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
 
       {/* HEADER SECTION */}
@@ -188,15 +271,14 @@ export const RubricEvaluation = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Phiếu đánh giá tiêu chí thực tập
+                Khung Đánh Giá Chuẩn Hóa Thực Tập Tốt Nghiệp
               </h1>
               <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 font-bold text-[10px] rounded-full border border-blue-200">
-                Khung đánh giá tiêu chuẩn
+                Mô hình 4 Trụ Cột Khách Quan
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Đánh giá sinh viên theo 6 tiêu chí định lượng chuẩn hóa của Khoa
-              Công nghệ Thông tin.
+              Đánh giá toàn diện dựa trên: Báo cáo tuần thực tế (20%) • Doanh nghiệp đánh giá (30%) • Báo cáo &amp; Sản phẩm (30%) • Đánh giá chuyên môn GV &amp; Vấn đáp (20%).
             </p>
           </div>
         </div>
@@ -204,156 +286,229 @@ export const RubricEvaluation = ({
         {/* TOP ACTION BUTTONS */}
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
           <button
-            onClick={handleExportPDF}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-md transition-colors border border-slate-200 flex items-center gap-1.5 shrink-0"
+            onClick={() =>
+              showToast(`Đã in phiếu đánh giá chuẩn hóa cho ${student.name}`)
+            }
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-md transition-colors border border-slate-200 flex items-center gap-1.5 shrink-0"
           >
             <Printer className="w-4 h-4 text-slate-600" />
-            <span>Xuất PDF</span>
+            <span>In Phiếu Điểm</span>
           </button>
 
           <button
             onClick={handleSave}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0"
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0"
           >
             <Save className="w-4 h-4" />
-            <span>Lưu kết quả</span>
+            <span>Lưu &amp; Chốt Điểm</span>
           </button>
         </div>
       </div>
 
-      {/* STUDENT CONTEXT BANNER & PRESETS */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <img
-            src={
-              student.avatar ||
-              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-            }
-            alt={student.name}
-            className="w-12 h-12 rounded-md object-cover border border-blue-300 shrink-0"
-          />
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-slate-900 text-sm">
-                {student.name}
-              </h2>
-              <span className="text-xs text-slate-400">({student.mssv})</span>
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded-md border border-slate-200">
-                {student.class}
-              </span>
+      {/* STUDENT CONTEXT & EVIDENCE CHECK BANNER */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8 bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src={
+                student.avatar ||
+                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+              }
+              alt={student.name}
+              className="w-13 h-13 rounded-md object-cover border-2 border-blue-400 shrink-0"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-slate-900 text-sm">
+                  {student.name}
+                </h2>
+                <span className="text-xs text-slate-400 font-mono">({student.mssv})</span>
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200">
+                  {student.class}
+                </span>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded-md">
+                  {student.major}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium mt-1 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-semibold">{student.company}</span>
+                <span className="text-slate-300">•</span>
+                <span>Mentor: {student.supervisor}</span>
+              </p>
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1">
-              <Building2 className="w-3.5 h-3.5 text-blue-600" />
-              <span>{student.company}</span>
-              <span className="text-slate-300">•</span>
-              <span>Mentor: {student.supervisor}</span>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex items-center gap-1.5 self-stretch sm:self-auto justify-end">
+            <button
+              onClick={() => handleApplyPreset("excellent")}
+              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-md border border-emerald-200 transition-colors"
+            >
+              Mẫu Xuất sắc
+            </button>
+            <button
+              onClick={() => handleApplyPreset("good")}
+              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] rounded-md border border-blue-200 transition-colors"
+            >
+              Mẫu Giỏi
+            </button>
+            <button
+              onClick={() => handleApplyPreset("average")}
+              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] rounded-md border border-amber-200 transition-colors"
+            >
+              Mẫu Đạt
+            </button>
+          </div>
+        </div>
+
+        {/* EVIDENCE VERIFICATION STATUS */}
+        <div className="lg:col-span-4 bg-slate-50 p-4 rounded-lg border border-slate-200/80 shadow-xs flex flex-col justify-center space-y-2">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <CalendarCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span>Đối soát minh chứng thực tế</span>
+          </span>
+          <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+            <div className="p-1.5 bg-white rounded border border-emerald-200 text-emerald-800">
+              <span className="block text-emerald-600 font-mono text-xs">{student.weeklyReportCount || "6/6"}</span>
+              <span>Báo cáo tuần</span>
+            </div>
+            <div className="p-1.5 bg-white rounded border border-blue-200 text-blue-800">
+              <span className="block text-blue-600 text-xs">Đã nộp</span>
+              <span>Báo cáo cuối kỳ</span>
+            </div>
+            <div className="p-1.5 bg-white rounded border border-purple-200 text-purple-800">
+              <span className="block text-purple-600 font-mono text-xs">{student.enterpriseScore || 9.2}đ</span>
+              <span>Phiếu điểm DN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FORMULA TRANSPARENCY BANNER */}
+      <div className="p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 rounded-lg border border-blue-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <Calculator className="w-5 h-5 text-blue-600 shrink-0" />
+          <div>
+            <span className="font-bold text-blue-900 block">
+              Công thức tính điểm minh bạch theo quy chế Khoa:
+            </span>
+            <p className="text-slate-600 text-[11px] mt-0.5">
+              {includeDefense
+                ? "Điểm Tổng = (Báo cáo tuần × 20%) + (Doanh nghiệp × 30%) + (Báo cáo & Sản phẩm × 30%) + (Đánh giá GV/Vấn đáp × 20%)"
+                : "Điểm Tổng = (Báo cáo tuần × 25%) + (Doanh nghiệp × 35%) + (Báo cáo & Sản phẩm × 40%) (Không tổ chức vấn đáp)"}
             </p>
           </div>
         </div>
 
-        {/* Quick Presets */}
-        <div className="flex items-center gap-1.5 self-stretch sm:self-auto justify-end">
-          <span className="text-[10px] font-bold text-slate-400 uppercase hidden md:inline">
-            Mẫu nhanh:
-          </span>
-          <button
-            onClick={() => handleApplyPreset("excellent")}
-            className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-[11px] rounded-md border border-slate-200 transition-colors"
-          >
-            Mẫu Xuất sắc
-          </button>
-          <button
-            onClick={() => handleApplyPreset("good")}
-            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] rounded-lg border border-blue-200 transition-colors"
-          >
-            Mẫu Giỏi
-          </button>
-          <button
-            onClick={() => handleApplyPreset("average")}
-            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] rounded-lg border border-amber-200 transition-colors"
-          >
-            Mẫu TB
-          </button>
+        <div className="flex items-center gap-3 self-end md:self-auto">
+          <label className="flex items-center gap-1.5 font-bold text-slate-700 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeDefense}
+              onChange={(e) => setIncludeDefense(e.target.checked)}
+              className="accent-blue-600 rounded"
+            />
+            <span>Bao gồm Vấn đáp/Bảo vệ</span>
+          </label>
         </div>
       </div>
 
-      {/* 6 CRITERIA CARDS */}
+      {/* 4 MAIN OBJECTIVE PILLARS */}
       <div className="space-y-4">
-        {/* CRITERION 1: Ý THỨC */}
+        {/* PILLAR 1: BÁO CÁO TUẦN & CHUYÊN CẦN */}
         <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
                   1
                 </span>
                 <h3 className="font-bold text-slate-900 text-sm">
-                  Ý thức &amp; Kỷ luật
+                  Quá trình &amp; Báo cáo thực tập hàng tuần
                 </h3>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                  Trọng số: {includePresentation ? "10%" : "15%"}
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded-md border border-emerald-200">
+                  Trọng số: {includeDefense ? "20%" : "25%"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 pl-8">
-                Tác phong làm việc, chấp hành giờ giấc, tuân thủ quy định bảo
-                mật thông tin của doanh nghiệp.
+                Đánh giá mức độ chuyên cần, tính kỷ luật qua việc nộp báo cáo tuần đều đặn và chất lượng nhật ký công việc.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 pl-8 sm:pl-0">
-              <span className="text-xs font-bold text-slate-500">Điểm:</span>
+            <div className="flex items-center gap-3 pl-8 sm:pl-0">
+              <button
+                type="button"
+                onClick={handleAutoCalculateWeekly}
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded border border-emerald-200 flex items-center gap-1 transition-colors"
+                title="Tự động tính từ số tuần báo cáo đã nộp"
+              >
+                <Sparkles className="w-3 h-3 text-emerald-600" />
+                <span>Tự động tính ({student.weeklyReportCount || "12/12"} tuần)</span>
+              </button>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-bold">Điểm Trụ cột 1</span>
+                <span className="text-lg font-bold text-emerald-700">{pillar1Score}/10</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+            {/* Sub-criterion 1.1 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  1.1. Tỷ lệ &amp; Tiến độ nộp báo cáo tuần ({student.weeklyReportCount || "12/12"} tuần)
+                </label>
+                <span className="font-bold text-emerald-700 font-mono text-sm">{scores.weeklyAttendance}</span>
+              </div>
               <input
-                type="number"
+                type="range"
                 min="0"
                 max="10"
                 step="0.1"
-                value={scores.awareness}
+                value={scores.weeklyAttendance}
                 onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    awareness: Math.min(
-                      10,
-                      Math.max(0, parseFloat(e.target.value) || 0),
-                    ),
-                  })
+                  setScores({ ...scores, weeklyAttendance: parseFloat(e.target.value) })
                 }
-                className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
+                className="w-full accent-emerald-600 cursor-pointer"
               />
-              <span className="text-xs text-slate-400 font-bold">/ 10</span>
+              <span className="text-[10px] text-slate-400 block">Nộp đủ 12 tuần = 10đ • Nộp 10-11 tuần = 8.5-9đ • Nộp &lt; 9 tuần = &lt; 7.5đ</span>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={scores.awareness}
-              onChange={(e) =>
-                setScores({ ...scores, awareness: parseFloat(e.target.value) })
-              }
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nhận xét chi tiết tiêu chí 1:
-              </label>
+            {/* Sub-criterion 1.2 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  1.2. Chất lượng nhật ký công việc &amp; Kỹ năng giải quyết vấn đề
+                </label>
+                <span className="font-bold text-emerald-700 font-mono text-sm">{scores.weeklyContentQuality}</span>
+              </div>
               <input
-                type="text"
-                value={comments.awareness}
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={scores.weeklyContentQuality}
                 onChange={(e) =>
-                  setComments({ ...comments, awareness: e.target.value })
+                  setScores({ ...scores, weeklyContentQuality: parseFloat(e.target.value) })
                 }
-                placeholder="Nhập nhận xét về ý thức kỷ luật của sinh viên..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                className="w-full accent-emerald-600 cursor-pointer"
               />
+              <span className="text-[10px] text-slate-400 block">Mô tả công việc chi tiết, có minh chứng công việc, chỉ ra bài học kinh nghiệm.</span>
             </div>
           </div>
+
+          <input
+            type="text"
+            value={comments.weeklyReports}
+            onChange={(e) => setComments({ ...comments, weeklyReports: e.target.value })}
+            placeholder="Nhận xét về quá trình và báo cáo tuần..."
+            className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded outline-none focus:bg-white text-slate-800 font-medium"
+          />
         </div>
 
-        {/* CRITERION 2: TIẾN ĐỘ */}
+        {/* PILLAR 2: DOANH NGHIỆP ĐÁNH GIÁ */}
         <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
             <div>
@@ -362,449 +517,318 @@ export const RubricEvaluation = ({
                   2
                 </span>
                 <h3 className="font-bold text-slate-900 text-sm">
-                  Tiến độ thực tập
+                  Đánh giá từ Doanh nghiệp &amp; Mentor tiếp nhận
                 </h3>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                  Trọng số: {includePresentation ? "10%" : "15%"}
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200">
+                  Trọng số: {includeDefense ? "30%" : "35%"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 pl-8">
-                Nộp nhật ký thực tập hàng tuần đúng hạn, hoàn thành đúng các mốc
-                công việc (milestones).
+                Căn cứ theo Phiếu đánh giá chính thức có ký tên đóng dấu của Mentor {student.supervisor} tại {student.company}.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 pl-8 sm:pl-0">
-              <span className="text-xs font-bold text-slate-500">Điểm:</span>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                value={scores.progress}
-                onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    progress: Math.min(
-                      10,
-                      Math.max(0, parseFloat(e.target.value) || 0),
-                    ),
-                  })
-                }
-                className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
-              />
-              <span className="text-xs text-slate-400 font-bold">/ 10</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={scores.progress}
-              onChange={(e) =>
-                setScores({ ...scores, progress: parseFloat(e.target.value) })
-              }
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nhận xét chi tiết tiêu chí 2:
-              </label>
-              <input
-                type="text"
-                value={comments.progress}
-                onChange={(e) =>
-                  setComments({ ...comments, progress: e.target.value })
-                }
-                placeholder="Nhập nhận xét về tiến độ nộp nhật ký và hoàn thành nhiệm vụ..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CRITERION 3: CHẤT LƯỢNG CÔNG VIỆC */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center shrink-0">
-                  3
-                </span>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Chất lượng công việc
-                </h3>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                  Trọng số: 25%
-                </span>
+            <div className="flex items-center gap-3 pl-8 sm:pl-0">
+              <button
+                type="button"
+                onClick={handleAutoFetchEnterprise}
+                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] rounded border border-blue-200 flex items-center gap-1 transition-colors"
+                title="Lấy điểm từ phiếu đánh giá của doanh nghiệp"
+              >
+                <Sparkles className="w-3 h-3 text-blue-600" />
+                <span>Lấy điểm từ Phiếu DN ({student.enterpriseScore || 9.2}đ)</span>
+              </button>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-bold">Điểm Trụ cột 2</span>
+                <span className="text-lg font-bold text-blue-700">{pillar2Score}/10</span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 pl-8">
-                Năng lực chuyên môn, chất lượng mã nguồn/sản phẩm thực tế, khả
-                năng giải quyết vấn đề thực tế.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pl-8 sm:pl-0">
-              <span className="text-xs font-bold text-slate-500">Điểm:</span>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                value={scores.quality}
-                onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    quality: Math.min(
-                      10,
-                      Math.max(0, parseFloat(e.target.value) || 0),
-                    ),
-                  })
-                }
-                className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
-              />
-              <span className="text-xs text-slate-400 font-bold">/ 10</span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={scores.quality}
-              onChange={(e) =>
-                setScores({ ...scores, quality: parseFloat(e.target.value) })
-              }
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nhận xét chi tiết tiêu chí 3:
-              </label>
-              <input
-                type="text"
-                value={comments.quality}
-                onChange={(e) =>
-                  setComments({ ...comments, quality: e.target.value })
-                }
-                placeholder="Nhập nhận xét về chất lượng sản phẩm công việc..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CRITERION 4: BÁO CÁO */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center shrink-0">
-                  4
-                </span>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Báo cáo thực tập
-                </h3>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                  Trọng số: 25%
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 pl-8">
-                Cấu trúc báo cáo, chuẩn mực trình bày, hàm lượng tri thức và giá
-                trị thực tiễn đóng góp.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pl-8 sm:pl-0">
-              <span className="text-xs font-bold text-slate-500">Điểm:</span>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                value={scores.report}
-                onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    report: Math.min(
-                      10,
-                      Math.max(0, parseFloat(e.target.value) || 0),
-                    ),
-                  })
-                }
-                className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
-              />
-              <span className="text-xs text-slate-400 font-bold">/ 10</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={scores.report}
-              onChange={(e) =>
-                setScores({ ...scores, report: parseFloat(e.target.value) })
-              }
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nhận xét chi tiết tiêu chí 4:
-              </label>
-              <input
-                type="text"
-                value={comments.report}
-                onChange={(e) =>
-                  setComments({ ...comments, report: e.target.value })
-                }
-                placeholder="Nhập nhận xét về cuốn báo cáo thực tập..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CRITERION 5: DOANH NGHIỆP ĐÁNH GIÁ */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center shrink-0">
-                  5
-                </span>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Doanh nghiệp đánh giá
-                </h3>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
-                  Trọng số: {includePresentation ? "15%" : "20%"}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 pl-8">
-                Điểm số và đánh giá toàn diện ghi trong Phiếu đánh giá chính
-                thức của Mentor Doanh nghiệp.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pl-8 sm:pl-0">
-              <span className="text-xs font-bold text-slate-500">Điểm:</span>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                value={scores.enterprise}
-                onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    enterprise: Math.min(
-                      10,
-                      Math.max(0, parseFloat(e.target.value) || 0),
-                    ),
-                  })
-                }
-                className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
-              />
-              <span className="text-xs text-slate-400 font-bold">/ 10</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.1"
-              value={scores.enterprise}
-              onChange={(e) =>
-                setScores({ ...scores, enterprise: parseFloat(e.target.value) })
-              }
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nhận xét chi tiết tiêu chí 5:
-              </label>
-              <input
-                type="text"
-                value={comments.enterprise}
-                onChange={(e) =>
-                  setComments({ ...comments, enterprise: e.target.value })
-                }
-                placeholder="Trích dẫn nhận xét từ phía Doanh nghiệp..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CRITERION 6: THUYẾT TRÌNH (OPTIONAL) */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="includePres"
-                  checked={includePresentation}
-                  onChange={(e) => setIncludePresentation(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-                />
-                <label
-                  htmlFor="includePres"
-                  className="font-bold text-slate-900 text-sm cursor-pointer flex items-center gap-2"
-                >
-                  <span>6. Thuyết trình &amp; Phản biện</span>
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold text-[10px] rounded-md">
-                    Optional (Trọng số 15%)
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+            {/* Sub-criterion 2.1 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  2.1. Kỷ luật, văn hóa doanh nghiệp &amp; Thái độ làm việc
                 </label>
+                <span className="font-bold text-blue-700 font-mono text-sm">{scores.enterpriseWorkEthic}</span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 pl-6">
-                Kỹ năng thuyết trình, slide báo cáo và phản biện trước Hội đồng
-                chấm thực tập.
-              </p>
-            </div>
-
-            {includePresentation && (
-              <div className="flex items-center gap-2 pl-6 sm:pl-0">
-                <span className="text-xs font-bold text-slate-500">Điểm:</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={scores.presentation}
-                  onChange={(e) =>
-                    setScores({
-                      ...scores,
-                      presentation: Math.min(
-                        10,
-                        Math.max(0, parseFloat(e.target.value) || 0),
-                      ),
-                    })
-                  }
-                  className="w-16 p-1.5 text-center font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-md text-sm outline-none"
-                />
-                <span className="text-xs text-slate-400 font-bold">/ 10</span>
-              </div>
-            )}
-          </div>
-
-          {includePresentation && (
-            <div className="space-y-2">
               <input
                 type="range"
                 min="0"
                 max="10"
                 step="0.1"
-                value={scores.presentation}
+                value={scores.enterpriseWorkEthic}
                 onChange={(e) =>
-                  setScores({
-                    ...scores,
-                    presentation: parseFloat(e.target.value),
-                  })
+                  setScores({ ...scores, enterpriseWorkEthic: parseFloat(e.target.value) })
                 }
                 className="w-full accent-blue-600 cursor-pointer"
               />
+              <span className="text-[10px] text-slate-400 block">Đúng giờ, tuân thủ NDA/bảo mật, giao tiếp chuyên nghiệp với đội ngũ.</span>
+            </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  Nhận xét chi tiết tiêu chí 6:
+            {/* Sub-criterion 2.2 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  2.2. Năng lực chuyên môn &amp; Đóng góp thực tế vào dự án DN
                 </label>
-                <input
-                  type="text"
-                  value={comments.presentation}
-                  onChange={(e) =>
-                    setComments({ ...comments, presentation: e.target.value })
-                  }
-                  placeholder="Nhập nhận xét về buổi thuyết trình bảo vệ..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
-                />
+                <span className="font-bold text-blue-700 font-mono text-sm">{scores.enterpriseTechnicalOutput}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={scores.enterpriseTechnicalOutput}
+                onChange={(e) =>
+                  setScores({ ...scores, enterpriseTechnicalOutput: parseFloat(e.target.value) })
+                }
+                className="w-full accent-blue-600 cursor-pointer"
+              />
+              <span className="text-[10px] text-slate-400 block">Hoàn thành các task/user stories được giao, chất lượng code và khả năng thích ứng.</span>
+            </div>
+          </div>
+
+          <input
+            type="text"
+            value={comments.enterprise}
+            onChange={(e) => setComments({ ...comments, enterprise: e.target.value })}
+            placeholder="Ghi chú đánh giá từ phía Doanh nghiệp..."
+            className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded outline-none focus:bg-white text-slate-800 font-medium"
+          />
+        </div>
+
+        {/* PILLAR 3: BÁO CÁO CUỐI KỲ & SẢN PHẨM HOÀN THÀNH */}
+        <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-800 font-bold text-xs flex items-center justify-center shrink-0">
+                  3
+                </span>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Quyển Báo cáo Tổng kết &amp; Sản phẩm / Source Code thực tế
+                </h3>
+                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold text-[10px] rounded-md border border-purple-200">
+                  Trọng số: {includeDefense ? "30%" : "40%"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 pl-8">
+                Đánh giá chất lượng học thuật của cuốn báo cáo và mức độ hoàn thiện của sản phẩm ứng dụng/hệ thống.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pl-8 sm:pl-0">
+              <button
+                type="button"
+                onClick={() => showToast("Đang mở file báo cáo Bao_Cao_Thuc_Tap_Final.pdf...")}
+                className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold text-[11px] rounded border border-purple-200 flex items-center gap-1 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3 text-purple-600" />
+                <span>Xem Báo Cáo &amp; Source Code</span>
+              </button>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-bold">Điểm Trụ cột 3</span>
+                <span className="text-lg font-bold text-purple-700">{pillar3Score}/10</span>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* BOTTOM SCORE SUMMARY & CLASSIFICATION PANEL */}
-      <div className="il-panel p-6 border-t-4 border-t-[#1d4ed8] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <Award className="w-6 h-6 text-amber-600" />
-            <h2 className="font-bold text-base text-slate-900">
-              Kết quả chấm điểm theo tiêu chí
-            </h2>
           </div>
 
-          <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed">
-            Điểm tổng kết được tính toán tự động dựa trên trọng số chuẩn (
-            {includePresentation ? "6 tiêu chí" : "5 tiêu chí"}).
-          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+            {/* Sub-criterion 3.1 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  3.1. Bố cục, phân tích bài toán &amp; Hàm lượng học thuật của báo cáo
+                </label>
+                <span className="font-bold text-purple-700 font-mono text-sm">{scores.reportAcademicQuality}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={scores.reportAcademicQuality}
+                onChange={(e) =>
+                  setScores({ ...scores, reportAcademicQuality: parseFloat(e.target.value) })
+                }
+                className="w-full accent-purple-600 cursor-pointer"
+              />
+              <span className="text-[10px] text-slate-400 block">Định dạng chuẩn, phân tích yêu cầu, thiết kế kiến trúc, lược đồ CSDL đầy đủ.</span>
+            </div>
 
-          <div className="flex items-center gap-3 mt-3 text-xs text-slate-600">
-            <span className="px-2 py-1 bg-slate-50 rounded-md border border-slate-200 text-[11px]">
-              Tỷ lệ trọng số:{" "}
-              {includePresentation ? "10-10-25-25-15-15" : "15-15-25-25-20"}
-            </span>
-          </div>
-        </div>
-
-        {/* Big Score Box & Badge */}
-        <div className="flex items-center gap-4 bg-white/10 p-4 rounded-lg border border-white/10 shrink-0 self-stretch md:self-auto justify-between md:justify-end">
-          <div>
-            <span className="text-[10px] text-slate-300 uppercase font-bold tracking-wider block">
-              Điểm tổng kết:
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-4xl font-bold text-amber-400">
-                {finalScore}
-              </span>
-              <span className="text-xs text-slate-300 font-bold">/ 10</span>
+            {/* Sub-criterion 3.2 */}
+            <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-800">
+                  3.2. Mức độ hoàn thiện của Sản phẩm thực tế / Demo / Source Code
+                </label>
+                <span className="font-bold text-purple-700 font-mono text-sm">{scores.practicalProductDemo}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={scores.practicalProductDemo}
+                onChange={(e) =>
+                  setScores({ ...scores, practicalProductDemo: parseFloat(e.target.value) })
+                }
+                className="w-full accent-purple-600 cursor-pointer"
+              />
+              <span className="text-[10px] text-slate-400 block">Chạy thực tế trơn tru, xử lý lỗi tốt, áp dụng đúng các công nghệ theo cam kết đề cương.</span>
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="text-[10px] text-slate-300 uppercase font-bold tracking-wider block mb-1">
-              Xếp loại:
+          <input
+            type="text"
+            value={comments.finalReportAndProduct}
+            onChange={(e) => setComments({ ...comments, finalReportAndProduct: e.target.value })}
+            placeholder="Nhận xét về chất lượng quyển báo cáo và sản phẩm..."
+            className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded outline-none focus:bg-white text-slate-800 font-medium"
+          />
+        </div>
+
+        {/* PILLAR 4: ĐÁNH GIÁ GV & VẤN ĐÁP / BẢO VỆ */}
+        {includeDefense && (
+          <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center shrink-0">
+                    4
+                  </span>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Đánh giá Chuyên môn của Giảng viên &amp; Vấn đáp / Bảo vệ
+                  </h3>
+                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold text-[10px] rounded-md border border-indigo-200">
+                    Trọng số: 20%
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 pl-8">
+                  Đánh giá năng lực độc lập, mức độ thấu hiểu bài toán và khả năng phản biện của sinh viên trước Giảng viên/Hội đồng.
+                </p>
+              </div>
+
+              <div className="text-right pl-8 sm:pl-0">
+                <span className="text-[10px] text-slate-400 block font-bold">Điểm Trụ cột 4</span>
+                <span className="text-lg font-bold text-indigo-700">{pillar4Score}/10</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+              {/* Sub-criterion 4.1 */}
+              <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-800">
+                    4.1. Năng lực tư duy &amp; Mức độ nắm bắt kiến thức chuyên ngành
+                  </label>
+                  <span className="font-bold text-indigo-700 font-mono text-sm">{scores.lecturerHolistic}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={scores.lecturerHolistic}
+                  onChange={(e) =>
+                    setScores({ ...scores, lecturerHolistic: parseFloat(e.target.value) })
+                  }
+                  className="w-full accent-indigo-600 cursor-pointer"
+                />
+                <span className="text-[10px] text-slate-400 block">Hiểu rõ bài toán, giải thích được lý do chọn giải pháp kỹ thuật, chủ động tương tác với GV.</span>
+              </div>
+
+              {/* Sub-criterion 4.2 */}
+              <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-800">
+                    4.2. Khả năng thuyết trình, trả lời câu hỏi vấn đáp phản biện
+                  </label>
+                  <span className="font-bold text-indigo-700 font-mono text-sm">{scores.oralDefenseResponse}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={scores.oralDefenseResponse}
+                  onChange={(e) =>
+                    setScores({ ...scores, oralDefenseResponse: parseFloat(e.target.value) })
+                  }
+                  className="w-full accent-indigo-600 cursor-pointer"
+                />
+                <span className="text-[10px] text-slate-400 block">Trình bày tự tin, rành mạch, bảo vệ được kết quả đạt được trước hội đồng.</span>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              value={comments.lecturerDefense}
+              onChange={(e) => setComments({ ...comments, lecturerDefense: e.target.value })}
+              placeholder="Nhận xét chuyên môn và vấn đáp của Giảng viên..."
+              className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded outline-none focus:bg-white text-slate-800 font-medium"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* FINAL SCORE SUMMARY CARD */}
+      <div className="bg-white p-6 rounded-lg border-2 border-blue-500/80 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1 text-center md:text-left">
+          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
+            Kết quả Tổng kết Đánh giá Thực tập (Final Internship Grade):
+          </span>
+          <div className="flex items-baseline gap-3">
+            <span className="text-4xl font-black text-slate-900 font-mono">
+              {finalScore}
             </span>
+            <span className="text-sm text-slate-500 font-bold">/ 10.0</span>
             <span
-              className={`px-3 py-1.5 font-bold text-xs rounded-md border ${classification.color}`}
+              className={`px-3 py-1 font-bold text-xs rounded-md border ${classification.color}`}
             >
               {classification.label}
             </span>
           </div>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            {classification.desc}
+          </p>
         </div>
-      </div>
 
-      {/* FOOTER BUTTONS */}
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button
-          onClick={handleExportPDF}
-          className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-md transition-colors border border-slate-200 flex items-center gap-1.5"
-        >
-          <Printer className="w-4 h-4 text-slate-600" />
-          <span>Xuất PDF</span>
-        </button>
+        {/* Pillar mini breakdown */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs w-full md:w-auto">
+          <div className="p-2.5 bg-emerald-50 rounded-md border border-emerald-200">
+            <span className="text-[10px] text-emerald-700 block font-bold">Báo cáo tuần ({includeDefense ? "20%" : "25%"})</span>
+            <span className="font-bold text-emerald-900 font-mono text-sm">{pillar1Score}</span>
+          </div>
+          <div className="p-2.5 bg-blue-50 rounded-md border border-blue-200">
+            <span className="text-[10px] text-blue-700 block font-bold">Doanh nghiệp ({includeDefense ? "30%" : "35%"})</span>
+            <span className="font-bold text-blue-900 font-mono text-sm">{pillar2Score}</span>
+          </div>
+          <div className="p-2.5 bg-purple-50 rounded-md border border-purple-200">
+            <span className="text-[10px] text-purple-700 block font-bold">Báo cáo &amp; SP ({includeDefense ? "30%" : "40%"})</span>
+            <span className="font-bold text-purple-900 font-mono text-sm">{pillar3Score}</span>
+          </div>
+          {includeDefense && (
+            <div className="p-2.5 bg-indigo-50 rounded-md border border-indigo-200">
+              <span className="text-[10px] text-indigo-700 block font-bold">Đánh giá GV (20%)</span>
+              <span className="font-bold text-indigo-900 font-mono text-sm">{pillar4Score}</span>
+            </div>
+          )}
+        </div>
 
-        <button
-          onClick={handleSave}
-          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
-        >
-          <Save className="w-4 h-4" />
-          <span>Lưu bảng điểm tiêu chuẩn</span>
-        </button>
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Lưu &amp; Hoàn tất Đánh giá</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export default function StudentLayout({
   onSwitchPortal,
   onLogout,
 }: StudentLayoutProps) {
-  const { message, clearToast } = useToast();
+  const { message, type, clearToast } = useToast();
 
   return (
     <StudentPortalProvider>
@@ -39,7 +39,7 @@ export default function StudentLayout({
             onSwitchPortal={onSwitchPortal}
             onLogout={onLogout}
           />
-          <Toast message={message} onClose={clearToast} />
+          <Toast message={message} type={type} onClose={clearToast} />
           <main className="p-4 md:p-6 space-y-4 max-w-[1440px] w-full mx-auto">
             {children}
           </main>

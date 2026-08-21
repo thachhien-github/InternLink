@@ -24,14 +24,20 @@ import { notificationService } from "../../../services/notification.service";
 import { weeklyReportService } from "../../../services/weeklyReport.service";
 import { INTERNSHIP_WEEKS } from "../../../config/internship";
 
-export const NotificationsView = ({ onShowToast, onNavigate }) => {
+export const NotificationsView = ({
+  onShowToast,
+  onNavigate,
+}: {
+  onShowToast?: (msg: string) => void;
+  onNavigate?: (tab: string) => void;
+}) => {
   const [activeFilter, setActiveFilter] = useState("T\u1EA5t c\u1EA3");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
   const [selectedNotifId, setSelectedNotifId] = useState<string | null>(null);
-  const [selectedModalNotif, setSelectedModalNotif] = useState(null);
-  const [notifications, setNotifications] = useState([]);
+  const [selectedModalNotif, setSelectedModalNotif] = useState<unknown>(null);
+  const [notifications, setNotifications] = useState<unknown[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<
     { weekNumber: number; title: string; status: string }[]
   >([]);

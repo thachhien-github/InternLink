@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Bell,
   User,
   ShieldCheck,
   Settings,
@@ -12,6 +11,7 @@ import {
 import { formatRelativeTimeVi } from "../../../lib/formatRelativeTimeVi";
 import { getNameInitials } from "../../../lib/userDisplay";
 import { useSemester } from "../../../contexts/SemesterContext";
+import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
 import type { AdminNavStats } from "../../../hooks/useAdminNavStats";
 import type { AuthUser, UserRole } from "../../../contexts/AuthContext";
 import type { NotificationDto } from "../../../types/api";
@@ -196,77 +196,12 @@ export const Header = ({
           />
         </form>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowNotificationsMenu(!showNotificationsMenu)}
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors relative"
-            title="Thông báo"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 bg-amber-500 text-white text-[10px] font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center border-2 border-white">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotificationsMenu && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-md border border-slate-200 p-4 z-50">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                <h4 className="font-semibold text-sm text-slate-800 flex items-center gap-1.5">
-                  <Bell className="w-4 h-4 text-blue-600" /> Thông báo
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onNavigate("admin-notifications");
-                    setShowNotificationsMenu(false);
-                  }}
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  Xem tất cả
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {recentNotifications.length === 0 ? (
-                  <p className="py-6 text-center text-xs text-slate-400">
-                    Không có thông báo mới.
-                  </p>
-                ) : (
-                  recentNotifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-2.5 rounded-md border text-xs space-y-1 ${
-                        n.isRead
-                          ? "bg-slate-50 border-slate-200"
-                          : "bg-blue-50 border-blue-100"
-                      }`}
-                    >
-                      <p className="font-semibold text-slate-900">{n.title}</p>
-                      <p className="text-slate-600 line-clamp-2">{n.content}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {formatRelativeTimeVi(n.createdAt)}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNotificationsMenu(false);
-                  onNavigate("admin-notifications");
-                }}
-                className="w-full mt-3 py-1.5 text-center text-xs text-blue-600 font-semibold bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
-              >
-                Mở Trung tâm Thông báo
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Notifications Popover */}
+        <NotificationDropdown
+          role="Admin"
+          onNavigate={onNavigate}
+          onShowToast={onShowToast}
+        />
 
         <div className="relative">
           <button

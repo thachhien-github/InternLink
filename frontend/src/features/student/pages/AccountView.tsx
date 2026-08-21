@@ -77,7 +77,14 @@ function loadContactOverrides(mssv: string): Partial<PersonalInfo> | null {
   }
 }
 
-export const AccountView = ({ onShowToast, onNavigate, onLogout }) => {
+export const AccountView = ({
+  onShowToast,
+  onLogout,
+}: {
+  onShowToast: (msg: string) => void;
+  onNavigate?: (tab: string) => void;
+  onLogout?: () => void;
+}) => {
   const { profile, portalData } = useStudentPortal();
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(() =>
     buildPersonalInfo(profile, portalData),

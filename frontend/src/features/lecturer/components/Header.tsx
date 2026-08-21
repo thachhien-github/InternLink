@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Bell, User } from "lucide-react";
+import { Search, User } from "lucide-react";
+import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
 import type { UserRole } from "../../../types/common";
 
 export const Header = ({
@@ -99,74 +100,8 @@ export const Header = ({
           ) : null}
         </div>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors relative cursor-pointer"
-            title="Thông báo"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-md border border-slate-200 p-4 z-50">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-blue-600" /> Thông báo hệ thống
-                </h4>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs text-blue-600 hover:underline font-semibold"
-                >
-                  Đã đọc tất cả
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 il-scrollbar">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-1">
-                  <div className="flex items-center justify-between font-semibold text-slate-900">
-                    <span className="text-slate-800">Báo cáo quá hạn</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      10 phút trước
-                    </span>
-                  </div>
-                  <p className="text-slate-600">
-                    Phạm Phương Thảo (MSSV: 20120999) đã quá hạn nộp Báo cáo
-                    giữa kỳ.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-slate-50 hover:bg-slate-100 rounded-md text-xs space-y-1 transition-colors">
-                  <div className="flex items-center justify-between font-semibold text-slate-900">
-                    <span>Doanh nghiệp mới đăng ký</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      1 giờ trước
-                    </span>
-                  </div>
-                  <p className="text-slate-600">
-                    CMC Global yêu cầu xác nhận đối tác thực tập cho 5 sinh
-                    viên.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowNotifications(false);
-                  onNavigate("notifications");
-                }}
-                className="w-full mt-3 py-2 text-center text-xs text-blue-600 font-semibold bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
-              >
-                Xem toàn bộ thông báo
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Notifications */}
+        <NotificationDropdown role="Lecturer" onNavigate={onNavigate} />
 
         <div className="relative">
           <button

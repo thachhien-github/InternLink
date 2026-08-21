@@ -29,7 +29,7 @@ export default function LecturerLayout({
   currentLecturer,
   assignedStudentsCount,
 }: LecturerLayoutProps) {
-  const { message, clearToast } = useToast();
+  const { message, type, clearToast } = useToast();
 
   return (
     <div className="min-h-screen bg-[var(--il-surface-bg)] text-slate-800 font-sans flex antialiased">
@@ -50,7 +50,7 @@ export default function LecturerLayout({
           onSwitchPortal={onSwitchPortal}
           onLogout={onLogout}
         />
-        <Toast message={message} onClose={clearToast} />
+        <Toast message={message} type={type} onClose={clearToast} />
         <main className="p-4 md:p-6 space-y-4 max-w-[1440px] w-full mx-auto">
           {children}
         </main>

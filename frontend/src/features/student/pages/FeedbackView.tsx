@@ -15,12 +15,13 @@ import {
   FileCode,
   Presentation,
   Loader2,
-  Inbox,
 } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { EmptyState } from "../../../components/common/EmptyState";
+import { TableSkeleton } from "../../../components/common/SkeletonLoader";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import {
   mapFeedbackDtoToStudentUi,
@@ -336,33 +337,15 @@ export const FeedbackView = ({
       />
 
       {isLoading ? (
-        <Panel className="py-16 text-center space-y-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
-          <p className="text-sm font-medium text-slate-600">
-            Đang tải phản hồi từ giảng viên...
-          </p>
-        </Panel>
+        <TableSkeleton rows={4} columns={4} />
       ) : feedbacks.length === 0 ? (
-        <Panel className="py-16 text-center space-y-4">
-          <Inbox className="w-12 h-12 text-slate-300 mx-auto" />
-          <div className="space-y-1">
-            <p className="text-sm font-bold text-slate-800">
-              Chưa có phản hồi nào
-            </p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Khi giảng viên nhận xét báo cáo tuần hoặc sản phẩm nộp, phản hồi
-              sẽ hiển thị tại đây.
-            </p>
-          </div>
-          {onNavigateToWeeklyReports && (
-            <button
-              type="button"
-              onClick={onNavigateToWeeklyReports}
-              className="il-btn il-btn-primary text-xs py-2 px-4 mx-auto"
-            >
-              <FileText className="w-3.5 h-3.5" /> Đi tới Báo cáo tuần
-            </button>
-          )}
+        <Panel className="p-4">
+          <EmptyState
+            title="Chưa có phản hồi hoặc nhận xét nào"
+            description="Khi Giảng viên hướng dẫn nhận xét báo cáo tuần hoặc sản phẩm nộp của bạn, phản hồi chi tiết sẽ hiển thị tại đây."
+            actionLabel={onNavigateToWeeklyReports ? "Đi tới Báo cáo tuần" : undefined}
+            onAction={onNavigateToWeeklyReports}
+          />
         </Panel>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -21,6 +21,8 @@ import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { useAdminCompanies } from "../../../hooks/useAdminCompanies";
 import type { Enterprise } from "../../../types/enterprise";
+import { INITIAL_ENTERPRISES } from "../../../data/mockData";
+import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../../../lib/adminMappers";
 import { adminCompaniesService } from "../../../services/adminCompanies.service";
@@ -43,8 +45,8 @@ export const CompaniesView = ({
   onShowToast: (msg: string) => void;
 }) => {
   const { companies: initialCompanies, loading: companiesLoading, error: companiesError } = useAdminCompanies();
-  const [companies, setCompanies] = useState<Enterprise[]>([]);
-  const [isLoadingApi, setIsLoadingApi] = useState(companiesLoading);
+  const [companies, setCompanies] = useState<Enterprise[]>(USE_MOCK ? INITIAL_ENTERPRISES : []);
+  const [isLoadingApi, setIsLoadingApi] = useState(USE_MOCK ? false : companiesLoading);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Enterprise | null>(null);
@@ -73,7 +75,7 @@ export const CompaniesView = ({
 
   // Handle errors from hook
   useEffect(() => {
-    if (companiesError) {
+    if (!USE_MOCK && companiesError) {
       onShowToast(getApiErrorMessage(companiesError));
     }
   }, [companiesError, onShowToast]);

@@ -23,7 +23,7 @@ export default function AdminLayout({
   onSwitchPortal: _onSwitchPortal,
   onLogout,
 }: AdminLayoutProps) {
-  const { message, clearToast, showToast } = useToast();
+  const { message, type, clearToast, showToast } = useToast();
   const { user } = useAuth();
   const { stats, recentNotifications } = useAdminNavStats(true);
 
@@ -45,7 +45,7 @@ export default function AdminLayout({
           stats={stats}
           recentNotifications={recentNotifications}
         />
-        <Toast message={message} onClose={clearToast} />
+        <Toast message={message} type={type} onClose={clearToast} />
         <main className="flex-1 p-4 md:p-6 max-w-[1440px] w-full mx-auto">
           {children}
         </main>

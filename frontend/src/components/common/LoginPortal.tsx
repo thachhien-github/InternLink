@@ -6,10 +6,7 @@ import {
   EyeOff,
   AlertCircle,
   X,
-  Shield,
   Loader2,
-  GraduationCap,
-  UserCheck,
   ArrowRight,
   User,
 } from "lucide-react";
@@ -168,33 +165,6 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       setErrorMessage(getApiErrorMessage(err));
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAutoFill = (demoType: string) => {
-    setErrorMessage(null);
-    if (USE_MOCK) {
-      if (demoType === "student") {
-        setUsername("SV2026001");
-        setPassword("123456");
-      } else if (demoType === "lecturer") {
-        setUsername("GV001");
-        setPassword("123456");
-      } else {
-        setUsername("admin");
-        setPassword("admin123");
-      }
-    } else {
-      if (demoType === "student") {
-        setUsername("student1");
-        setPassword("Password123!");
-      } else if (demoType === "lecturer") {
-        setUsername("lecturer1");
-        setPassword("Password123!");
-      } else {
-        setUsername("superadmin");
-        setPassword("Password123!");
-      }
     }
   };
 
@@ -388,39 +358,6 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                   <div className="absolute inset-0 bg-gradient-to-r from-[#0058be] via-[#2170e4] to-[#0058be] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </button>
               </form>
-
-              {/* QUICK PRESETS FOR DEMO TESTING */}
-              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center font-display">
-                  Chế độ xem demo nhanh:
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFill("student")}
-                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-[#0058be] rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
-                  >
-                    <GraduationCap className="w-3.5 h-3.5 text-[#0058be] transition-transform" />
-                    <span>Sinh viên</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFill("lecturer")}
-                    className="p-2 bg-[#f8f9ff] hover:bg-blue-50 hover:border-blue-200 border border-slate-200/60 text-slate-700 hover:text-blue-900 rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
-                  >
-                    <UserCheck className="w-3.5 h-3.5 text-blue-600 transition-transform" />
-                    <span>Giảng viên</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFill("admin")}
-                    className="p-2 bg-[#f8f9ff] hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/60 text-slate-700 hover:text-emerald-900 rounded-md text-[11px] font-semibold transition-all text-center cursor-pointer flex flex-col items-center gap-1 group shadow-2xs"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-emerald-600 transition-transform" />
-                    <span>Quản trị</span>
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 

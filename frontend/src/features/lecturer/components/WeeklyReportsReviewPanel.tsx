@@ -2,7 +2,6 @@ import { useState } from "react";
 import { FileCheck2, Check, RotateCcw } from "lucide-react";
 import { Panel } from "../../../components/common/Panel";
 import {
-  mapUiWeeklyReportReviewStatusToApi,
   mapWeeklyReportStatusToUi,
 } from "../../../lib/portalMappers";
 import type { WeeklyReportDto } from "../../../types/api";

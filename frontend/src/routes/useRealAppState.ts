@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useLecturerPortalData } from "../hooks/useLecturerPortalData";
-import { INITIAL_DEADLINES } from "../data/mockData";
 import type { AuthUser } from "../contexts/AuthContext";
 import type { AppState } from "./useMockAppState";
 
@@ -119,7 +118,32 @@ export function useRealAppState(
     assignedSubmissions: lecturerPortal.submissions,
     lecturerEnterprises: lecturerPortal.enterprises,
     dynamicActionItems,
-    deadlines: INITIAL_DEADLINES,
+    deadlines: [
+      {
+        id: "dl-1",
+        title: "Hạn nộp Đề cương & Kế hoạch thực tập",
+        date: "Tuần 3",
+        daysLeft: 5,
+        type: "plan",
+        required: true,
+      },
+      {
+        id: "dl-2",
+        title: "Báo cáo tiến độ thực tập giữa kỳ",
+        date: "Tuần 8",
+        daysLeft: 26,
+        type: "midterm",
+        required: true,
+      },
+      {
+        id: "dl-3",
+        title: "Nộp Báo cáo tổng kết & Sản phẩm cuối kỳ",
+        date: "Tuần 15",
+        daysLeft: 60,
+        type: "final",
+        required: true,
+      },
+    ],
     stats,
     weeklyReports: lecturerPortal.weeklyReports,
     handleUpdateSubmissionStatus,

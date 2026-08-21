@@ -11,8 +11,13 @@ import {
 export const Sidebar = ({
   activeTab,
   onNavigate,
-  onSwitchPortal,
+  _onSwitchPortal,
   studentName = "Nguyễn Văn A",
+}: {
+  activeTab: string;
+  onNavigate: (tab: string) => void;
+  _onSwitchPortal?: (role: string) => void;
+  studentName?: string;
 }) => {
   const navSections = [
     {

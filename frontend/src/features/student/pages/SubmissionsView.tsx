@@ -26,6 +26,7 @@ import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { EmptyState } from "../../../components/common/EmptyState";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentSubmissionToUpload, mapUiProductCategoryToSubmissionType } from "../../../lib/portalMappers";
 import { submissionApiService } from "../../../services/submissionApi.service";
@@ -127,7 +128,7 @@ export const SubmissionsView = ({ onShowToast }) => {
   const [newRepoBranch, setNewRepoBranch] = useState("main");
   const [contactMsg, setContactMsg] = useState("");
   const completedChecklistCount = checklist.filter((c) => c.completed).length;
-  const toggleChecklist = (id: string) => {
+  const toggleChecklist = (_id: string) => {
     onShowToast("Checklist tự động cập nhật theo sản phẩm đã nộp.");
   };
   const handleCopyGit = () => {
@@ -227,7 +228,7 @@ export const SubmissionsView = ({ onShowToast }) => {
       onShowToast(getApiErrorMessage(err));
     }
   };
-  const handleDeleteUpload = (id: string, title: string) => {
+  const handleDeleteUpload = (_id: string, _title: string) => {
     onShowToast("Chức năng xóa sản phẩm chưa được hỗ trợ trên hệ thống.");
   };
   const handleUpdateRepo = (e) => {
@@ -481,7 +482,19 @@ export const SubmissionsView = ({ onShowToast }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {uploads.map((item) => (
+                  {uploads.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-4">
+                        <EmptyState
+                          title="Chưa có sản phẩm nào được nộp"
+                          description="Nhấp vào nút 'Nộp sản phẩm' phía trên để tải lên báo cáo cuối kỳ, slide, mã nguồn hoặc video demo."
+                          actionLabel="Nộp sản phẩm ngay"
+                          onAction={() => setShowUploadModal(true)}
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    uploads.map((item) => (
                     <tr
                       key={item.id}
                       className="hover:bg-slate-50/80 transition-colors"
@@ -552,7 +565,7 @@ export const SubmissionsView = ({ onShowToast }) => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

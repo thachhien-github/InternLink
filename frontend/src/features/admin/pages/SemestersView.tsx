@@ -17,6 +17,7 @@ import {
   Layers,
   CheckSquare,
 } from "lucide-react";
+import { useSemester } from "../../../contexts/SemesterContext";
 import { CreateSemesterModal } from "../components/modals/CreateSemesterModal";
 import { ImportModal } from "../components/modals/ImportModal";
 import { AssignLecturerModal } from "../components/modals/AssignLecturerModal";
@@ -98,9 +99,7 @@ const INITIAL_SEMESTERS = [
   },
 ];
 
-import { useSemester } from "../../../contexts/SemesterContext";
-
-export const SemestersView = ({ onShowToast, onNavigateTab }) => {
+export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (msg: string) => void; onNavigateTab?: (tab: string) => void }) => {
   const {
     semesters: semestersList,
     selectedSemesterId,

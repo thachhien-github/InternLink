@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   FileCheck2,
   Upload,
@@ -10,11 +10,14 @@ import {
   Search,
   X,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { EmptyState } from "../../../components/common/EmptyState";
+import { SkeletonBox } from "../../../components/common/SkeletonLoader";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapWeeklyReportDtoToUi } from "../../../lib/portalMappers";
 import { weeklyReportService } from "../../../services/weeklyReport.service";
@@ -37,11 +40,11 @@ type WeeklyReportRow = {
   stepIndex: number;
 };
 
-
-export const WeeklyReportsView = ({ onShowToast }) => {
-  const { profile, internshipId } = useStudentPortal();
+export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) => void }) => {
+  const { internshipId, profile } = useStudentPortal();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("T\u1EA5t c\u1EA3");
+  const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [selectedPdfFile, setSelectedPdfFile] = useState<{
     name: string;
@@ -52,6 +55,7 @@ export const WeeklyReportsView = ({ onShowToast }) => {
   const [reports, setReports] = useState<WeeklyReportRow[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const reloadReports = useCallback(async () => {
     const rows = await weeklyReportService.getMine();
@@ -124,25 +128,50 @@ export const WeeklyReportsView = ({ onShowToast }) => {
     (r) => r.status === "Chưa nộp" || r.status === "Cần chỉnh sửa",
   );
 
-  const handleFileSelect = () => {
-    const fileName = prompt(
-      "Ch\u1ECDn file PDF b\xE1o c\xE1o \u0111\xE3 xu\u1EA5t t\u1EEB Word:",
-      `BaoCao_Tuan${selectedWeek}_NguyenVanA_v${currentReport.version === "v0.0" ? "1.0" : "2.1"}.pdf`,
-    );
-    if (fileName) {
-      if (!fileName.toLowerCase().endsWith(".pdf")) {
-        alert(
-          "H\u1EC7 th\u1ED1ng ch\u1EC9 ch\u1EA5p nh\u1EADn \u0111\u1ECBnh d\u1EA1ng file PDF (.pdf)!",
-        );
-        return;
-      }
-      setSelectedPdfFile({
-        name: fileName,
-        size: "2.6 MB",
-        time: "V\u1EEBa ch\u1ECDn",
-      });
-      onShowToast(`\u0110\xE3 ch\u1ECDn file: ${fileName}`);
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      onShowToast("Hệ thống chỉ chấp nhận định dạng file PDF (.pdf)!");
+      return;
     }
+    if (file.size > 20 * 1024 * 1024) {
+      onShowToast("Dung lượng file vượt quá giới hạn 20MB!");
+      return;
+    }
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    setSelectedPdfFile({
+      name: file.name,
+      size: `${sizeMb} MB`,
+      time: "Vừa chọn",
+    });
+    onShowToast(`Đã chọn file: ${file.name}`);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      onShowToast("Hệ thống chỉ chấp nhận định dạng file PDF (.pdf)!");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      onShowToast("Dung lượng file vượt quá giới hạn 20MB!");
+      return;
+    }
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    setSelectedPdfFile({
+      name: file.name,
+      size: `${sizeMb} MB`,
+      time: "Vừa kéo thả",
+    });
+    onShowToast(`Đã nhận file: ${file.name}`);
+  };
+
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
   };
   const handleSubmitPdf = async () => {
     if (!selectedPdfFile) {
@@ -197,9 +226,17 @@ export const WeeklyReportsView = ({ onShowToast }) => {
     }
   };
   const handleDownloadWordTemplate = () => {
-    onShowToast(
-      `\u0110ang t\u1EA3i xu\u1ED1ng: Mau_Bao_Cao_Thuc_Tap_Tuan_${selectedWeek}_Khoa_CNTT.docx`,
-    );
+    const templateContent = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n--------------------------------\n\nBÁO CÁO THỰC TẬP TỐT NGHIỆP - TUẦN ${selectedWeek}\n\nSinh viên thực hiện: ${profile?.name || "Sinh viên"}\nMã số sinh viên: ${profile?.mssv || "2421160088"}\nLớp: ${profile?.class || "C24A.TH1"}\nGiảng viên hướng dẫn: ${profile?.lecturerName || "ThS. Nguyễn Văn Phước"}\nĐơn vị thực tập: ${profile?.company || "Doanh nghiệp tiếp nhận"}\nMentor hướng dẫn: ${profile?.supervisorName || "Cán bộ hướng dẫn DN"}\n\nI. NỘI DUNG CÔNG VIỆC TRONG TUẦN ${selectedWeek}:\n1. Công việc 1: [Ghi rõ chi tiết công việc đã thực hiện]\n2. Công việc 2: [Ghi rõ kết quả đạt được]\n\nII. KẾ HOẠCH TUẦN TIẾP THEO (TUẦN ${Math.min(selectedWeek + 1, INTERNSHIP_WEEKS)}):\n1. Mục tiêu công việc kế tiếp:\n2. Dự kiến sản phẩm/chức năng hoàn thành:\n\nIII. KHÓ KHĂN VÀ ĐỀ XUẤT HỖ TRỢ:\n1. Khó khăn gặp phải (nếu có):\n2. Đề xuất ý kiến với GVHD / Mentor:\n\n                                  Ngày ..... tháng ..... năm 2026\n                                        Sinh viên ký tên\n`;
+    const blob = new Blob([templateContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Mau_Bao_Cao_Thuc_Tap_Tuan_${selectedWeek}_Khoa_CNTT.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onShowToast(`Đã tải xuống biểu mẫu báo cáo tuần ${selectedWeek}`);
   };
   const filteredReports = allWeekRows.filter((r) => {
     const matchesSearch =
@@ -307,48 +344,74 @@ export const WeeklyReportsView = ({ onShowToast }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredReports.map((rep) => {
-                    const isSelected = rep.weekNumber === selectedWeek;
-                    return (
-                      <tr
-                        key={rep.weekNumber}
-                        className={`transition-colors ${isSelected ? "bg-blue-50/60 font-medium" : "hover:bg-slate-50/80"}`}
-                      >
-                        <td className="p-3 font-bold text-blue-700">
-                          Tuần {rep.weekNumber}
-                        </td>
-                        <td className="p-3">
-                          <p className="font-bold text-slate-800 line-clamp-1">
-                            {rep.title}
-                          </p>
-                          {rep.fileName && (
-                            <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                              <FileText className="w-3 h-3 text-blue-600" />{" "}
-                              {rep.fileName} ({rep.fileSize})
-                            </p>
-                          )}
-                        </td>
-                        <td className="p-3 text-slate-600 font-medium">
-                          {rep.deadline}
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold inline-block ${rep.status === "\u0110\xE3 ho\xE0n th\xE0nh" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : rep.status === "C\u1EA7n ch\u1EC9nh s\u1EEDa" ? "bg-rose-50 text-rose-800 border border-rose-200" : rep.status === "\u0110ang xem x\xE9t" ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-500"}`}
-                          >
-                            {rep.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => setSelectedWeek(rep.weekNumber)}
-                            className={`px-2.5 py-1 font-bold text-[11px] rounded-lg transition-colors ${isSelected ? "bg-blue-600 text-white" : "bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700"}`}
-                          >
-                            {isSelected ? "\u0110ang ch\u1ECDn" : "Ch\u1ECDn"}
-                          </button>
-                        </td>
+                  {isLoadingApi ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <tr key={idx} className="animate-pulse">
+                        <td className="p-3"><SkeletonBox className="h-4 w-12" /></td>
+                        <td className="p-3"><SkeletonBox className="h-4 w-40" /></td>
+                        <td className="p-3"><SkeletonBox className="h-4 w-20" /></td>
+                        <td className="p-3"><SkeletonBox className="h-5 w-20 rounded-md" /></td>
+                        <td className="p-3 text-right"><SkeletonBox className="h-6 w-14 rounded-lg ml-auto" /></td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  ) : filteredReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4">
+                        <EmptyState
+                          title="Không tìm thấy báo cáo tuần phù hợp"
+                          description="Thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm tuần."
+                          actionLabel="Xóa bộ lọc"
+                          onAction={() => {
+                            setSearchQuery("");
+                            setStatusFilter("Tất cả");
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReports.map((rep) => {
+                      const isSelected = rep.weekNumber === selectedWeek;
+                      return (
+                        <tr
+                          key={rep.weekNumber}
+                          className={`transition-colors ${isSelected ? "bg-blue-50/60 font-medium" : "hover:bg-slate-50/80"}`}
+                        >
+                          <td className="p-3 font-bold text-blue-700">
+                            Tuần {rep.weekNumber}
+                          </td>
+                          <td className="p-3">
+                            <p className="font-bold text-slate-800 line-clamp-1">
+                              {rep.title}
+                            </p>
+                            {rep.fileName && (
+                              <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                                <FileText className="w-3 h-3 text-blue-600" />{" "}
+                                {rep.fileName} ({rep.fileSize})
+                              </p>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-600 font-medium">
+                            {rep.deadline}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold inline-block ${rep.status === "\u0110\xE3 ho\xE0n th\xE0nh" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : rep.status === "C\u1EA7n ch\u1EC9nh s\u1EEDa" ? "bg-rose-50 text-rose-800 border border-rose-200" : rep.status === "\u0110ang xem x\xE9t" ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-500"}`}
+                            >
+                              {rep.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => setSelectedWeek(rep.weekNumber)}
+                              className={`px-2.5 py-1 font-bold text-[11px] rounded-lg transition-colors ${isSelected ? "bg-blue-600 text-white" : "bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700"}`}
+                            >
+                              {isSelected ? "\u0110ang ch\u1ECDn" : "Ch\u1ECDn"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -389,9 +452,26 @@ export const WeeklyReportsView = ({ onShowToast }) => {
 
             {/* Compact Drag & Drop Upload Zone */}
             <div className="space-y-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={handleFileInputChange}
+              />
               <div
                 onClick={handleFileSelect}
-                className="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/30 p-6 text-center rounded-md cursor-pointer transition-all space-y-2"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed ${
+                  isDragging
+                    ? "border-blue-500 bg-blue-50/60 scale-[1.01]"
+                    : "border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/30"
+                } p-6 text-center rounded-md cursor-pointer transition-all space-y-2`}
               >
                 <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-md flex items-center justify-center mx-auto">
                   <Upload className="w-5 h-5" />
@@ -435,7 +515,11 @@ export const WeeklyReportsView = ({ onShowToast }) => {
                       disabled={isSubmitting}
                       className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5"
                     >
-                      <FileUp className="w-3.5 h-3.5" />{" "}
+                      {isSubmitting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <FileUp className="w-3.5 h-3.5" />
+                      )}
                       {isSubmitting ? "Đang nộp…" : "Nộp báo cáo"}
                     </button>
                   </div>

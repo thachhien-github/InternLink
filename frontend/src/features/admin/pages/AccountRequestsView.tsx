@@ -35,7 +35,13 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
-export const AccountRequestsView = ({ onShowToast, onNavigateTab }) => {
+export const AccountRequestsView = ({
+  onShowToast,
+  onNavigateTab,
+}: {
+  onShowToast: (msg: string) => void;
+  onNavigateTab?: (tab: string) => void;
+}) => {
   const [activeMainTab, setActiveMainTab] = useState("requests");
   const [requests, setRequests] = useState([
     {

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Search, Bell, User, Building2 } from "lucide-react";
+import { Search, User, Building2 } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
-import { useStudentNotifications } from "../../../hooks/useStudentNotifications";
+import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
 
 import type { UserRole } from "../../../types/common";
 
@@ -17,14 +17,19 @@ export interface HeaderProps {
 export const Header = ({
   activeTab,
   onNavigate,
-  onSwitchPortal,
+  _onSwitchPortal,
   onLogout,
   searchQuery,
   onSearchChange,
-}: HeaderProps) => {
+}: {
+  activeTab: string;
+  onNavigate: (tab: string) => void;
+  _onSwitchPortal?: (role: UserRole) => void;
+  onLogout: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+}) => {
   const { profile } = useStudentPortal();
-  const { notifications, loading: notificationsLoading, unreadCount } = useStudentNotifications();
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const getTabLabel = (tab: string) => {
     switch (tab) {
@@ -103,78 +108,7 @@ export const Header = ({
         </div>
 
         {/* Notifications Popover */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors relative"
-            title="Thông báo sinh viên"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-md border border-slate-200 p-4 z-50">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                <h4 className="font-semibold text-sm text-slate-800 flex items-center gap-1.5">
-                  <Bell className="w-4 h-4 text-blue-600" /> Thông báo mới
-                </h4>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  Đánh dấu đã đọc
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {notificationsLoading ? (
-                  <div className="p-3 text-center text-xs text-slate-500">
-                    Đang tải thông báo...
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-slate-500">
-                    Không có thông báo mới
-                  </div>
-                ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-2.5 rounded-md text-xs space-y-1 transition-colors ${n.unread ? "bg-blue-50 border border-blue-100" : "bg-slate-50 hover:bg-slate-100"}`}
-                    >
-                      <div className="flex items-center justify-between font-semibold text-slate-800">
-                        <span
-                          className={
-                            n.unread
-                              ? "text-blue-800 font-bold"
-                              : "text-slate-700"
-                          }
-                        >
-                          {n.title}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-400">{n.timeAgo}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowNotifications(false);
-                  onNavigate("student-notifications");
-                }}
-                className="w-full mt-3 py-1.5 text-center text-xs text-blue-600 font-semibold bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
-              >
-                Xem tất cả thông báo
-              </button>
-            </div>
-          )}
-        </div>
+        <NotificationDropdown role="Student" onNavigate={onNavigate} />
 
         {/* Student Profile Button */}
         <div className="relative">

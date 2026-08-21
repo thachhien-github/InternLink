@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toast } from "../../../components/common/Toast";
 import {
   BarChart2,
@@ -21,30 +21,81 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
+import { USE_MOCK } from "../../../config/env";
+import { apiRequest } from "../../../lib/apiClient";
+import { lecturerExportService } from "../../../services/lecturerExport.service";
+
+interface DashboardStatsDto {
+  totalStudents: number;
+  interningCount: number;
+  pendingReviewsCount: number;
+  completedCount: number;
+  overdueReportsCount: number;
+  averageGrade: number;
+  evaluatedCount: number;
+  statusDistribution: Record<string, number>;
+}
 
 export const LecturerAnalytics = () => {
   const [selectedSemester, setSelectedSemester] = useState("HK I - 2026");
-  const [selectedClass, setSelectedClass] = useState(
-    "T\u1EA5t c\u1EA3 l\u1EDBp",
-  );
-  const [toastMsg, setToastMsg] = useState(null);
-  const showToast = (msg) => {
+  const [selectedClass, setSelectedClass] = useState("Tất cả lớp");
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [statsData, setStatsData] = useState<DashboardStatsDto | null>(null);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+    let cancelled = false;
+    apiRequest<DashboardStatsDto>("/api/Lecturer/stats")
+      .then((data) => {
+        if (!cancelled) setStatsData(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3e3);
   };
-  const handleExportExcel = () => {
-    showToast(
-      "\u0110ang t\u1EA1o v\xE0 t\u1EA3i xu\u1ED1ng file Excel Th\u1ED1ng k\xEA B\xE1o c\xE1o Th\u1EF1c t\u1EADp...",
-    );
+
+  const handleExportExcel = async () => {
+    if (USE_MOCK) {
+      showToast("Đang tạo và tải xuống file Excel Thống kê Báo cáo Thực tập (mock)...");
+      return;
+    }
+    try {
+      showToast("Đang tạo file Excel báo cáo...");
+      const { blob, filename } = await lecturerExportService.downloadEndOfTerm();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Đã tải xuống ${filename}`);
+    } catch {
+      showToast("Xuất Excel thất bại.");
+    }
   };
+
   const handleExportPDF = () => {
-    showToast(
-      "\u0110ang xu\u1EA5t B\xE1o c\xE1o Th\u1ED1ng k\xEA \u0111\u1ECBnh d\u1EA1ng PDF...",
-    );
+    showToast("Đang xuất Báo cáo Thống kê định dạng PDF...");
   };
+
   const handlePrint = () => {
     window.print();
   };
+
+  const totalStudents = statsData ? statsData.totalStudents : 28;
+  const interningStudents = statsData ? statsData.interningCount : 25;
+  const overdueCount = statsData ? statsData.overdueReportsCount : 3;
+  const avgGrade = statsData && statsData.averageGrade > 0 ? statsData.averageGrade : 8.65;
+  const complianceRate = totalStudents > 0 ? `${Math.round(((totalStudents - overdueCount) / totalStudents) * 100)}%` : "100%";
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto animate-in fade-in duration-200 pb-12 font-sans">
       {/* Toast Notification */}
@@ -84,35 +135,35 @@ export const LecturerAnalytics = () => {
         <KpiCard
           tone="blue"
           title="Sinh viên hướng dẫn"
-          value={28}
+          value={totalStudents}
           unit="sinh viên"
           icon={Users}
           footer="100% Đã phân công giảng viên"
           onClick={() => {
-            setSelectedClass("T\u1EA5t c\u1EA3 l\u1EDBp");
+            setSelectedClass("Tất cả lớp");
             setSelectedSemester("HK I - 2026");
           }}
         />
         <KpiCard
           tone="emerald"
           title="Đang thực tập tại DN"
-          value={25}
+          value={interningStudents}
           unit="sinh viên"
           icon={CheckCircle2}
-          footer="89.3% Đã có vị trí tại DN"
+          footer={`${totalStudents > 0 ? Math.round((interningStudents / totalStudents) * 100) : 0}% Đã có vị trí tại DN`}
         />
         <KpiCard
           tone="sky"
           title="Tuân thủ Tiến độ Nộp"
-          value="89.3%"
+          value={complianceRate}
           unit="đúng hạn"
           icon={TrendingUp}
-          footer="3 sinh viên trễ báo cáo tuần"
+          footer={`${overdueCount} sinh viên trễ báo cáo tuần`}
         />
         <KpiCard
           tone="amber"
           title="Điểm Trung Bình Đợt"
-          value={8.65}
+          value={avgGrade}
           unit="/ 10"
           icon={Award}
           footer="Xếp loại Khá - Giỏi - Xuất sắc"

@@ -32,6 +32,8 @@ import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { EmptyState } from "../../../components/common/EmptyState";
+import { SkeletonBox } from "../../../components/common/SkeletonLoader";
 import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
@@ -39,7 +41,13 @@ import { adminStudentsService } from "../../../services/adminStudents.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
 import { useAdminStudentsPage } from "../../../hooks/useAdminStudentsPage";
 import { useSemester } from "../../../contexts/SemesterContext";
-export const StudentsView = ({ onShowToast }) => {
+export const StudentsView = ({
+  onShowToast,
+  onNavigateTab,
+}: {
+  onShowToast: (msg: string) => void;
+  onNavigateTab?: (tab: string) => void;
+}) => {
   const { selectedSemester } = useSemester();
   const [searchParams] = useSearchParams();
   const apiPage = useAdminStudentsPage(onShowToast);
@@ -784,13 +792,39 @@ export const StudentsView = ({ onShowToast }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginatedStudents.length === 0 ? (
+              {isLoadingApi ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3 px-3 text-center"><SkeletonBox className="h-4 w-4 mx-auto" /></td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2.5">
+                        <SkeletonBox className="w-8 h-8 rounded-full shrink-0" />
+                        <div className="space-y-1">
+                          <SkeletonBox className="h-3.5 w-28" />
+                          <SkeletonBox className="h-2.5 w-20" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3"><SkeletonBox className="h-3.5 w-20" /></td>
+                    <td className="py-3 px-3"><SkeletonBox className="h-3.5 w-24" /></td>
+                    <td className="py-3 px-3"><SkeletonBox className="h-3.5 w-24" /></td>
+                    <td className="py-3 px-3 text-center"><SkeletonBox className="h-5 w-20 rounded-full mx-auto" /></td>
+                    <td className="py-3 px-3 text-center"><SkeletonBox className="h-6 w-24 rounded-md mx-auto" /></td>
+                  </tr>
+                ))
+              ) : paginatedStudents.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="py-8 text-center text-slate-400 font-medium"
-                  >
-                    Không tìm thấy sinh viên nào khớp với bộ lọc.
+                  <td colSpan={7} className="p-4">
+                    <EmptyState
+                      title="Không tìm thấy sinh viên phù hợp"
+                      description="Hãy thử đổi bộ lọc lớp, trạng thái tài khoản hoặc từ khóa tìm kiếm."
+                      actionLabel="Xóa bộ lọc tìm kiếm"
+                      onAction={() => {
+                        setSearchQuery("");
+                        setClassFilter("all");
+                        setAccountStatusFilter("all");
+                      }}
+                    />
                   </td>
                 </tr>
               ) : (

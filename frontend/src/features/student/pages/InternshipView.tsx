@@ -197,7 +197,7 @@ export const InternshipView = ({ onShowToast, onNavigate }) => {
     };
 
     return steps.map((s) => ({ ...s, status: resolveStatus(s.phase) }));
-  }, [internship, progressSummary.current]);
+  }, [internship, progressSummary]);
 
   const milestones = useMemo(() => {
     const start = internship?.startDate;

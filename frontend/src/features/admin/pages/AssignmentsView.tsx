@@ -38,7 +38,13 @@ import { adminAssignmentsService } from "../../../services/adminAssignments.serv
 import { useAdminAssignmentMatrix } from "../../../hooks/useAdminAssignmentMatrix";
 import { useSemester } from "../../../contexts/SemesterContext";
 
-export const AssignmentsView = ({ onShowToast }) => {
+export const AssignmentsView = ({
+  onShowToast,
+  onNavigateTab,
+}: {
+  onShowToast: (msg: string) => void;
+  onNavigateTab?: (tab: string) => void;
+}) => {
   const apiMatrix = useAdminAssignmentMatrix(true, onShowToast);
   const { semesters, selectedSemesterId, selectedSemester: currentSemesterObj, selectSemester } = useSemester();
   const selectedSemester = selectedSemesterId;

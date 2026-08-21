@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
   Users,
   Search,
@@ -10,84 +10,19 @@ import {
   UserCheck,
   UserPlus,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import type { AdminUser, AdminUserRole, AdminUserStatus } from "../../../types/user";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
-import { mapUserDtoToAdminUser } from "../../../lib/adminMappers";
-import { adminUsersService } from "../../../services/adminUsers.service";
+import { useAdminUsers } from "../../../hooks/useAdminUsers";
 import {
   CreateUserModal,
   type CreateUserFormPayload,
 } from "../components/modals/CreateUserModal";
-
-const INITIAL_USERS: AdminUser[] = [
-  {
-    id: "u-1",
-    code: "admin",
-    fullName: "Trưởng Ban Điều hành",
-    email: "admin@hcmute.edu.vn",
-    role: "admin",
-    status: "active",
-    departmentOrClass: "Ban Điều hành Khoa CNTT",
-    lastLogin: "13/08/2026 06:40",
-  },
-  {
-    id: "u-2",
-    code: "GV001",
-    fullName: "TS. Nguyễn Văn Phước",
-    email: "phuocnv@hcmute.edu.vn",
-    role: "lecturer",
-    status: "active",
-    departmentOrClass: "Bộ môn CNPM",
-    lastLogin: "12/08/2026 21:10",
-  },
-  {
-    id: "u-3",
-    code: "GV002",
-    fullName: "ThS. Trần Thị Mai Anh",
-    email: "maianh@hcmute.edu.vn",
-    role: "lecturer",
-    status: "locked",
-    departmentOrClass: "Bộ môn HTTT",
-    lastLogin: "01/08/2026 09:00",
-  },
-  {
-    id: "u-4",
-    code: "20110201",
-    fullName: "Nguyễn Văn Minh",
-    email: "20110201@student.hcmute.edu.vn",
-    role: "student",
-    status: "active",
-    departmentOrClass: "20CNTT1",
-    lastLogin: "02/08/2026 08:45",
-  },
-  {
-    id: "u-5",
-    code: "20110208",
-    fullName: "Phạm Đăng Khoa",
-    email: "20110208@student.hcmute.edu.vn",
-    role: "student",
-    status: "pending",
-    departmentOrClass: "20KTPM2",
-    lastLogin: "—",
-    mustChangePassword: true,
-  },
-  {
-    id: "u-6",
-    code: "20110215",
-    fullName: "Lê Thị Hồng",
-    email: "20110215@student.hcmute.edu.vn",
-    role: "student",
-    status: "active",
-    departmentOrClass: "20CNTT2",
-    lastLogin: "11/08/2026 14:22",
-  },
-];
 
 const ROLE_LABEL: Record<AdminUserRole, string> = {
   admin: "Admin",
@@ -112,10 +47,16 @@ export const UsersView = ({
 }: {
   onShowToast: (msg: string) => void;
 }) => {
-  const [users, setUsers] = useState<AdminUser[]>(
-    USE_MOCK ? INITIAL_USERS : [],
-  );
-  const [isLoadingApi, setIsLoadingApi] = useState(!USE_MOCK);
+  const {
+    users,
+    loading: isLoadingApi,
+    refetch,
+    createUser,
+    toggleLock: toggleUserLock,
+    resetPassword: resetUserPassword,
+    deleteUser: removeUser,
+  } = useAdminUsers();
+
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | AdminUserRole>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | AdminUserStatus>(
@@ -131,10 +72,7 @@ export const UsersView = ({
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      if (!USE_MOCK) {
-        await adminUsersService.delete(deleteTarget.id);
-      }
-      setUsers((prev) => prev.filter((x) => x.id !== deleteTarget.id));
+      await removeUser(deleteTarget.id);
       onShowToast(`Đã xóa tài khoản ${deleteTarget.fullName} khỏi hệ thống.`);
       setDeleteTarget(null);
     } catch (err) {
@@ -143,25 +81,6 @@ export const UsersView = ({
       setIsDeleting(false);
     }
   };
-
-  useEffect(() => {
-    if (USE_MOCK) return;
-    let cancelled = false;
-    (async () => {
-      setIsLoadingApi(true);
-      try {
-        const res = await adminUsersService.getAll({ take: 500 });
-        if (!cancelled) setUsers(res.items.map(mapUserDtoToAdminUser));
-      } catch (err) {
-        onShowToast(getApiErrorMessage(err));
-      } finally {
-        if (!cancelled) setIsLoadingApi(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [onShowToast]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -187,32 +106,9 @@ export const UsersView = ({
   );
 
   const toggleLock = async (u: AdminUser) => {
-    const next: AdminUserStatus = u.status === "locked" ? "active" : "locked";
-    if (USE_MOCK) {
-      setUsers((prev) =>
-        prev.map((x) => (x.id === u.id ? { ...x, status: next } : x)),
-      );
-      onShowToast(
-        next === "locked"
-          ? `Đã khóa tài khoản ${u.code}`
-          : `Đã mở khóa ${u.code}`,
-      );
-      return;
-    }
     try {
-      await adminUsersService.update(u.id, {
-        fullName: u.fullName,
-        email: u.email !== "—" ? u.email : undefined,
-        isActive: next === "active",
-      });
-      setUsers((prev) =>
-        prev.map((x) => (x.id === u.id ? { ...x, status: next } : x)),
-      );
-      onShowToast(
-        next === "locked"
-          ? `Đã khóa tài khoản ${u.code}`
-          : `Đã mở khóa ${u.code}`,
-      );
+      const msg = await toggleUserLock(u);
+      onShowToast(msg);
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     }
@@ -222,24 +118,11 @@ export const UsersView = ({
     if (!resetTarget) return;
     setIsResetting(true);
     try {
-      if (!USE_MOCK) {
-        const res = await adminUsersService.resetPassword(resetTarget.id);
-        onShowToast(
-          res.emailSent
-            ? `Đã gửi email đặt lại mật khẩu cho ${resetTarget.fullName}`
-            : `Đã reset mật khẩu tạm (8 ký tự) cho ${res.username}`,
-        );
-      } else {
-        onShowToast(
-          `Đã đặt lại mật khẩu tạm cho ${resetTarget.fullName} — bắt buộc đổi khi đăng nhập`,
-        );
-      }
-      setUsers((prev) =>
-        prev.map((x) =>
-          x.id === resetTarget.id
-            ? { ...x, mustChangePassword: true, status: "active" }
-            : x,
-        ),
+      const res = await resetUserPassword(resetTarget.id);
+      onShowToast(
+        res.emailSent
+          ? `Đã gửi email đặt lại mật khẩu cho ${resetTarget.fullName}`
+          : `Đã reset mật khẩu tạm cho ${res.username || resetTarget.fullName}`,
       );
       setResetTarget(null);
     } catch (err) {
@@ -250,35 +133,16 @@ export const UsersView = ({
   };
 
   const handleCreateUser = async (payload: CreateUserFormPayload) => {
-    if (USE_MOCK) {
-      const feRole =
-        payload.role === "Lecturer" ? ("lecturer" as const) : ("student" as const);
-      const newUser: AdminUser = {
-        id: `u-${Date.now()}`,
-        code: payload.username,
-        fullName: payload.fullName,
-        email: payload.email ?? "—",
-        role: feRole,
-        status: "active",
-        departmentOrClass:
-          payload.studentCode ?? payload.staffCode ?? "—",
-        lastLogin: "—",
-        mustChangePassword: true,
-      };
-      setUsers((prev) => [newUser, ...prev]);
+    try {
+      const created = await createUser(payload);
       onShowToast(
-        `Đã tạo tài khoản ${payload.fullName} — mật khẩu tạm gửi qua email (mock).`,
+        created.email && created.email !== "—"
+          ? `Đã tạo tài khoản ${created.fullName ?? created.code} — email đã gửi nếu SMTP bật.`
+          : `Đã tạo tài khoản ${created.fullName ?? created.code}.`,
       );
-      return;
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
     }
-
-    const created = await adminUsersService.create(payload);
-    setUsers((prev) => [mapUserDtoToAdminUser(created), ...prev]);
-    onShowToast(
-      created.email
-        ? `Đã tạo tài khoản ${created.fullName ?? created.username} — email mời đã gửi nếu SMTP bật.`
-        : `Đã tạo tài khoản ${created.fullName ?? created.username}.`,
-    );
   };
 
   return (

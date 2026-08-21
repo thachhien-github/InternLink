@@ -15,6 +15,13 @@ import {
   CloudUpload,
   LayoutGrid,
   List,
+  Archive,
+  CheckCircle2,
+  History,
+  X,
+  ShieldCheck,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { UploadDocumentWorkspace } from "../components/UploadDocumentWorkspace";
 import { StudentDocumentLibrary } from "../components/StudentDocumentLibrary";
@@ -24,265 +31,46 @@ import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToUi } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
 import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
-const INITIAL_DOCUMENTS = [
-  {
-    id: "doc-1",
-    title:
-      "M\u1EABu B\xE1o c\xE1o Th\u1EF1c t\u1EADp Gi\u1EEFa k\u1EF3 & Cu\u1ED1i k\u1EF3 (Chu\u1EA9n 2026)",
-    category: "B\xE1o c\xE1o",
-    fileType: "DOCX",
-    fileSize: "1.4 MB",
-    version: "v2.1",
-    isLatest: true,
-    updatedAt: "20/10/2026",
-    uploader: "TS. Nguy\u1EC5n V\u0103n H\xF9ng",
-    uploaderRole: "Tr\u01B0\u1EDFng BM C\xF4ng ngh\u1EC7 Ph\u1EA7n m\u1EC1m",
-    downloads: 1420,
-    semester: "HK I - 2026",
-    major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "Quy chu\u1EA9n tr\xECnh b\xE0y b\xE1o c\xE1o th\u1EF1c t\u1EADp t\u1ED1t nghi\u1EC7p n\u0103m h\u1ECDc 2025-2026 d\xE0nh cho sinh vi\xEAn Khoa CNTT.",
-    versionHistory: [
-      {
-        version: "v2.1",
-        date: "20/10/2026",
-        author: "TS. Nguy\u1EC5n V\u0103n H\xF9ng",
-        note: "C\u1EADp nh\u1EADt ti\xEAu chu\u1EA9n ch\u1EA5m \u0111i\u1EC3m v\xE0 ph\u1EE5 l\u1EE5c nh\u1EADn x\xE9t",
-      },
-      {
-        version: "v2.0",
-        date: "15/08/2026",
-        author: "ThS. Tr\u1EA7n Minh Tu\u1EA5n",
-        note: "B\u1ED5 sung ph\u1EA7n \u0111\xE1nh gi\xE1 k\u1EF9 n\u0103ng m\u1EC1m",
-      },
-      {
-        version: "v1.0",
-        date: "10/01/2025",
-        author: "TS. Nguy\u1EC5n V\u0103n H\xF9ng",
-        note: "Phi\xEAn b\u1EA3n ban \u0111\u1EA7u",
-      },
-    ],
-  },
-  {
-    id: "doc-2",
-    title:
-      "Phi\u1EBFu Nh\u1EADn x\xE9t & \u0110\xE1nh gi\xE1 Sinh vi\xEAn t\u1EEB Doanh nghi\u1EC7p (Mentor)",
-    category: "Bi\u1EC3u m\u1EABu",
-    fileType: "PDF",
-    fileSize: "320 KB",
-    version: "v2.0",
-    isLatest: true,
-    updatedAt: "18/10/2026",
-    uploader: "ThS. Ph\u1EA1m Th\u1ECB Mai",
-    uploaderRole: "Ph\u1EE5 tr\xE1ch Quan h\u1EC7 Doanh nghi\u1EC7p",
-    downloads: 1150,
-    semester: "HK I - 2026",
-    major: "T\u1EA5t c\u1EA3 ng\xE0nh",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "M\u1EABu \u0111\xE1nh gi\xE1 d\xE0nh cho Mentor doanh nghi\u1EC7p x\xE1c nh\u1EADn th\u1EDDi gian l\xE0m vi\u1EC7c, th\xE1i \u0111\u1ED9 v\xE0 n\u0103ng l\u1EF1c sinh vi\xEAn.",
-    versionHistory: [
-      {
-        version: "v2.0",
-        date: "18/10/2026",
-        author: "ThS. Ph\u1EA1m Th\u1ECB Mai",
-        note: "C\u1EADp nh\u1EADt thang \u0111i\u1EC3m 100 v\xE0 ma tr\u1EADn k\u1EF9 n\u0103ng",
-      },
-      {
-        version: "v1.0",
-        date: "05/02/2025",
-        author: "ThS. Ph\u1EA1m Th\u1ECB Mai",
-        note: "Phi\xEAn b\u1EA3n kh\u1EDFi t\u1EA1o",
-      },
-    ],
-  },
-  {
-    id: "doc-3",
-    title:
-      "Nh\u1EADt k\xFD Th\u1EF1c t\u1EADp H\xE0ng tu\u1EA7n (Weekly Work Log)",
-    category: "Nh\u1EADt k\xFD",
-    fileType: "DOCX",
-    fileSize: "450 KB",
-    version: "v1.5",
-    isLatest: true,
-    updatedAt: "15/10/2026",
-    uploader: "TS. L\xEA Ho\xE0ng Nam",
-    uploaderRole: "Gi\u1EA3ng vi\xEAn H\u01B0\u1EDBng d\u1EABn",
-    downloads: 980,
-    semester: "HK I - 2026",
-    major: "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "M\u1EABu ghi nh\u1EADn c\xF4ng vi\u1EC7c h\xE0ng tu\u1EA7n sinh vi\xEAn c\u1EA7n g\u1EEDi GVHD \u0111\u1ECBnh k\u1EF3 qua h\u1EC7 th\u1ED1ng.",
-    versionHistory: [
-      {
-        version: "v1.5",
-        date: "15/10/2026",
-        author: "TS. L\xEA Ho\xE0ng Nam",
-        note: "Chu\u1EA9n h\xF3a \u0111\u1ECBnh d\u1EA1ng b\u1EA3ng m\xE3 h\xF3a",
-      },
-    ],
-  },
-  {
-    id: "doc-4",
-    title:
-      "K\u1EBF ho\u1EA1ch T\u1ED5 ch\u1EE9c B\u1EA3o v\u1EC7 B\xE1o c\xE1o Th\u1EF1c t\u1EADp HK I - 2026",
-    category: "K\u1EBF ho\u1EA1ch",
-    fileType: "PDF",
-    fileSize: "890 KB",
-    version: "v1.0",
-    isLatest: true,
-    updatedAt: "10/10/2026",
-    uploader: "PGS. TS. Tr\u1EA7n Qu\u1ED1c B\u1EA3o",
-    uploaderRole: "Tr\u01B0\u1EDFng Khoa CNTT",
-    downloads: 850,
-    semester: "HK I - 2026",
-    major: "T\u1EA5t c\u1EA3 ng\xE0nh",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "Th\xF4ng b\xE1o m\u1ED1c th\u1EDDi gian n\u1ED9p b\xE1o c\xE1o, danh s\xE1ch h\u1ED9i \u0111\u1ED3ng b\u1EA3o v\u1EC7 v\xE0 \u0111\u1ECBa \u0111i\u1EC3m ch\u1EA5m.",
-    versionHistory: [
-      {
-        version: "v1.0",
-        date: "10/10/2026",
-        author: "PGS. TS. Tr\u1EA7n Qu\u1ED1c B\u1EA3o",
-        note: "Ban h\xE0nh ch\xEDnh th\u1EE9c",
-      },
-    ],
-  },
-  {
-    id: "doc-5",
-    title:
-      "H\u01B0\u1EDBng d\u1EABn Tr\xECnh b\xE0y Slide B\u1EA3o v\u1EC7 Th\u1EF1c t\u1EADp Tr\u01B0\u1EDBc H\u1ED9i \u0111\u1ED3ng",
-    category: "H\u01B0\u1EDBng d\u1EABn",
-    fileType: "PPTX",
-    fileSize: "3.2 MB",
-    version: "v1.2",
-    isLatest: true,
-    updatedAt: "08/10/2026",
-    uploader: "ThS. \u0110\u1ED7 Anh D\u0169ng",
-    uploaderRole: "Gi\u1EA3ng vi\xEAn H\u01B0\u1EDBng d\u1EABn",
-    downloads: 740,
-    semester: "HK I - 2026",
-    major: "T\u1EA5t c\u1EA3 ng\xE0nh",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "Template slide m\u1EABu chu\u1EA9n nh\u1EADn di\u1EC7n Khoa CNTT k\xE8m h\u01B0\u1EDBng d\u1EABn thuy\u1EBFt tr\xECnh 10 ph\xFAt.",
-    versionHistory: [
-      {
-        version: "v1.2",
-        date: "08/10/2026",
-        author: "ThS. \u0110\u1ED7 Anh D\u0169ng",
-        note: "C\u1EADp nh\u1EADt m\xE0u chu\u1EA9n nh\u1EADn di\u1EC7n 2026",
-      },
-    ],
-  },
-  {
-    id: "doc-6",
-    title:
-      "Quy\u1EBFt \u0111\u1ECBnh Ph\xE2n c\xF4ng Gi\u1EA3ng vi\xEAn H\u01B0\u1EDBng d\u1EABn Th\u1EF1c t\u1EADp 2026",
-    category: "V\u0103n b\u1EA3n khoa",
-    fileType: "PDF",
-    fileSize: "1.1 MB",
-    version: "v1.0",
-    isLatest: true,
-    updatedAt: "01/10/2026",
-    uploader: "VP Khoa CNTT",
-    uploaderRole: "V\u0103n ph\xF2ng Khoa",
-    downloads: 620,
-    semester: "HK I - 2026",
-    major: "T\u1EA5t c\u1EA3 ng\xE0nh",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "V\u0103n b\u1EA3n ch\xEDnh th\u1EE9c ban h\xE0nh danh s\xE1ch sinh vi\xEAn v\xE0 GVHD t\u01B0\u01A1ng \u1EE9ng.",
-    versionHistory: [
-      {
-        version: "v1.0",
-        date: "01/10/2026",
-        author: "VP Khoa CNTT",
-        note: "Ban h\xE0nh l\u1EA7n \u0111\u1EA7u",
-      },
-    ],
-  },
-  {
-    id: "doc-7",
-    title:
-      "M\u1EABu Gi\u1EA5y Gi\u1EDBi thi\u1EC7u Th\u1EF1c t\u1EADp Doanh nghi\u1EC7p (Phi\u1EBFu \u0110\u0103ng k\xFD)",
-    category: "Bi\u1EC3u m\u1EABu",
-    fileType: "DOCX",
-    fileSize: "210 KB",
-    version: "v1.0",
-    isLatest: false,
-    updatedAt: "12/03/2024",
-    uploader: "ThS. Tr\u1EA7n V\u0103n B",
-    uploaderRole: "C\u1EF1u Tr\u1EE3 l\xFD \u0110\xE0o t\u1EA1o",
-    downloads: 410,
-    semester: "HK II - 2024",
-    major: "T\u1EA5t c\u1EA3 ng\xE0nh",
-    status: "C\u1EA7n c\u1EADp nh\u1EADt",
-    description:
-      "M\u1EABu gi\u1EA5y xin th\u1EF1c t\u1EADp t\u1EF1 t\xFAc ch\u01B0a c\u1EADp nh\u1EADt nh\u1EADn di\u1EC7n m\u1EDBi.",
-    versionHistory: [
-      {
-        version: "v1.0",
-        date: "12/03/2024",
-        author: "ThS. Tr\u1EA7n V\u0103n B",
-        note: "Phi\xEAn b\u1EA3n c\u0169",
-      },
-    ],
-  },
-  {
-    id: "doc-8",
-    title:
-      "Quy ch\u1EBF An to\xE0n Th\xF4ng tin & B\u1EA3o m\u1EADt D\u1EEF li\u1EC7u Doanh nghi\u1EC7p khi Th\u1EF1c t\u1EADp",
-    category: "Kh\xE1c",
-    fileType: "PDF",
-    fileSize: "650 KB",
-    version: "v1.1",
-    isLatest: true,
-    updatedAt: "05/09/2026",
-    uploader: "TS. V\u0169 Minh Khoa",
-    uploaderRole: "Tr\u01B0\u1EDFng BM An to\xE0n Th\xF4ng tin",
-    downloads: 510,
-    semester: "HK I - 2026",
-    major: "An to\xE0n Th\xF4ng tin",
-    status: "\u0110ang \xE1p d\u1EE5ng",
-    description:
-      "Cam k\u1EBFt NDA v\xE0 quy \u0111\u1ECBnh tu\xE2n th\u1EE7 b\u1EA3o m\u1EADt ngu\u1ED3n m\xE3 cho sinh vi\xEAn th\u1EF1c t\u1EADp t\u1EA1i doanh nghi\u1EC7p.",
-    versionHistory: [
-      {
-        version: "v1.1",
-        date: "05/09/2026",
-        author: "TS. V\u0169 Minh Khoa",
-        note: "Th\xEAm \u0111i\u1EC1u kho\u1EA3n AI NDA",
-      },
-    ],
-  },
-];
+import {
+  loadStoredTemplates,
+  saveStoredTemplates,
+} from "../../../data/initialTemplatesData";
+import type { DocumentItem, DocumentStatus, ArchiveLogEntry } from "../../../types/document";
+
 export const TemplatesView = () => {
-  const [documents, setDocuments] = useState(
-    USE_MOCK ? INITIAL_DOCUMENTS : [],
-  );
-  const [defaultInternshipId, setDefaultInternshipId] = useState<string | null>(
-    null,
-  );
+  const [documents, setDocuments] = useState<DocumentItem[]>(() => {
+    return loadStoredTemplates();
+  });
+  const [defaultInternshipId, setDefaultInternshipId] = useState<string | null>(null);
   const [isLoadingDocs, setIsLoadingDocs] = useState(!USE_MOCK);
-  const [subView, setSubView] = useState("list");
-  const [selectedCategory, setSelectedCategory] = useState("T\u1EA5t c\u1EA3");
+  const [subView, setSubView] = useState<"list" | "upload" | "detail" | "student_library">("list");
+  const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED" | "DRAFT">("CIRCULATING");
+  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [semesterFilter, setSemesterFilter] = useState("HK I - 2026");
-  const [majorFilter, setMajorFilter] = useState("T\u1EA5t c\u1EA3");
-  const [fileTypeFilter, setFileTypeFilter] = useState("T\u1EA5t c\u1EA3");
-  const [statusFilter, setStatusFilter] = useState("T\u1EA5t c\u1EA3");
+  const [majorFilter, setMajorFilter] = useState("Tất cả");
+  const [fileTypeFilter, setFileTypeFilter] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [editingDoc, setEditingDoc] = useState(null);
-  const [viewMode, setViewMode] = useState("table");
-  const [toastMessage, setToastMessage] = useState(null);
-  const showToast = (msg) => {
+  const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Modals
+  const [archivingDoc, setArchivingDoc] = useState<DocumentItem | null>(null);
+  const [archiveReasonInput, setArchiveReasonInput] = useState("Thay thế bằng mẫu mới chuẩn hóa");
+  const [archiveCustomNote, setArchiveCustomNote] = useState("");
+  const [viewingAuditLogDoc, setViewingAuditLogDoc] = useState<DocumentItem | null>(null);
+  const [showGlobalAuditLogs, setShowGlobalAuditLogs] = useState(false);
+
+  const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3e3);
+    setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Sync state to localStorage whenever documents change
+  useEffect(() => {
+    saveStoredTemplates(documents);
+  }, [documents]);
 
   useEffect(() => {
     if (USE_MOCK) return;
@@ -296,7 +84,10 @@ export const TemplatesView = () => {
         ]);
         if (cancelled) return;
         if (internships[0]?.id) setDefaultInternshipId(internships[0].id);
-        setDocuments(docs.map(mapDocumentListItemToUi));
+        if (docs && docs.length > 0) {
+          const mapped = docs.map(mapDocumentListItemToUi) as unknown as DocumentItem[];
+          setDocuments(mapped);
+        }
       } catch (err) {
         showToast(getApiErrorMessage(err));
       } finally {
@@ -313,30 +104,41 @@ export const TemplatesView = () => {
       const matchesSearch =
         doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         doc.uploader.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (doc.description &&
-          doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
+        (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
       const matchesCat =
-        selectedCategory === "T\u1EA5t c\u1EA3" ||
-        doc.category === selectedCategory;
+        selectedCategory === "Tất cả" || doc.category === selectedCategory;
+
       const matchesSem =
-        semesterFilter === "T\u1EA5t c\u1EA3" ||
+        semesterFilter === "Tất cả" ||
+        doc.semester === "Tất cả học kỳ" ||
         doc.semester === semesterFilter;
+
       const matchesMajor =
-        majorFilter === "T\u1EA5t c\u1EA3" ||
-        doc.major === "T\u1EA5t c\u1EA3 ng\xE0nh" ||
+        majorFilter === "Tất cả" ||
+        doc.major === "Tất cả ngành" ||
         doc.major === majorFilter;
+
       const matchesType =
-        fileTypeFilter === "T\u1EA5t c\u1EA3" ||
-        doc.fileType === fileTypeFilter;
-      const matchesStatus =
-        statusFilter === "T\u1EA5t c\u1EA3" || doc.status === statusFilter;
+        fileTypeFilter === "Tất cả" || doc.fileType === fileTypeFilter;
+
+      // Tab filter
+      let matchesTab = true;
+      if (activeTab === "CIRCULATING") {
+        matchesTab = doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
+      } else if (activeTab === "ARCHIVED") {
+        matchesTab = doc.status === "Ngưng lưu hành" || (doc as any).status === "Lưu trữ";
+      } else if (activeTab === "DRAFT") {
+        matchesTab = doc.status === "Bản nháp" || (doc as any).status === "Cần cập nhật";
+      }
+
       return (
         matchesSearch &&
         matchesCat &&
         matchesSem &&
         matchesMajor &&
         matchesType &&
-        matchesStatus
+        matchesTab
       );
     });
   }, [
@@ -346,31 +148,40 @@ export const TemplatesView = () => {
     semesterFilter,
     majorFilter,
     fileTypeFilter,
-    statusFilter,
+    activeTab,
   ]);
+
   const totalDocs = documents.length;
-  const formCount = documents.filter(
-    (d) => d.category === "Bi\u1EC3u m\u1EABu",
+  const circulatingCount = documents.filter(
+    (d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng",
   ).length;
-  const guideCount = documents.filter(
-    (d) =>
-      d.category === "H\u01B0\u1EDBng d\u1EABn" ||
-      d.category === "K\u1EBF ho\u1EA1ch",
+  const archivedCount = documents.filter(
+    (d) => d.status === "Ngưng lưu hành" || (d as any).status === "Lưu trữ",
   ).length;
   const totalDownloadsThisWeek = documents.reduce(
-    (acc, curr) => acc + curr.downloads,
+    (acc, curr) => acc + (curr.downloads || 0),
     0,
   );
-  const handleDownload = async (doc) => {
+
+  const handleDownload = async (doc: DocumentItem) => {
     if (USE_MOCK) {
       setDocuments((prev) =>
         prev.map((item) =>
           item.id === doc.id ? { ...item, downloads: item.downloads + 1 } : item,
         ),
       );
-      showToast(
-        `Đã tải xuống phiên bản ${doc.version} của: ${doc.title}`,
-      );
+      const ext = (doc.fileType || "doc").toLowerCase();
+      const content = `TRƯỜNG ĐẠI HỌC - KHOA CÔNG NGHỆ THÔNG TIN\nTÀI LIỆU/BIỂU MẪU: ${doc.title.toUpperCase()}\nMã tài liệu: ${doc.code}\nPhân loại: ${doc.category}\nPhiên bản: ${doc.version}\nHọc kỳ áp dụng: ${doc.semester}\n\n1. TỔNG QUAN:\n${doc.description || "Tài liệu lưu hành nội bộ Khoa Công nghệ Thông tin phục vụ học phần Thực tập tốt nghiệp."}\n\n2. QUY ĐỊNH ÁP DỤNG:\n- Đối tượng: Toàn thể sinh viên và giảng viên hướng dẫn khoa CNTT.\n- Người ban hành: ${doc.uploader} (${doc.uploaderRole})\n\n(Ngày cập nhật: ${doc.updatedAt})\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${doc.title.replace(/[\/\\:*?"<>|]/g, "_")}.${ext === "docx" ? "doc" : ext === "pdf" ? "txt" : ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Đã tải xuống phiên bản ${doc.version} của: ${doc.title}`);
       return;
     }
     try {
@@ -391,12 +202,9 @@ export const TemplatesView = () => {
       showToast(getApiErrorMessage(err));
     }
   };
-  const handleDelete = async (id, title) => {
-    if (
-      !confirm(
-        `Bạn có chắc chắn muốn xóa tài liệu "${title}"?`,
-      )
-    ) {
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa tài liệu "${title}"?`)) {
       return;
     }
     if (USE_MOCK) {
@@ -412,7 +220,122 @@ export const TemplatesView = () => {
       showToast(getApiErrorMessage(err));
     }
   };
-  const handleSaveDocument = async (payload, isDraft = false) => {
+
+  // Archive (Ngưng lưu hành & Ghi log)
+  const handleConfirmArchive = () => {
+    if (!archivingDoc) return;
+    const finalReason = `${archiveReasonInput}${archiveCustomNote ? ` - ${archiveCustomNote}` : ""}`;
+    const timestamp = new Date().toISOString();
+    const dateStr = new Date().toLocaleDateString("vi-VN") + " " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    const newLogEntry: ArchiveLogEntry = {
+      id: `log-${Date.now()}`,
+      timestamp,
+      date: dateStr,
+      action: "ARCHIVED",
+      actionLabel: "Ngưng lưu hành & Chuyển vào Log",
+      performedBy: "TS. Giảng viên",
+      performedRole: "Giảng viên Hướng dẫn",
+      reason: finalReason,
+      note: "Đã ẩn khỏi giao diện sinh viên và lưu vào nhật ký kiểm toán.",
+      previousStatus: archivingDoc.status,
+      newStatus: "Ngưng lưu hành",
+    };
+
+    setDocuments((prev) =>
+      prev.map((d) => {
+        if (d.id === archivingDoc.id) {
+          return {
+            ...d,
+            status: "Ngưng lưu hành" as DocumentStatus,
+            isPublished: false,
+            archiveReason: finalReason,
+            archivedAt: dateStr,
+            archivedBy: "TS. Giảng viên",
+            archiveLogs: [newLogEntry, ...(d.archiveLogs || [])],
+          };
+        }
+        return d;
+      }),
+    );
+
+    if (selectedDoc && selectedDoc.id === archivingDoc.id) {
+      setSelectedDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "Ngưng lưu hành",
+              isPublished: false,
+              archiveReason: finalReason,
+              archivedAt: dateStr,
+              archivedBy: "TS. Giảng viên",
+              archiveLogs: [newLogEntry, ...(prev.archiveLogs || [])],
+            }
+          : null,
+      );
+    }
+
+    showToast(`Đã ngưng lưu hành biểu mẫu "${archivingDoc.title}" và lưu trữ vào Nhật ký Log.`);
+    setArchivingDoc(null);
+    setArchiveCustomNote("");
+  };
+
+  // Re-activate / Circulate (Mở lưu hành lại cho SV)
+  const handleReactivateCirculation = (doc: DocumentItem) => {
+    const timestamp = new Date().toISOString();
+    const dateStr = new Date().toLocaleDateString("vi-VN") + " " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    const newLogEntry: ArchiveLogEntry = {
+      id: `log-${Date.now()}`,
+      timestamp,
+      date: dateStr,
+      action: "CIRCULATING",
+      actionLabel: "Mở lưu hành lại (Public cho SV)",
+      performedBy: "TS. Giảng viên",
+      performedRole: "Giảng viên Hướng dẫn",
+      reason: `Kích hoạt lại lưu hành cho đợt thực tập ${doc.semester}`,
+      note: "Sinh viên trong đợt thực tập có thể thấy và tải về lại.",
+      previousStatus: doc.status,
+      newStatus: "Đang lưu hành",
+    };
+
+    setDocuments((prev) =>
+      prev.map((d) => {
+        if (d.id === doc.id) {
+          return {
+            ...d,
+            status: "Đang lưu hành" as DocumentStatus,
+            isPublished: true,
+            archiveReason: undefined,
+            archivedAt: undefined,
+            archivedBy: undefined,
+            archiveLogs: [newLogEntry, ...(d.archiveLogs || [])],
+          };
+        }
+        return d;
+      }),
+    );
+
+    if (selectedDoc && selectedDoc.id === doc.id) {
+      setSelectedDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "Đang lưu hành",
+              isPublished: true,
+              archiveReason: undefined,
+              archivedAt: undefined,
+              archivedBy: undefined,
+              archiveLogs: [newLogEntry, ...(prev.archiveLogs || [])],
+            }
+          : null,
+      );
+    }
+
+    showToast(`Đã mở lưu hành công khai trở lại cho biểu mẫu "${doc.title}".`);
+  };
+
+  const handleSaveDocument = async (payload: any, isDraft = false) => {
     if (USE_MOCK) {
       if (editingDoc) {
         setDocuments((prev) =>
@@ -424,7 +347,7 @@ export const TemplatesView = () => {
             : `Đã cập nhật thành công tài liệu "${payload.title}"`,
         );
       } else {
-        const newDoc = {
+        const newDoc: DocumentItem = {
           id: payload.id || `doc-${Date.now()}`,
           title: payload.title || "Tài liệu mới",
           category: payload.category || "Biểu mẫu",
@@ -432,20 +355,39 @@ export const TemplatesView = () => {
           fileSize: payload.fileSize || "1.2 MB",
           version: payload.version || "v1.0",
           isLatest: true,
-          updatedAt: "Hôm nay",
+          updatedAt: new Date().toLocaleDateString("vi-VN"),
           uploader: "TS. Giảng viên",
           uploaderRole: "Giảng viên Hướng dẫn",
           downloads: 0,
           semester: payload.semester || "HK I - 2026",
           major: payload.major || "Tất cả ngành",
-          status: isDraft ? "Cần cập nhật" : "Đang áp dụng",
-          description: payload.description,
+          status: payload.status || (isDraft ? "Bản nháp" : "Đang lưu hành"),
+          isPublished: payload.isPublished ?? !isDraft,
+          isRequired: payload.isRequired ?? false,
+          description: payload.description || "",
+          archiveReason: payload.archiveReason,
+          archivedAt: payload.archivedAt,
+          archivedBy: payload.archivedBy,
           versionHistory: payload.versionHistory || [
             {
               version: payload.version || "v1.0",
-              date: "Hôm nay",
+              date: new Date().toLocaleDateString("vi-VN"),
               author: "TS. Giảng viên",
               note: "Khởi tạo tài liệu",
+            },
+          ],
+          archiveLogs: payload.archiveLogs || [
+            {
+              id: `log-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              date: new Date().toLocaleDateString("vi-VN"),
+              action: isDraft ? "DRAFT" : "CIRCULATING",
+              actionLabel: isDraft ? "Lưu bản nháp" : "Bắt đầu lưu hành chính thức",
+              performedBy: "TS. Giảng viên",
+              performedRole: "Giảng viên Hướng dẫn",
+              reason: isDraft ? "Bản nháp" : "Phát hành biểu mẫu chuẩn",
+              previousStatus: "Bản nháp",
+              newStatus: isDraft ? "Bản nháp" : "Đang lưu hành",
             },
           ],
         };
@@ -470,7 +412,9 @@ export const TemplatesView = () => {
         });
         setDocuments((prev) =>
           prev.map((d) =>
-            d.id === editingDoc.id ? mapDocumentListItemToUi(updated) : d,
+            d.id === editingDoc.id
+              ? ({ ...d, ...(mapDocumentListItemToUi(updated) as any) } as DocumentItem)
+              : d,
           ),
         );
         showToast(`Đã cập nhật tài liệu "${payload.title}"`);
@@ -491,7 +435,7 @@ export const TemplatesView = () => {
           isRequired: false,
           file: payload.rawFile,
         });
-        setDocuments((prev) => [mapDocumentListItemToUi(created), ...prev]);
+        setDocuments((prev) => [mapDocumentListItemToUi(created) as any, ...prev]);
         showToast(`Đã tải lên: ${created.title}`);
       }
       setEditingDoc(null);
@@ -500,6 +444,24 @@ export const TemplatesView = () => {
       showToast(getApiErrorMessage(err));
     }
   };
+
+  // Collect all audit logs for global audit log modal
+  const allAuditLogs = useMemo(() => {
+    const logs: Array<ArchiveLogEntry & { docTitle: string; docId: string }> = [];
+    documents.forEach((d) => {
+      if (d.archiveLogs && Array.isArray(d.archiveLogs)) {
+        d.archiveLogs.forEach((l) => {
+          logs.push({
+            ...l,
+            docTitle: d.title,
+            docId: d.id,
+          });
+        });
+      }
+    });
+    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [documents]);
+
   if (subView === "upload") {
     return (
       <UploadDocumentWorkspace
@@ -512,10 +474,13 @@ export const TemplatesView = () => {
       />
     );
   }
+
   if (subView === "student_library") {
     return (
       <StudentDocumentLibrary
-        documents={documents}
+        documents={documents.filter(
+          (d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng",
+        )}
         onSelectDoc={(doc) => {
           setSelectedDoc(doc);
           setSubView("detail");
@@ -525,27 +490,43 @@ export const TemplatesView = () => {
       />
     );
   }
+
   if (subView === "detail" && selectedDoc) {
     return (
       <DocumentDetailWorkspace
         document={selectedDoc}
         onBack={() => setSubView("list")}
         onDownload={handleDownload}
+        onArchiveToggle={(doc) => {
+          if (doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng") {
+            setArchivingDoc(doc);
+          } else {
+            handleReactivateCirculation(doc);
+          }
+        }}
       />
     );
   }
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto animate-in fade-in duration-200 pb-16 font-sans">
       {/* Toast Alert */}
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
 
+      {/* PAGE HEADER */}
       <PageHeader
         icon={FolderOpen}
         title="Kho biểu mẫu & Tài liệu thực tập"
-        subtitle="Quản lý, phân quyền và phát hành biểu mẫu chuẩn hóa cho sinh viên Khoa CNTT."
+        subtitle="Đăng tải mẫu chuẩn cho phép public cho sinh viên thấy và tải về theo từng đợt thực tập. Tự động ẩn và lưu vào Nhật ký Log khi ngưng lưu hành."
         actions={[
           {
-            label: "+ Đăng tài liệu mới",
+            label: "Nhật ký & Log lưu trữ toàn hệ thống",
+            icon: History,
+            onClick: () => setShowGlobalAuditLogs(true),
+            variant: "secondary",
+          },
+          {
+            label: "+ Đăng biểu mẫu mới",
             icon: CloudUpload,
             onClick: () => {
               setEditingDoc(null);
@@ -556,6 +537,7 @@ export const TemplatesView = () => {
         ]}
       />
 
+      {/* KPI GRID */}
       <KpiGrid>
         <KpiCard
           tone="blue"
@@ -563,84 +545,131 @@ export const TemplatesView = () => {
           value={totalDocs}
           unit="tài liệu"
           icon={FolderOpen}
-          footer="Phát hành công khai toàn khoa"
+          footer="Bao gồm cả tài liệu đang lưu trữ log"
           onClick={() => {
-            setSelectedCategory("T\u1EA5t c\u1EA3");
-            setStatusFilter("T\u1EA5t c\u1EA3");
-            setSemesterFilter("T\u1EA5t c\u1EA3");
+            setActiveTab("ALL");
+            setSelectedCategory("Tất cả");
+            setSemesterFilter("Tất cả");
           }}
         />
         <KpiCard
           tone="emerald"
-          title="Biểu mẫu chuẩn"
-          value={formCount}
+          title="Đang lưu hành (Public SV)"
+          value={circulatingCount}
           unit="biểu mẫu"
-          icon={FileText}
-          footer="Báo cáo, Giấy giới thiệu, Nhật ký"
+          icon={CheckCircle2}
+          footer="Sinh viên đợt thực tập có thể thấy & tải"
           onClick={() => {
-            setSelectedCategory("Bi\u1EC3u m\u1EABu");
-            setStatusFilter("T\u1EA5t c\u1EA3");
-          }}
-        />
-        <KpiCard
-          tone="sky"
-          title="Hướng dẫn & Kế hoạch"
-          value={guideCount}
-          unit="văn bản"
-          icon={FileCheck}
-          footer="Cập nhật định kỳ theo học kỳ"
-          onClick={() => {
-            setSelectedCategory("H\u01B0\u1EDBng d\u1EABn");
-            setStatusFilter("T\u1EA5t c\u1EA3");
+            setActiveTab("CIRCULATING");
+            setSelectedCategory("Tất cả");
           }}
         />
         <KpiCard
           tone="amber"
-          title="Tổng lượt tải về"
-          value={totalDownloadsThisWeek.toLocaleString()}
-          unit="lượt"
-          icon={Download}
-          footer="Sử dụng bởi SV & Doanh nghiệp"
+          title="Ngưng lưu hành & Đã lưu Log"
+          value={archivedCount}
+          unit="văn bản"
+          icon={Archive}
+          footer="Đã ẩn khỏi sinh viên, lưu nhật ký"
           onClick={() => {
-            setSelectedCategory("T\u1EA5t c\u1EA3");
-            setSemesterFilter("HK I - 2026");
-            setMajorFilter("T\u1EA5t c\u1EA3");
-            setFileTypeFilter("T\u1EA5t c\u1EA3");
-            setStatusFilter("T\u1EA5t c\u1EA3");
+            setActiveTab("ARCHIVED");
+            setSelectedCategory("Tất cả");
+          }}
+        />
+        <KpiCard
+          tone="sky"
+          title="Tổng lượt tải của SV"
+          value={totalDownloadsThisWeek.toLocaleString()}
+          unit="lượt tải"
+          icon={Download}
+          footer="Theo dõi mức độ sử dụng biểu mẫu"
+          onClick={() => {
             setSearchQuery("");
+            setSelectedCategory("Tất cả");
           }}
         />
       </KpiGrid>
 
-      {/* SEARCH AND SYNCHRONIZED FILTERS BAR */}
+      {/* TAB SELECTOR & FILTERS */}
       <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-        {/* Header Section Label */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-blue-600" />
-            <h2 className="text-xs font-bold uppercase text-slate-800 tracking-wider">
-              Kho tài liệu &amp; Biểu mẫu thực tập
-            </h2>
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200/60">
-              {semesterFilter}
-            </span>
+        {/* TOP ROW: TABS & ACTION BUTTONS */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          {/* Main Circulation Status Tabs */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => setActiveTab("CIRCULATING")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "CIRCULATING"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>🟢 Đang lưu hành (Public SV)</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  activeTab === "CIRCULATING" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
+                }`}
+              >
+                {circulatingCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("ARCHIVED")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "ARCHIVED"
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>📦 Ngưng lưu hành &amp; Lưu log</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  activeTab === "ARCHIVED" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
+                }`}
+              >
+                {archivedCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("DRAFT")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "DRAFT"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <span>📝 Bản nháp</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("ALL")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === "ALL"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Tất cả ({totalDocs})
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
-            {(selectedCategory !== "T\u1EA5t c\u1EA3" ||
+            {(selectedCategory !== "Tất cả" ||
               semesterFilter !== "HK I - 2026" ||
-              majorFilter !== "T\u1EA5t c\u1EA3" ||
-              fileTypeFilter !== "T\u1EA5t c\u1EA3" ||
-              statusFilter !== "T\u1EA5t c\u1EA3" ||
+              majorFilter !== "Tất cả" ||
+              fileTypeFilter !== "Tất cả" ||
               searchQuery) && (
               <button
                 onClick={() => {
                   setSearchQuery("");
-                  setSelectedCategory("T\u1EA5t c\u1EA3");
+                  setSelectedCategory("Tất cả");
                   setSemesterFilter("HK I - 2026");
-                  setMajorFilter("T\u1EA5t c\u1EA3");
-                  setFileTypeFilter("T\u1EA5t c\u1EA3");
-                  setStatusFilter("T\u1EA5t c\u1EA3");
+                  setMajorFilter("Tất cả");
+                  setFileTypeFilter("Tất cả");
                 }}
                 className="text-xs text-blue-600 hover:text-blue-800 font-bold"
               >
@@ -652,14 +681,18 @@ export const TemplatesView = () => {
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md border border-slate-200 shrink-0">
               <button
                 onClick={() => setViewMode("table")}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === "table" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === "table" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                }`}
                 title="Chế độ Bảng"
               >
                 <List className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode("cards")}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === "cards" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === "cards" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                }`}
                 title="Chế độ Thẻ"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -668,7 +701,7 @@ export const TemplatesView = () => {
           </div>
         </div>
 
-        {/* Filter inputs in 1 neat row */}
+        {/* BOTTOM ROW: FILTER INPUTS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-2 text-xs">
           {/* Search input */}
           <div className="md:col-span-2 relative">
@@ -704,9 +737,23 @@ export const TemplatesView = () => {
               onChange={(e) => setSemesterFilter(e.target.value)}
               className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
-              <option value="Tất cả">Tất cả Học kỳ</option>
-              <option value="HK I - 2026">HK I - 2026</option>
+              <option value="Tất cả">Tất cả Đợt thực tập</option>
+              <option value="HK I - 2026">HK I - 2026 (Đang diễn ra)</option>
               <option value="HK II - 2025">HK II - 2025</option>
+              <option value="HK II - 2024">HK II - 2024</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={majorFilter}
+              onChange={(e) => setMajorFilter(e.target.value)}
+              className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+            >
+              <option value="Tất cả">Tất cả Chuyên ngành</option>
+              <option value="Kỹ thuật Phần mềm">Kỹ thuật Phần mềm</option>
+              <option value="Khoa học Dữ liệu">Khoa học Dữ liệu</option>
+              <option value="An toàn Thông tin">An toàn Thông tin</option>
             </select>
           </div>
 
@@ -723,19 +770,6 @@ export const TemplatesView = () => {
               <option value="PPTX">Slide PPTX</option>
             </select>
           </div>
-
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
-            >
-              <option value="Tất cả">Tất cả Trạng thái</option>
-              <option value="Đang áp dụng">Đang áp dụng</option>
-              <option value="Cần cập nhật">Cần cập nhật</option>
-              <option value="Lưu trữ">Lưu trữ</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -746,127 +780,185 @@ export const TemplatesView = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Tên tài liệu</th>
+                  <th className="py-3.5 px-4">Tên tài liệu / Biểu mẫu</th>
                   <th className="py-3.5 px-3">Danh mục</th>
-                  <th className="py-3.5 px-3">Định dạng</th>
+                  <th className="py-3.5 px-3">Đợt áp dụng</th>
                   <th className="py-3.5 px-3">Phiên bản</th>
-                  <th className="py-3.5 px-3">Người đăng</th>
-                  <th className="py-3.5 px-3 text-center">Lượt tải</th>
-                  <th className="py-3.5 px-3">Trạng thái</th>
+                  <th className="py-3.5 px-3">Trạng thái lưu hành</th>
+                  <th className="py-3.5 px-3 text-center">Lượt tải SV</th>
+                  <th className="py-3.5 px-3">Nhật ký Log</th>
                   <th className="py-3.5 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
-                {filteredDocuments.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className="hover:bg-slate-50/80 transition-colors"
-                  >
-                    {/* Title */}
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <span
-                          onClick={() => {
-                            setSelectedDoc(doc);
-                            setSubView("detail");
-                          }}
-                          className="font-bold text-slate-900 hover:text-blue-600 cursor-pointer block line-clamp-1"
-                        >
-                          {doc.title}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          Cập nhật: {doc.updatedAt} • {doc.semester}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Category */}
-                    <td className="py-3.5 px-3">
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded border border-slate-200">
-                        {doc.category}
-                      </span>
-                    </td>
-
-                    {/* File Type */}
-                    <td className="py-3.5 px-3 font-bold text-slate-600">
-                      {doc.fileType} ({doc.fileSize})
-                    </td>
-
-                    {/* Version */}
-                    <td className="py-3.5 px-3">
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded border border-blue-200">
-                        {doc.version}
-                      </span>
-                    </td>
-
-                    {/* Uploader */}
-                    <td className="py-3.5 px-3">
-                      <p className="font-bold text-slate-800 line-clamp-1">
-                        {doc.uploader}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {doc.uploaderRole}
-                      </p>
-                    </td>
-
-                    {/* Downloads */}
-                    <td className="py-3.5 px-3 text-center font-bold text-blue-600">
-                      {doc.downloads.toLocaleString()}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 font-bold text-[10px] rounded-md border ${doc.status === "\u0110ang \xE1p d\u1EE5ng" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
-                      >
-                        {doc.status}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedDoc(doc);
-                            setSubView("detail");
-                          }}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600"
-                          title="Xem chi tiết"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDownload(doc)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-emerald-600"
-                          title="Tải xuống"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setEditingDoc(doc);
-                            setSubView("upload");
-                          }}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-amber-600"
-                          title="Chỉnh sửa phiên bản"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(doc.id, doc.title)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-rose-600"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                {filteredDocuments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                      Không có biểu mẫu nào phù hợp với bộ lọc hiện tại.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredDocuments.map((doc) => {
+                    const isCirc =
+                      doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
+                    return (
+                      <tr
+                        key={doc.id}
+                        className={`hover:bg-slate-50/80 transition-colors ${
+                          !isCirc ? "bg-slate-50/40 opacity-90" : ""
+                        }`}
+                      >
+                        {/* Title */}
+                        <td className="py-3.5 px-4 max-w-[320px]">
+                          <div>
+                            <span
+                              onClick={() => {
+                                setSelectedDoc(doc);
+                                setSubView("detail");
+                              }}
+                              className="font-bold text-slate-900 hover:text-blue-600 cursor-pointer block line-clamp-1"
+                            >
+                              {doc.title}
+                            </span>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                              <span>
+                                {doc.fileType} • {doc.fileSize}
+                              </span>
+                              <span>•</span>
+                              <span>Đăng bởi: {doc.uploader}</span>
+                            </div>
+                            {!isCirc && doc.archiveReason && (
+                              <p className="text-[10px] text-amber-700 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 line-clamp-1">
+                                📦 Lý do ngưng: {doc.archiveReason}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-3.5 px-3">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded border border-slate-200">
+                            {doc.category}
+                          </span>
+                        </td>
+
+                        {/* Semester */}
+                        <td className="py-3.5 px-3">
+                          <span className="font-bold text-blue-700 text-xs">
+                            {doc.semester}
+                          </span>
+                          <span className="block text-[10px] text-slate-400">
+                            {doc.major}
+                          </span>
+                        </td>
+
+                        {/* Version */}
+                        <td className="py-3.5 px-3">
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded border border-blue-200">
+                            {doc.version}
+                          </span>
+                        </td>
+
+                        {/* Circulation Status */}
+                        <td className="py-3.5 px-3">
+                          {isCirc ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded-md border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Đang lưu hành (Public)
+                            </span>
+                          ) : doc.status === "Bản nháp" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200">
+                              Bản nháp
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 font-bold text-[10px] rounded-md border border-amber-300">
+                              <Archive className="w-3 h-3 text-amber-600" />
+                              Ngưng lưu hành (Đã ẩn)
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Downloads */}
+                        <td className="py-3.5 px-3 text-center font-bold text-blue-600">
+                          {doc.downloads.toLocaleString()}
+                        </td>
+
+                        {/* Log Trail Button */}
+                        <td className="py-3.5 px-3">
+                          <button
+                            onClick={() => setViewingAuditLogDoc(doc)}
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-blue-700 font-bold bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
+                          >
+                            <History className="w-3 h-3" />
+                            <span>{doc.archiveLogs?.length || 1} logs</span>
+                          </button>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => {
+                                setSelectedDoc(doc);
+                                setSubView("detail");
+                              }}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600"
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => handleDownload(doc)}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-emerald-600"
+                              title="Tải xuống"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+
+                            {/* Archive / Reactivate Button */}
+                            {isCirc ? (
+                              <button
+                                onClick={() => setArchivingDoc(doc)}
+                                className="p-1.5 hover:bg-amber-100 rounded-lg text-slate-600 hover:text-amber-700"
+                                title="Ngưng lưu hành & Chuyển vào Log"
+                              >
+                                <Archive className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleReactivateCirculation(doc)}
+                                className="p-1.5 hover:bg-emerald-100 rounded-lg text-slate-600 hover:text-emerald-700"
+                                title="Mở lưu hành lại cho SV"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setEditingDoc(doc);
+                                setSubView("upload");
+                              }}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600"
+                              title="Chỉnh sửa phiên bản"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => handleDelete(doc.id, doc.title)}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-rose-600"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -874,68 +966,400 @@ export const TemplatesView = () => {
       ) : (
         /* CARDS GRID VIEW */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocuments.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-xs transition-colors flex flex-col justify-between space-y-3"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">
-                    {doc.category}
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                    {doc.version}
-                  </span>
-                </div>
+          {filteredDocuments.map((doc) => {
+            const isCirc =
+              doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
+            return (
+              <div
+                key={doc.id}
+                className={`bg-white rounded-lg p-4 border shadow-xs transition-colors flex flex-col justify-between space-y-3 ${
+                  isCirc ? "border-slate-200/80" : "border-amber-200/80 bg-amber-50/20"
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">
+                      {doc.category}
+                    </span>
 
-                <h3
-                  onClick={() => {
-                    setSelectedDoc(doc);
-                    setSubView("detail");
-                  }}
-                  className="font-bold text-slate-900 text-sm hover:text-blue-600 cursor-pointer line-clamp-2"
-                >
-                  {doc.title}
-                </h3>
+                    {isCirc ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Đang lưu hành
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-300 flex items-center gap-1">
+                        <Archive className="w-3 h-3" />
+                        Ngưng lưu hành (Ẩn)
+                      </span>
+                    )}
+                  </div>
 
-                <p className="text-xs text-slate-500 font-medium line-clamp-2">
-                  {doc.description ||
-                    "Bi\u1EC3u m\u1EABu chu\u1EA9n ban h\xE0nh theo quy \u0111\u1ECBnh c\u1EE7a Khoa CNTT."}
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                  <span>
-                    {doc.fileType} • {doc.fileSize}
-                  </span>
-                  <span>{doc.downloads.toLocaleString()} lượt tải</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 pt-1">
-                  <button
+                  <h3
                     onClick={() => {
                       setSelectedDoc(doc);
                       setSubView("detail");
                     }}
-                    className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1"
+                    className="font-bold text-slate-900 text-sm hover:text-blue-600 cursor-pointer line-clamp-2"
                   >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Chi tiết</span>
-                  </button>
+                    {doc.title}
+                  </h3>
 
-                  <button
-                    onClick={() => handleDownload(doc)}
-                    className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs transition-colors flex items-center justify-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Tải về</span>
-                  </button>
+                  <p className="text-xs text-slate-500 font-medium line-clamp-2">
+                    {doc.description ||
+                      "Biểu mẫu chuẩn ban hành theo quy định của Khoa CNTT."}
+                  </p>
+
+                  {!isCirc && doc.archiveReason && (
+                    <div className="p-2 bg-amber-50 rounded border border-amber-200 text-[11px] text-amber-900 space-y-0.5">
+                      <span className="font-bold text-[10px] text-amber-700 uppercase">
+                        Lý do ngưng lưu hành:
+                      </span>
+                      <p className="line-clamp-2">{doc.archiveReason}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                    <span>
+                      {doc.fileType} • {doc.fileSize} • {doc.semester}
+                    </span>
+                    <span>{doc.downloads.toLocaleString()} lượt tải</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <button
+                      onClick={() => {
+                        setSelectedDoc(doc);
+                        setSubView("detail");
+                      }}
+                      className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Chi tiết</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDownload(doc)}
+                      className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Tải về</span>
+                    </button>
+
+                    {isCirc ? (
+                      <button
+                        onClick={() => setArchivingDoc(doc)}
+                        className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md border border-amber-200"
+                        title="Ngưng lưu hành"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleReactivateCirculation(doc)}
+                        className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md border border-emerald-200"
+                        title="Mở lưu hành lại"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MODAL 1: CONFIRM ARCHIVE (NGƯNG LƯU HÀNH & GHI LOG) */}
+      {archivingDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <Archive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Ngưng lưu hành biểu mẫu &amp; Chuyển vào Log
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Ẩn khỏi sinh viên và lưu vết vào Nhật ký kiểm toán
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setArchivingDoc(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          ))}
+
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200/80 text-xs text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span>Biểu mẫu: {archivingDoc.title}</span>
+              </div>
+              <p className="text-amber-800/90 text-[11px] leading-relaxed">
+                Khi ngưng lưu hành, sinh viên trong đợt thực tập sẽ <strong>không còn thấy và không thể tải về</strong> biểu mẫu này nữa. Mọi thông tin và tệp sẽ được lưu trữ an toàn trong kho dữ liệu Log.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Lý do ngưng lưu hành: <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={archiveReasonInput}
+                  onChange={(e) => setArchiveReasonInput(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-900 focus:border-amber-500 focus:bg-white"
+                >
+                  <option value="Thay thế bằng mẫu mới chuẩn hóa">
+                    🔄 Đã có mẫu mới thay thế (Cập nhật quy định mới)
+                  </option>
+                  <option value="Hết thời hạn nộp của đợt thực tập">
+                    ⏳ Hết thời hạn áp dụng / Kết thúc đợt thực tập
+                  </option>
+                  <option value="Điều chỉnh theo quy chế mới của Khoa">
+                    📜 Điều chỉnh theo quyết định / quy chế của Khoa
+                  </option>
+                  <option value="Ngưng áp dụng theo yêu cầu Bộ môn">
+                    🏢 Ngưng áp dụng theo yêu cầu Bộ môn chuyên môn
+                  </option>
+                  <option value="Lý do khác">
+                    ✏️ Lý do khác (Nhập chi tiết bên dưới)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Ghi chú chi tiết thêm:
+                </label>
+                <textarea
+                  rows={2}
+                  value={archiveCustomNote}
+                  onChange={(e) => setArchiveCustomNote(e.target.value)}
+                  placeholder="Ghi chú thêm về văn bản thay thế hoặc hướng dẫn đối soát nếu có..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-medium text-slate-800 focus:border-amber-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setArchivingDoc(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
+              >
+                Hủy bỏ
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmArchive}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-xs flex items-center gap-1.5"
+              >
+                <Archive className="w-4 h-4" />
+                <span>Xác nhận Ngưng lưu hành &amp; Lưu Log</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: AUDIT LOG TIMELINE MODAL FOR SINGLE DOC */}
+      {viewingAuditLogDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Nhật ký lưu hành &amp; Log kiểm toán
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium truncate max-w-sm">
+                    {viewingAuditLogDoc.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingAuditLogDoc(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {viewingAuditLogDoc.archiveLogs && viewingAuditLogDoc.archiveLogs.length > 0 ? (
+                viewingAuditLogDoc.archiveLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className={`p-3.5 rounded-lg border text-xs space-y-2 ${
+                      log.action === "ARCHIVED"
+                        ? "bg-amber-50/80 border-amber-200"
+                        : log.action === "CIRCULATING"
+                        ? "bg-emerald-50/80 border-emerald-200"
+                        : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                          log.action === "ARCHIVED"
+                            ? "bg-amber-100 text-amber-800"
+                            : log.action === "CIRCULATING"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-slate-200 text-slate-800"
+                        }`}
+                      >
+                        {log.actionLabel}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {log.date}
+                      </span>
+                    </div>
+
+                    {log.reason && (
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Lý do:</p>
+                        <p className="text-slate-800 font-medium leading-relaxed bg-white/70 p-2 rounded border border-slate-200/60">
+                          {log.reason}
+                        </p>
+                      </div>
+                    )}
+
+                    {log.note && (
+                      <p className="text-[11px] text-slate-600 italic">
+                        Ghi chú: {log.note}
+                      </p>
+                    )}
+
+                    <div className="pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
+                      <span>
+                        Thực hiện: <strong className="text-slate-700">{log.performedBy}</strong>
+                      </span>
+                      <span>{log.performedRole}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-xs text-slate-400">
+                  Chưa có lịch sử thay đổi trạng thái nào cho tài liệu này.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewingAuditLogDoc(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: GLOBAL AUDIT LOGS OVERVIEW */}
+      {showGlobalAuditLogs && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Nhật ký lưu hành &amp; Log kiểm toán toàn hệ thống
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Toàn bộ lịch sử phát hành, chuyển trạng thái và ngưng lưu hành biểu mẫu
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowGlobalAuditLogs(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+              {allAuditLogs.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  Chưa có bản ghi nhật ký nào trong hệ thống.
+                </div>
+              ) : (
+                allAuditLogs.map((log, idx) => (
+                  <div
+                    key={`${log.id}-${idx}`}
+                    className={`p-3.5 rounded-lg border text-xs space-y-1.5 ${
+                      log.action === "ARCHIVED"
+                        ? "bg-amber-50/70 border-amber-200"
+                        : log.action === "CIRCULATING"
+                        ? "bg-emerald-50/70 border-emerald-200"
+                        : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                            log.action === "ARCHIVED"
+                              ? "bg-amber-100 text-amber-800"
+                              : log.action === "CIRCULATING"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-slate-200 text-slate-800"
+                          }`}
+                        >
+                          {log.actionLabel}
+                        </span>
+                        <span className="font-bold text-slate-900">{log.docTitle}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">{log.date}</span>
+                    </div>
+
+                    {log.reason && (
+                      <p className="text-slate-700 text-xs">
+                        <strong>Lý do:</strong> {log.reason}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/50">
+                      <span>
+                        Thực hiện: <strong>{log.performedBy}</strong> ({log.performedRole})
+                      </span>
+                      <span>ID: {log.id}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowGlobalAuditLogs(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

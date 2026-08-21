@@ -6,6 +6,7 @@ import { Panel } from "../../../components/common/Panel";
 import { EvaluationWorkspace } from "./EvaluationWorkspace";
 import { RubricEvaluation } from "./RubricEvaluation";
 import { EvaluationDetail } from "./EvaluationDetail";
+import { EvaluationPdfModal } from "./EvaluationPdfModal";
 import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapEvaluationListItemToUi } from "../../../lib/portalMappers";
@@ -47,100 +48,100 @@ const INITIAL_EVALUATIONS = [
     lecturerScore: 9,
     presentationScore: 9.5,
     totalScore: 9.2,
-    status: "Ho\xE0n th\xE0nh",
-    weeklyReportCount: "12/12",
+    status: "Hoàn thành",
+    weeklyReportCount: "6/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "Sinh vi\xEAn ho\xE0n th\xE0nh xu\u1EA5t s\u1EAFc \u0111\u1EC1 t\xE0i, th\xE1i \u0111\u1ED9 l\xE0m vi\u1EC7c t\u1EA1i FPT r\u1EA5t chuy\xEAn nghi\u1EC7p.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc",
+      "Sinh viên hoàn thành xuất sắc đề tài, thái độ làm việc tại FPT rất chuyên nghiệp.",
+    gradeClassification: "Xuất sắc",
   },
   {
     id: "eval-2",
-    name: "Tr\u1EA7n Th\u1ECB B\xECnh",
+    name: "Trần Thị Bình",
     mssv: "20210002",
     avatar:
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
-    major: "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
+    major: "Khoa học Dữ liệu",
     company: "Viettel Telecom",
-    supervisor: "\u0110\u1EB7ng Minh Kh\xF4i (Tech Lead)",
+    supervisor: "Đặng Minh Khôi (Tech Lead)",
     progress: 100,
     enterpriseScore: 9.5,
     lecturerScore: 9.3,
     presentationScore: 9,
     totalScore: 9.3,
-    status: "Ho\xE0n th\xE0nh",
-    weeklyReportCount: "12/12",
+    status: "Hoàn thành",
+    weeklyReportCount: "6/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "B\xE1o c\xE1o Data Pipeline xu\u1EA5t s\u1EAFc, \u0111\u01B0\u1EE3c DN \u0111\xE1nh gi\xE1 cao v\xE0 gi\u1EEF l\u1EA1i l\xE0m ch\xEDnh th\u1EE9c.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc",
+      "Báo cáo Data Pipeline xuất sắc, được DN đánh giá cao và giữ lại làm chính thức.",
+    gradeClassification: "Xuất sắc",
   },
   {
     id: "eval-3",
-    name: "L\xEA Ho\xE0ng C\u01B0\u1EDDng",
+    name: "Lê Hoàng Cường",
     mssv: "20210003",
     avatar:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     class: "HTTT-K15",
-    major: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
+    major: "Hệ thống Thông tin",
     company: "VNG Corporation",
-    supervisor: "Ph\u1EA1m Tu\u1EA5n Anh (DevOps Lead)",
+    supervisor: "Phạm Tuấn Anh (DevOps Lead)",
     progress: 92,
     enterpriseScore: 8.5,
     lecturerScore: 8,
     presentationScore: 8.5,
     totalScore: 8.3,
-    status: "\u0110ang ch\u1EA5m",
-    weeklyReportCount: "11/12",
+    status: "Đang chấm",
+    weeklyReportCount: "5/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "\u0110ang r\xE0 so\xE1t l\u1EA1i ph\u1EA7n tr\xECnh b\xE0y ki\u1EBFn tr\xFAc Cloud Infrastructure.",
-    gradeClassification: "Gi\u1ECFi",
+      "Đang rà soát lại phần trình bày kiến trúc Cloud Infrastructure.",
+    gradeClassification: "Giỏi",
   },
   {
     id: "eval-4",
-    name: "Ph\u1EA1m Minh \u0110\u1EE9c",
+    name: "Phạm Minh Đức",
     mssv: "20210004",
     avatar:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15A",
-    major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
+    major: "Kỹ thuật Phần mềm",
     company: "MISA Joint Stock Co.",
-    supervisor: "L\xEA Thu Trang (HR Manager)",
+    supervisor: "Lê Thu Trang (HR Manager)",
     progress: 100,
     enterpriseScore: 8.8,
     lecturerScore: 8.5,
     presentationScore: 8.8,
     totalScore: 8.7,
-    status: "Ho\xE0n th\xE0nh",
-    weeklyReportCount: "12/12",
+    status: "Hoàn thành",
+    weeklyReportCount: "6/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "\u0110\xE1p \u1EE9ng t\u1ED1t c\xE1c chu\u1EA9n k\u1EF9 n\u0103ng c\u01A1 b\u1EA3n, b\xE1o c\xE1o tr\xECnh b\xE0y m\u1EA1ch l\u1EA1c.",
-    gradeClassification: "Gi\u1ECFi",
+      "Đáp ứng tốt các chuẩn kỹ năng cơ bản, báo cáo trình bày mạch lạc.",
+    gradeClassification: "Giỏi",
   },
   {
     id: "eval-5",
-    name: "\u0110\u1ED7 Th\u1ECB Giang",
+    name: "Đỗ Thị Giang",
     mssv: "20210005",
     avatar:
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
-    major: "An to\xE0n Th\xF4ng tin",
+    major: "An toàn Thông tin",
     company: "VNPT IT",
-    supervisor: "Ho\xE0ng V\u0103n Nam (SecOps)",
+    supervisor: "Hoàng Văn Nam (SecOps)",
     progress: 80,
     enterpriseScore: 8,
     lecturerScore: null,
     presentationScore: null,
     totalScore: null,
-    status: "Ch\u01B0a ch\u1EA5m",
-    weeklyReportCount: "12/12",
+    status: "Chưa chấm",
+    weeklyReportCount: "6/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments: "",
@@ -148,21 +149,21 @@ const INITIAL_EVALUATIONS = [
   },
   {
     id: "eval-6",
-    name: "V\u0169 Qu\u1ED1c Huy",
+    name: "Vũ Quốc Huy",
     mssv: "20210006",
     avatar:
       "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
     class: "HTTT-K15",
-    major: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
+    major: "Hệ thống Thông tin",
     company: "Techcombank",
-    supervisor: "Ng\xF4 Thanh S\u01A1n (Solution Arch)",
+    supervisor: "Ngô Thanh Sơn (Solution Arch)",
     progress: 75,
     enterpriseScore: null,
     lecturerScore: null,
     presentationScore: null,
     totalScore: null,
-    status: "Ch\u01B0a ch\u1EA5m",
-    weeklyReportCount: "9/12",
+    status: "Chưa chấm",
+    weeklyReportCount: "4/6",
     finalReportSubmitted: false,
     enterpriseFeedbackSubmitted: false,
     lecturerComments: "",
@@ -170,49 +171,49 @@ const INITIAL_EVALUATIONS = [
   },
   {
     id: "eval-7",
-    name: "Ho\xE0ng Th\u1ECB Kh\xE1nh",
+    name: "Hoàng Thị Khánh",
     mssv: "20210007",
     avatar:
       "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15A",
-    major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
+    major: "Kỹ thuật Phần mềm",
     company: "CMC Global",
-    supervisor: "B\xF9i \u0110\u1EE9c Anh (PM)",
+    supervisor: "Bùi Đức Anh (PM)",
     progress: 100,
     enterpriseScore: 9,
     lecturerScore: 9.2,
     presentationScore: 9,
     totalScore: 9.1,
-    status: "Ho\xE0n th\xE0nh",
-    weeklyReportCount: "12/12",
+    status: "Hoàn thành",
+    weeklyReportCount: "6/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "\u0110\u1EC1 t\xE0i t\xEDch h\u1EE3p AI v\xE0o quy tr\xECnh th\u1EED nghi\u1EC7m t\u1EF1 \u0111\u1ED9ng r\u1EA5t \u1EA5n t\u01B0\u1EE3ng.",
-    gradeClassification: "Xu\u1EA5t s\u1EAFc",
+      "Đề tài tích hợp AI vào quy trình thử nghiệm tự động rất ấn tượng.",
+    gradeClassification: "Xuất sắc",
   },
   {
     id: "eval-8",
-    name: "B\xF9i Anh Long",
+    name: "Bùi Anh Long",
     mssv: "20210008",
     avatar:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
     class: "CNTT-K15B",
-    major: "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
+    major: "Khoa học Dữ liệu",
     company: "MB Bank",
-    supervisor: "V\u0169 Th\u1ECB H\u1ED3ng (Senior Analyst)",
+    supervisor: "Vũ Thị Hồng (Senior Analyst)",
     progress: 60,
     enterpriseScore: 5.5,
     lecturerScore: 4.5,
     presentationScore: 5,
     totalScore: 5,
-    status: "Ho\xE0n th\xE0nh",
-    weeklyReportCount: "6/12",
+    status: "Hoàn thành",
+    weeklyReportCount: "2/6",
     finalReportSubmitted: true,
     enterpriseFeedbackSubmitted: true,
     lecturerComments:
-      "Ngh\u1EC9 qu\xE1 s\u1ED1 bu\u1ED5i qui \u0111\u1ECBnh, b\xE1o c\xE1o s\u01A1 s\xE0i kh\xF4ng \u0111\u1EE7 ti\xEAu chu\u1EA9n.",
-    gradeClassification: "Kh\xF4ng \u0111\u1EA1t",
+      "Nghỉ quá số buổi qui định, báo cáo sơ sài không đủ tiêu chuẩn.",
+    gradeClassification: "Không đạt",
   },
 ];
 export const EvaluationDashboard = () => {
@@ -229,6 +230,7 @@ export const EvaluationDashboard = () => {
   const [activeGradingStudent, setActiveGradingStudent] = useState(null);
   const [activeSheetStudent, setActiveSheetStudent] = useState(null);
   const [activeDetailStudent, setActiveDetailStudent] = useState(null);
+  const [activePdfStudent, setActivePdfStudent] = useState<any>(null);
   const [gradeInput, setGradeInput] = useState({
     enterprise: 8.5,
     lecturer: 8.5,
@@ -706,9 +708,9 @@ export const EvaluationDashboard = () => {
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Sinh viên</th>
                   <th className="py-3.5 px-4">Doanh nghiệp &amp; Mentor</th>
-                  <th className="py-3.5 px-3 text-center">Tiến độ</th>
-                  <th className="py-3.5 px-3 text-center">Đ. Doanh nghiệp</th>
-                  <th className="py-3.5 px-3 text-center">Đ. Giảng viên</th>
+                  <th className="py-3.5 px-3 text-center">Báo cáo tuần (20%)</th>
+                  <th className="py-3.5 px-3 text-center">Đ. Doanh nghiệp (30%)</th>
+                  <th className="py-3.5 px-3 text-center">Báo cáo &amp; SP (30%)</th>
                   <th className="py-3.5 px-3 text-center">Đ. Tổng</th>
                   <th className="py-3.5 px-3">Trạng thái</th>
                   <th className="py-3.5 px-4 text-right">Thao tác</th>
@@ -752,13 +754,13 @@ export const EvaluationDashboard = () => {
                       </p>
                     </td>
 
-                    {/* Progress */}
+                    {/* Báo cáo tuần (20%) */}
                     <td className="py-3.5 px-3 text-center">
-                      <div className="w-20 mx-auto">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-0.5">
-                          <span>{item.progress}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-bold text-slate-800 text-[11px]">
+                          {item.weeklyReportCount || "12/12"} tuần
+                        </span>
+                        <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
                             className={`h-1.5 rounded-full ${item.progress === 100 ? "bg-emerald-500" : item.progress >= 80 ? "bg-blue-600" : "bg-amber-500"}`}
                             style={{ width: `${item.progress}%` }}
@@ -767,10 +769,10 @@ export const EvaluationDashboard = () => {
                       </div>
                     </td>
 
-                    {/* Điểm Doanh nghiệp */}
+                    {/* Điểm Doanh nghiệp (30%) */}
                     <td className="py-3.5 px-3 text-center font-bold">
                       {item.enterpriseScore !== null ? (
-                        <span className="text-slate-900 font-mono font-bold text-xs">
+                        <span className="text-blue-700 font-mono font-bold text-xs bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                           {item.enterpriseScore}
                         </span>
                       ) : (
@@ -780,10 +782,10 @@ export const EvaluationDashboard = () => {
                       )}
                     </td>
 
-                    {/* Điểm Giảng viên */}
+                    {/* Điểm Báo cáo & SP (30%) */}
                     <td className="py-3.5 px-3 text-center font-bold">
                       {item.lecturerScore !== null ? (
-                        <span className="text-slate-900 font-mono font-bold text-xs">
+                        <span className="text-purple-700 font-mono font-bold text-xs bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
                           {item.lecturerScore}
                         </span>
                       ) : (
@@ -797,7 +799,7 @@ export const EvaluationDashboard = () => {
                     <td className="py-3.5 px-3 text-center">
                       {item.totalScore !== null ? (
                         <span
-                          className={`font-bold text-xs px-2.5 py-1 rounded-lg font-mono ${item.totalScore >= 9 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 8 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 5 ? "bg-emerald-100 text-emerald-900 border border-emerald-200" : "bg-rose-100 text-rose-900 border border-rose-200"}`}
+                          className={`font-bold text-xs px-2.5 py-1 rounded-lg font-mono ${item.totalScore >= 9 ? "bg-emerald-100 text-emerald-900 border border-emerald-300" : item.totalScore >= 8 ? "bg-blue-100 text-blue-900 border border-blue-200" : item.totalScore >= 5 ? "bg-sky-100 text-sky-900 border border-sky-200" : "bg-rose-100 text-rose-900 border border-rose-200"}`}
                         >
                           {item.totalScore}
                         </span>
@@ -838,7 +840,7 @@ export const EvaluationDashboard = () => {
                         <button
                           onClick={() => setRubricStudent(item)}
                           className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-md transition-colors border border-slate-200"
-                          title="Đánh giá theo 6 tiêu chí"
+                          title="Khung 4 trụ cột chuẩn hóa"
                         >
                           <Sliders className="w-4 h-4" />
                         </button>
@@ -849,6 +851,14 @@ export const EvaluationDashboard = () => {
                           title="Phiếu đánh giá chi tiết"
                         >
                           <FileText className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setActivePdfStudent(item)}
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors border border-blue-200"
+                          title="In / Xuất phiếu đánh giá chuẩn PDF"
+                        >
+                          <Award className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -1704,6 +1714,14 @@ export const EvaluationDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL 5: 🎓 PHIẾU ĐÁNH GIÁ CHUẨN PDF TRƯỜNG */}
+      {activePdfStudent && (
+        <EvaluationPdfModal
+          student={activePdfStudent}
+          onClose={() => setActivePdfStudent(null)}
+        />
       )}
     </div>
   );

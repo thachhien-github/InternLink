@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  Sparkles,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
@@ -16,28 +17,62 @@ import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToStudentTemplate } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
+import { USE_MOCK } from "../../../config/env";
+import { loadStoredTemplates } from "../../../data/initialTemplatesData";
 
-export const TemplatesView = ({ onShowToast }) => {
-  const { internshipId } = useStudentPortal();
+export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => void }) => {
+  const { internshipId, profile } = useStudentPortal();
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFileType, setSelectedFileType] = useState("Tất cả");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [templates, setTemplates] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
 
+  // Load templates from API or sync with stored circulating templates
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setIsLoading(true);
       try {
-        const docs = internshipId
-          ? await documentService.getByInternship(internshipId)
-          : await documentService.getAll();
-        if (!cancelled) {
-          setTemplates(docs.map(mapDocumentListItemToStudentTemplate));
+        if (!USE_MOCK) {
+          const docs = internshipId
+            ? await documentService.getByInternship(internshipId)
+            : await documentService.getAll();
+          if (!cancelled) {
+            // Only show published / circulating documents for students
+            const activeDocs = docs.filter((d: any) => d.status !== "Ngưng lưu hành" && d.status !== "Lưu trữ");
+            setTemplates(activeDocs.map(mapDocumentListItemToStudentTemplate));
+          }
+        } else {
+          // In mock/local storage mode: load from stored templates and ONLY take circulating templates
+          const stored = loadStoredTemplates();
+          const circulatingOnly = stored.filter(
+            (d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng",
+          );
+
+          const studentMapped = circulatingOnly.map((d) => ({
+            id: d.id,
+            code: `${d.category.slice(0, 3).toUpperCase()}-${d.id.slice(0, 4).toUpperCase()}`,
+            name: d.title,
+            category: d.category || "Biểu mẫu",
+            fileType: d.fileType || "DOCX",
+            fileSize: d.fileSize || "1.2 MB",
+            version: d.version || "v1.0",
+            uploadDate: d.updatedAt,
+            uploaderName: d.uploader,
+            uploaderRole: d.uploaderRole || "Giảng viên hướng dẫn",
+            isRequired: d.isRequired ?? false,
+            description: d.description || "",
+            usageInstructions: "Tải file về máy và làm theo đúng quy cách hướng dẫn của Giảng viên.",
+            downloadCount: d.downloads || 0,
+            fileName: `${d.title}.${d.fileType.toLowerCase()}`,
+            semester: d.semester,
+          }));
+
+          if (!cancelled) {
+            setTemplates(studentMapped);
+          }
         }
       } catch (err) {
         if (!cancelled) onShowToast(getApiErrorMessage(err));
@@ -51,15 +86,32 @@ export const TemplatesView = ({ onShowToast }) => {
   }, [internshipId, onShowToast]);
 
   const categoriesList = [
-    "T\u1EA5t c\u1EA3",
-    "M\u1EABu b\xE1o c\xE1o tu\u1EA7n",
-    "M\u1EABu b\xE1o c\xE1o cu\u1ED1i k\u1EF3",
-    "Slide b\u1EA3o v\u1EC7",
-    "Quy \u0111\u1ECBnh & H\u01B0\u1EDBng d\u1EABn",
-    "T\xE0i li\u1EC7u tham kh\u1EA3o",
+    "Tất cả",
+    "Biểu mẫu",
+    "Báo cáo",
+    "Nhật ký",
+    "Kế hoạch",
+    "Hướng dẫn",
+    "Văn bản khoa",
   ];
-  const handleDownload = async (doc) => {
+
+  const handleDownload = async (doc: any) => {
     try {
+      if (USE_MOCK) {
+        const ext = (doc.fileType || "doc").toLowerCase();
+        const content = `TRƯỜNG ĐẠI HỌC - KHOA CÔNG NGHỆ THÔNG TIN\nBIỂU MẪU CHÍNH THỨC: ${doc.name?.toUpperCase()}\nPhân loại: ${doc.category || "Biểu mẫu"}\nMã biểu mẫu: ${doc.code || "BM-01"}\nPhiên bản: ${doc.version || "v1.0"}\n\n1. MỤC ĐÍCH:\n${doc.description || "Tài liệu hướng dẫn và biểu mẫu chuẩn hóa thực tập tốt nghiệp."}\n\n2. HƯỚNG DẪN SỬ DỤNG:\n${doc.usageInstructions || "Điền đầy đủ thông tin và nộp lại cho Giảng viên hướng dẫn theo đúng hạn quy định."}\n\n(Ban hành bởi: ${doc.uploaderName || "Khoa Công nghệ Thông tin"})\n`;
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(doc.fileName || doc.name || "Bieu_Mau").replace(/[\/\\:*?"<>|]/g, "_")}.${ext === "docx" ? "doc" : ext === "pdf" ? "txt" : ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        onShowToast(`Đã tải xuống biểu mẫu: ${doc.name}`);
+        return;
+      }
       const { blob, filename } = await documentService.download(
         doc.id,
         doc.fileName || `${doc.name}.bin`,
@@ -77,25 +129,26 @@ export const TemplatesView = ({ onShowToast }) => {
       onShowToast(getApiErrorMessage(err));
     }
   };
+
   const filteredTemplates = templates.filter((doc) => {
     const matchCat =
-      selectedCategory === "T\u1EA5t c\u1EA3" ||
-      doc.category === selectedCategory;
+      selectedCategory === "Tất cả" || doc.category === selectedCategory;
     const matchFileType =
-      selectedFileType === "T\u1EA5t c\u1EA3" ||
-      doc.fileType === selectedFileType;
+      selectedFileType === "Tất cả" || doc.fileType === selectedFileType;
     const matchSearch =
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchFileType && matchSearch;
   });
+
   const totalPages = Math.ceil(filteredTemplates.length / pageSize) || 1;
   const paginatedTemplates = filteredTemplates.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
-  const getFileTypeBadge = (type) => {
+
+  const getFileTypeBadge = (type: string) => {
     switch (type) {
       case "DOCX":
         return "bg-blue-600 text-white";
@@ -103,34 +156,56 @@ export const TemplatesView = ({ onShowToast }) => {
         return "bg-rose-600 text-white";
       case "PPTX":
         return "bg-amber-600 text-white";
+      case "XLSX":
+        return "bg-emerald-600 text-white";
       case "ZIP":
-        return "bg-blue-600 text-white";
+        return "bg-purple-600 text-white";
       default:
         return "bg-slate-700 text-white";
     }
   };
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 max-w-7xl mx-auto">
+    <div className="space-y-5 animate-in fade-in duration-200 max-w-7xl mx-auto font-sans">
       <PageHeader
         icon={BookOpen}
-        title="Biểu mẫu & Tài liệu"
-        subtitle="Kho biểu mẫu Word, Slide PowerPoint và Quy định do Giảng viên & Khoa đăng tải. Tải về để làm theo."
-        badge={`${templates.length} biểu mẫu chính thức`}
-        badgeColor="bg-blue-100 text-blue-800 border-blue-200"
+        title="Biểu mẫu & Tài liệu thực tập"
+        subtitle="Kho biểu mẫu Word, Slide và Quy định chính thức đang lưu hành do Giảng viên & Khoa ban hành. Tải về để thực hiện theo đợt thực tập."
+        badge={`${templates.length} biểu mẫu đang lưu hành`}
+        badgeColor="bg-emerald-100 text-emerald-800 border-emerald-200"
         actions={[
           {
             label: "Tải tất cả mẫu (.ZIP)",
             icon: Download,
             onClick: () =>
-              onShowToast("Đang đóng gói và tải tất cả biểu mẫu (.ZIP)..."),
+              onShowToast("Đang đóng gói và tải tất cả biểu mẫu đang lưu hành (.ZIP)..."),
             variant: "primary",
           },
         ]}
       >
-        <span className="px-2 py-0.5 font-semibold text-[10px] rounded-md border bg-rose-100 text-rose-800 border-rose-200">
-          {templates.filter((t) => t.isRequired).length} bắt buộc
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2 py-0.5 font-semibold text-[10px] rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            Đợt thực tập: {profile?.semester || "HK I - 2026"}
+          </span>
+          <span className="px-2 py-0.5 font-semibold text-[10px] rounded-md border bg-rose-100 text-rose-800 border-rose-200">
+            {templates.filter((t) => t.isRequired).length} bắt buộc
+          </span>
+        </div>
       </PageHeader>
+
+      {/* CIRCULATION NOTICE BANNER */}
+      <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-lg flex items-center justify-between text-xs text-blue-900">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+          <span>
+            Hệ thống chỉ hiển thị <strong>các biểu mẫu đang lưu hành chính thức</strong> cho đợt thực tập hiện tại. Các mẫu đã ngưng lưu hành được tự động lưu trữ vào hệ thống log kiểm toán.
+          </span>
+        </div>
+        <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded border border-blue-200 whitespace-nowrap">
+          Chuẩn Khoa CNTT
+        </span>
+      </div>
 
       {/* 2. MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -140,8 +215,7 @@ export const TemplatesView = ({ onShowToast }) => {
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-600" /> Biểu mẫu từ Giảng
-                viên ({filteredTemplates.length})
+                <BookOpen className="w-5 h-5 text-blue-600" /> Biểu mẫu đang lưu hành ({filteredTemplates.length})
               </h2>
 
               <div className="flex items-center gap-2">
@@ -157,23 +231,25 @@ export const TemplatesView = ({ onShowToast }) => {
                 </div>
 
                 <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-md text-[11px] font-bold">
-                  {["T\u1EA5t c\u1EA3", "DOCX", "PDF", "PPTX", "ZIP"].map(
-                    (ft) => (
-                      <button
-                        key={ft}
-                        onClick={() => setSelectedFileType(ft)}
-                        className={`px-2 py-0.5 rounded-lg transition-all ${selectedFileType === ft ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600"}`}
-                      >
-                        {ft}
-                      </button>
-                    ),
-                  )}
+                  {["Tất cả", "DOCX", "PDF", "PPTX", "XLSX"].map((ft) => (
+                    <button
+                      key={ft}
+                      onClick={() => setSelectedFileType(ft)}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        selectedFileType === ft
+                          ? "bg-white text-blue-700 shadow-2xs"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {ft}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
             {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold pb-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold pb-1 scrollbar-none">
               {categoriesList.map((cat) => (
                 <button
                   key={cat}
@@ -181,7 +257,11 @@ export const TemplatesView = ({ onShowToast }) => {
                     setSelectedCategory(cat);
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${selectedCategory === cat ? "bg-blue-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                  className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
                 >
                   {cat}
                 </button>
@@ -192,7 +272,7 @@ export const TemplatesView = ({ onShowToast }) => {
             <div className="divide-y divide-slate-100 border border-slate-200/80 rounded-md overflow-hidden">
               {filteredTemplates.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-500 font-medium">
-                  Không tìm thấy biểu mẫu nào phù hợp.
+                  Không tìm thấy biểu mẫu nào đang lưu hành phù hợp với bộ lọc.
                 </div>
               ) : (
                 paginatedTemplates.map((doc) => (
@@ -203,7 +283,9 @@ export const TemplatesView = ({ onShowToast }) => {
                     <div className="space-y-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${getFileTypeBadge(doc.fileType)}`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${getFileTypeBadge(
+                            doc.fileType,
+                          )}`}
                         >
                           {doc.fileType}
                         </span>
@@ -212,11 +294,12 @@ export const TemplatesView = ({ onShowToast }) => {
                         </span>
                         {doc.isRequired && (
                           <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-200">
-                            Bắt buộc
+                            Bắt buộc nộp
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          Phiên bản {doc.version}
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Đang lưu hành ({doc.version})
                         </span>
                       </div>
 
@@ -261,8 +344,7 @@ export const TemplatesView = ({ onShowToast }) => {
                         onClick={() => setSelectedDoc(doc)}
                         className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-all flex items-center gap-1"
                       >
-                        <Eye className="w-3.5 h-3.5 text-slate-500" /> Xem chi
-                        tiết
+                        <Eye className="w-3.5 h-3.5 text-slate-500" /> Xem chi tiết
                       </button>
 
                       <button
@@ -280,15 +362,12 @@ export const TemplatesView = ({ onShowToast }) => {
             {/* Pagination */}
             <div className="flex items-center justify-between text-xs pt-1">
               <span className="text-slate-500 font-medium">
-                Hiển thị {paginatedTemplates.length} /{" "}
-                {filteredTemplates.length} mẫu
+                Hiển thị {paginatedTemplates.length} / {filteredTemplates.length} mẫu
               </span>
 
               <div className="flex items-center gap-1.5 font-bold">
                 <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                   className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-40 transition-colors"
                 >
@@ -316,44 +395,45 @@ export const TemplatesView = ({ onShowToast }) => {
           {/* REQUIRED TEMPLATES BOX */}
           <Panel className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600" /> Biểu mẫu bắt
-              buộc phải nộp
+              <AlertCircle className="w-4 h-4 text-rose-600" /> Biểu mẫu bắt buộc phải nộp
             </h3>
 
             <div className="space-y-2 text-xs">
-              {templates
-                .filter((t) => t.isRequired)
-                .map((reqDoc) => (
-                  <div
-                    key={reqDoc.id}
-                    className="p-3 bg-rose-50/50 rounded-md border border-rose-200/80 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-rose-900 text-[11px]">
-                        {reqDoc.code}
-                      </span>
-                      <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">
-                        {reqDoc.fileType}
-                      </span>
-                    </div>
-                    <p className="font-bold text-slate-900">{reqDoc.name}</p>
-                    <button
-                      onClick={() => handleDownload(reqDoc)}
-                      className="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              {templates.filter((t) => t.isRequired).length === 0 ? (
+                <p className="text-slate-400 text-xs italic">Không có biểu mẫu bắt buộc nào.</p>
+              ) : (
+                templates
+                  .filter((t) => t.isRequired)
+                  .map((reqDoc) => (
+                    <div
+                      key={reqDoc.id}
+                      className="p-3 bg-rose-50/50 rounded-md border border-rose-200/80 space-y-1.5"
                     >
-                      <Download className="w-3.5 h-3.5" /> Tải tệp này (
-                      {reqDoc.fileSize})
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-rose-900 text-[11px]">
+                          {reqDoc.code}
+                        </span>
+                        <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">
+                          {reqDoc.fileType}
+                        </span>
+                      </div>
+                      <p className="font-bold text-slate-900">{reqDoc.name}</p>
+                      <button
+                        onClick={() => handleDownload(reqDoc)}
+                        className="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Tải tệp này ({reqDoc.fileSize})
+                      </button>
+                    </div>
+                  ))
+              )}
             </div>
           </Panel>
 
           {/* USAGE GUIDE BOX */}
           <Panel className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Hướng dẫn
-              làm theo mẫu
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Hướng dẫn làm theo mẫu
             </h3>
 
             <div className="space-y-2.5 text-xs text-slate-700 font-medium">
@@ -361,25 +441,20 @@ export const TemplatesView = ({ onShowToast }) => {
                 <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   1
                 </span>
-                <span>
-                  Tải mẫu Word (.docx) hoặc PPTX tương ứng về máy tính.
-                </span>
+                <span>Tải mẫu Word (.docx) hoặc Slide (.pptx) tương ứng về máy tính.</span>
               </div>
               <div className="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-md border border-slate-200">
                 <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   2
                 </span>
-                <span>
-                  Điền thông tin và thực hiện đúng cấu trúc do Khoa yêu cầu.
-                </span>
+                <span>Điền thông tin và thực hiện đúng cấu trúc do Khoa yêu cầu.</span>
               </div>
               <div className="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-md border border-slate-200">
                 <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   3
                 </span>
                 <span>
-                  Xuất file thành dạng <strong>PDF (.pdf)</strong> trước khi nộp
-                  lên hệ thống.
+                  Xuất file thành dạng <strong>PDF (.pdf)</strong> trước khi nộp lên hệ thống.
                 </span>
               </div>
             </div>
@@ -400,7 +475,9 @@ export const TemplatesView = ({ onShowToast }) => {
 
             <div className="flex items-start gap-3 border-b border-slate-100 pb-3">
               <div
-                className={`p-2.5 rounded-md text-white font-bold text-xs shrink-0 ${getFileTypeBadge(selectedDoc.fileType)}`}
+                className={`p-2.5 rounded-md text-white font-bold text-xs shrink-0 ${getFileTypeBadge(
+                  selectedDoc.fileType,
+                )}`}
               >
                 {selectedDoc.fileType}
               </div>
@@ -414,13 +491,15 @@ export const TemplatesView = ({ onShowToast }) => {
                       Bắt buộc
                     </span>
                   )}
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                    Đang lưu hành
+                  </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
                   {selectedDoc.name}
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Đăng bởi: {selectedDoc.uploaderName} (
-                  {selectedDoc.uploaderRole})
+                  Đăng bởi: {selectedDoc.uploaderName} ({selectedDoc.uploaderRole})
                 </p>
               </div>
             </div>

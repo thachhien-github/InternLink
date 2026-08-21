@@ -41,15 +41,32 @@ import type { EvaluationDetailDto } from "../../../types/api";
 const DEFAULT_AVATAR =
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
 
-export const DashboardView = ({ onNavigate, onShowToast }) => {
+export const DashboardView = ({
+  onNavigate,
+  onShowToast,
+}: {
+  onNavigate?: (tab: string) => void;
+  onShowToast?: (msg: string, type?: string) => void;
+}) => {
   const { profile, internshipId } = useStudentPortal();
   const { selectedSemester } = useSemester();
   const { reports, loading: reportsLoading, error: reportsError } = useWeeklyReports();
   const { notifications, loading: notificationsLoading } = useStudentNotifications();
   const [showEmptyState, setShowEmptyState] = useState(false);
-  const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<{
+    id: string;
+    senderName: string;
+    senderRole: string;
+    avatar: string;
+    timeAgo: string;
+    preview: string;
+    detail: string;
+    status: string;
+    reportRef: string;
+    sortKey: string;
+  } | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [submitWeek, setSubmitWeek] = useState("Báo cáo tuần 6");
+  const [submitWeek, _setSubmitWeek] = useState("Báo cáo tuần");
   const [evaluation, setEvaluation] = useState<EvaluationDetailDto | null>(null);
   const [submissionComments, setSubmissionComments] = useState<
     { id: string; title: string; comment: string; date: string }[]
@@ -89,7 +106,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
 
   useEffect(() => {
     if (reportsError) {
-      onShowToast(getApiErrorMessage(reportsError));
+      onShowToast?.(getApiErrorMessage(reportsError));
     }
   }, [reportsError, onShowToast]);
 
@@ -204,7 +221,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
 
   const isArchived = selectedSemester?.status === "completed";
   const toggleTask = () => {
-    onShowToast("Vui lòng nộp báo cáo qua trang Báo cáo tuần", "info");
+    onShowToast?.("Vui lòng nộp báo cáo qua trang Báo cáo tuần", "info");
   };
 
   return (
@@ -254,7 +271,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
             <button
               onClick={() => {
                 setShowEmptyState(false);
-                onShowToast(
+                onShowToast?.(
                   "Đang mở Hướng dẫn Đăng ký thực tập đợt I - 2026",
                 );
               }}
@@ -264,7 +281,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => onNavigate("student-templates")}
+              onClick={() => onNavigate?.("student-templates")}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors"
             >
               Tải mẫu đơn đăng ký
@@ -420,7 +437,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                         </div>
                         <button
                           onClick={() =>
-                            onNavigate("student-weekly-reports")
+                            onNavigate?.("student-weekly-reports")
                           }
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors ${task.priority === "Cao" ? "bg-rose-600 hover:bg-rose-700 text-white shadow-2xs" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
                         >
@@ -445,7 +462,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                     </p>
                   </div>
                   <button
-                    onClick={() => onNavigate("student-weekly-reports")}
+                    onClick={() => onNavigate?.("student-weekly-reports")}
                     className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
                   >
                     Xem tất cả <ChevronRight className="w-3.5 h-3.5" />
@@ -477,7 +494,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                             </div>
                             <button
                               onClick={() =>
-                                onNavigate("student-weekly-reports")
+                                onNavigate?.("student-weekly-reports")
                               }
                               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                             >
@@ -503,7 +520,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                     </p>
                   </div>
                   <button
-                    onClick={() => onNavigate("student-feedback")}
+                    onClick={() => onNavigate?.("student-feedback")}
                     className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
                   >
                     Xem tất cả
@@ -610,7 +627,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                   </div>
 
                   <button
-                    onClick={() => onNavigate("student-internship")}
+                    onClick={() => onNavigate?.("student-internship")}
                     className="w-full py-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1.5"
                   >
                     <span>Xem chi tiết hồ sơ</span>
@@ -664,7 +681,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
                     <Bell className="w-4 h-4 text-blue-600" /> Thông báo
                   </h3>
                   <button
-                    onClick={() => onNavigate("student-notifications")}
+                    onClick={() => onNavigate?.("student-notifications")}
                     className="text-xs text-blue-600 font-bold hover:underline"
                   >
                     Xem tất cả
@@ -737,7 +754,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
             <button
               onClick={() => {
                 setSelectedFeedback(null);
-                onNavigate("student-feedback");
+                onNavigate?.("student-feedback");
               }}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md"
             >
@@ -764,7 +781,7 @@ export const DashboardView = ({ onNavigate, onShowToast }) => {
               <button
                 onClick={() => {
                   setShowSubmitModal(false);
-                  onNavigate("student-weekly-reports");
+                  onNavigate?.("student-weekly-reports");
                 }}
                 className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-md"
               >

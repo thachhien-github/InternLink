@@ -42,7 +42,13 @@ import {
 import { adminAssignmentsService } from "../../../services/adminAssignments.service";
 import { adminLecturersService } from "../../../services/adminLecturers.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
-export const LecturersView = ({ onShowToast }) => {
+export const LecturersView = ({
+  onShowToast,
+  onNavigateTab,
+}: {
+  onShowToast: (msg: string) => void;
+  onNavigateTab?: (tab: string) => void;
+}) => {
   const [isLoadingApi, setIsLoadingApi] = useState(!USE_MOCK);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLecturer, setEditingLecturer] = useState<LecturerRowForEdit | null>(null);
