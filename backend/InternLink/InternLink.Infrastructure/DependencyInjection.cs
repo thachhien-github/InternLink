@@ -17,7 +17,8 @@ public static class DependencyInjection
         // DbContext
         var connection = configuration.GetConnectionString("DefaultConnection");
         services.AddDbContext<Persistence.AppDbContext>(options =>
-            options.UseSqlServer(connection));
+            options.UseSqlServer(connection)
+                   .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         // Jwt settings
         var jwtSection = configuration.GetSection("Jwt");
@@ -45,7 +46,25 @@ public static class DependencyInjection
                 ValidAudience = jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(key)
             };
+
+            // Support SignalR WebSocket authentication via Query parameter 'access_token'
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
+
+        // SignalR Core
+        services.AddSignalR();
 
         // JwtService (interface moved to Shared project)
         services.AddScoped<InternLink.Shared.Interfaces.IJwtService, Identity.JwtService>();
@@ -93,6 +112,12 @@ public static class DependencyInjection
         // Admin broadcast notifications
         services.AddScoped<IAdminNotificationService, InternLink.Infrastructure.Services.AdminNotificationService>();
 
+        // Excel processing engine
+        services.AddScoped<IExcelService, InternLink.Infrastructure.Services.ExcelService>();
+
+        // PDF export engine
+        services.AddScoped<IPdfExportService, InternLink.Infrastructure.Services.PdfExportService>();
+
         // User management (Admin)
         services.AddScoped<IUserManagementService, InternLink.Infrastructure.Services.UserManagementService>();
 
@@ -117,6 +142,7 @@ public static class DependencyInjection
             options.AddPolicy("RequireAdmin", p => p.RequireRole("SuperAdmin"));
             options.AddPolicy("RequireLecturer", p => p.RequireRole("Lecturer"));
             options.AddPolicy("RequireStudent", p => p.RequireRole("Student"));
+            options.AddPolicy("RequireLecturerOrAdmin", p => p.RequireRole("Lecturer", "SuperAdmin"));
         });
 
         return services;

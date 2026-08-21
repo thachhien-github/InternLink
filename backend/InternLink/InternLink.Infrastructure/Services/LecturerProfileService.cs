@@ -24,6 +24,7 @@ public class LecturerProfileService : ILecturerProfileService
     private readonly IMapper _mapper;
     private readonly PasswordHasher<User> _hasher;
     private readonly IEmailService _emailService;
+    private readonly IExcelService _excelService;
     private readonly ILogger<LecturerProfileService> _logger;
 
     private static readonly string[] StaffCodeHeaders = ["magv", "ma gv", "staffcode", "staff code", "code"];
@@ -38,12 +39,14 @@ public class LecturerProfileService : ILecturerProfileService
         IMapper mapper,
         PasswordHasher<User> hasher,
         IEmailService emailService,
+        IExcelService excelService,
         ILogger<LecturerProfileService> logger)
     {
         _db = db;
         _mapper = mapper;
         _hasher = hasher;
         _emailService = emailService;
+        _excelService = excelService;
         _logger = logger;
     }
 
@@ -464,6 +467,35 @@ public class LecturerProfileService : ILecturerProfileService
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    public async Task<byte[]> ExportLecturersExcelAsync()
+    {
+        var lecturers = await _db.Lecturers
+            .Include(l => l.Internships)
+            .Include(l => l.User)
+            .Where(l => !l.IsDeleted)
+            .OrderBy(l => l.StaffCode)
+            .ToListAsync();
+
+        var mappings = new Dictionary<string, Func<Lecturer, object?>>
+        {
+            ["STT"] = l => lecturers.IndexOf(l) + 1,
+            ["Mã Giảng Viên (MSGV)"] = l => l.StaffCode,
+            ["Họ và Tên Giảng Viên"] = l => l.FullName,
+            ["Bộ Môn / Khoa"] = l => l.Department ?? "-",
+            ["Email"] = l => l.Email ?? "-",
+            ["Số Điện Thoại"] = l => l.Phone ?? "-",
+            ["Tài Khoản Đăng Nhập"] = l => l.User?.Username ?? "Chưa cấp tài khoản",
+            ["Số SV Đang Hướng Dẫn"] = l => l.Internships.Count(i => !i.IsDeleted),
+            ["Trạng Thái Tài Khoản"] = l => l.User == null ? "Chưa kích hoạt" : (l.User.IsActive ? "Hoạt động" : "Đã khóa"),
+        };
+
+        return _excelService.ExportToExcel(
+            "DanhSachGiangVien",
+            "DANH SÁCH GIẢNG VIÊN HƯỚNG DẪN THỰC TẬP",
+            lecturers,
+            mappings);
     }
 
     private async Task<(Guid UserId, bool CreatedNew, string? TemporaryPassword)> EnsureLecturerUserAsync(string username, string fullName, string? email)

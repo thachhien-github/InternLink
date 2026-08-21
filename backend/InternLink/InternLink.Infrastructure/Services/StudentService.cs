@@ -24,6 +24,7 @@ public class StudentService : IStudentService
     private readonly IMapper _mapper;
     private readonly PasswordHasher<User> _hasher;
     private readonly IEmailService _emailService;
+    private readonly IExcelService _excelService;
     private readonly ILogger<StudentService> _logger;
 
     private static readonly string[] StudentCodeHeaders = ["mssv", "studentCode", "student number", "studentcode", "ma sv", "masv"];
@@ -39,12 +40,14 @@ public class StudentService : IStudentService
         IMapper mapper,
         PasswordHasher<User> hasher,
         IEmailService emailService,
+        IExcelService excelService,
         ILogger<StudentService> logger)
     {
         _db = db;
         _mapper = mapper;
         _hasher = hasher;
         _emailService = emailService;
+        _excelService = excelService;
         _logger = logger;
     }
 
@@ -603,6 +606,48 @@ public class StudentService : IStudentService
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    public async Task<byte[]> ExportStudentsExcelAsync(Guid? semesterId = null, Guid? lecturerId = null)
+    {
+        var query = _db.Students
+            .Include(s => s.Internships)
+                .ThenInclude(i => i.Lecturer)
+            .Include(s => s.Internships)
+                .ThenInclude(i => i.Company)
+            .Include(s => s.Internships)
+                .ThenInclude(i => i.Semester)
+            .Where(s => !s.IsDeleted);
+
+        if (semesterId.HasValue)
+        {
+            query = query.Where(s => s.Internships.Any(i => i.SemesterId == semesterId.Value && !i.IsDeleted));
+        }
+
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var students = await query.OrderBy(s => s.StudentCode).ToListAsync();
+
+        var mappings = new Dictionary<string, Func<Student, object?>>
+        {
+            ["STT"] = s => students.IndexOf(s) + 1,
+            ["Mã Sinh Viên (MSSV)"] = s => s.StudentCode,
+            ["Họ và Tên"] = s => s.FullName,
+            ["Lớp"] = s => s.Class ?? "-",
+            ["Ngành học"] = s => s.Major ?? "-",
+            ["Email"] = s => s.Email ?? "-",
+            ["Số điện thoại"] = s => s.Phone ?? "-",
+            ["Công ty thực tập"] = s => s.Internships.FirstOrDefault(i => !i.IsDeleted)?.Company?.CompanyName ?? "Chưa phân bổ",
+            ["GVHD"] = s => s.Internships.FirstOrDefault(i => !i.IsDeleted)?.Lecturer?.FullName ?? "Chưa phân công",
+            ["Học kỳ"] = s => s.Internships.FirstOrDefault(i => !i.IsDeleted)?.Semester?.Name ?? "-",
+            ["Trạng thái"] = s => s.Internships.FirstOrDefault(i => !i.IsDeleted)?.Status.ToString() ?? "Chưa có kỳ thực tập",
+        };
+
+        return _excelService.ExportToExcel(
+            "DanhSachSinhVien",
+            "DANH SÁCH SINH VIÊN THỰC TẬP TỔNG HỢP",
+            students,
+            mappings);
     }
 
     private async Task<(Guid UserId, bool CreatedNew, string? TemporaryPassword)> EnsureStudentUserAsync(string username, string fullName, string? email)

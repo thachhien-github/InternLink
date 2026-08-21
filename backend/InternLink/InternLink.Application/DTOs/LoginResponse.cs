@@ -4,6 +4,8 @@ public sealed class LoginResponse
 {
     public string Token { get; set; } = null!;
     public DateTime ExpiresAt { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiresAt { get; set; }
     public string Role { get; set; } = null!;
     public bool MustChangePassword { get; set; }
 }

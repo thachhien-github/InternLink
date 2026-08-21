@@ -30,9 +30,39 @@ public class DocumentService : IDocumentService
 
     public async Task<IEnumerable<DocumentListItemDto>> GetAllDocumentsAsync(int skip = 0, int take = 100)
     {
-        var documents = await _db.Documents
+        return await GetAllDocumentsAsync(skip, take, null, isLecturerOrAdmin: true);
+    }
+
+    public async Task<IEnumerable<DocumentListItemDto>> GetAllDocumentsAsync(int skip = 0, int take = 100, Guid? userId = null, bool isLecturerOrAdmin = false)
+    {
+        var query = _db.Documents
             .Where(d => !d.IsDeleted)
             .Include(d => d.UploadedBy)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .AsQueryable();
+
+        if (userId.HasValue)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+
+            if (!isSuperAdmin)
+            {
+                if (isLecturerOrAdmin)
+                {
+                    query = query.Where(d => d.Internship.Lecturer.UserId == userId.Value || d.UploadedBy.UserId == userId.Value);
+                }
+                else
+                {
+                    query = query.Where(d => d.Internship.Student.UserId == userId.Value);
+                }
+            }
+        }
+
+        var documents = await query
             .OrderByDescending(d => d.UploadedAt)
             .Skip(skip)
             .Take(take)
@@ -43,7 +73,37 @@ public class DocumentService : IDocumentService
 
     public async Task<PaginatedResponse<DocumentListItemDto>> GetDocumentsWithFilterAsync(DocumentFilterRequest filter)
     {
-        var query = _db.Documents.Where(d => !d.IsDeleted).Include(d => d.UploadedBy).AsQueryable();
+        return await GetDocumentsWithFilterAsync(filter, null, isLecturerOrAdmin: true);
+    }
+
+    public async Task<PaginatedResponse<DocumentListItemDto>> GetDocumentsWithFilterAsync(DocumentFilterRequest filter, Guid? userId = null, bool isLecturerOrAdmin = false)
+    {
+        var query = _db.Documents
+            .Where(d => !d.IsDeleted)
+            .Include(d => d.UploadedBy)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .AsQueryable();
+
+        if (userId.HasValue)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+
+            if (!isSuperAdmin)
+            {
+                if (isLecturerOrAdmin)
+                {
+                    query = query.Where(d => d.Internship.Lecturer.UserId == userId.Value || d.UploadedBy.UserId == userId.Value);
+                }
+                else
+                {
+                    query = query.Where(d => d.Internship.Student.UserId == userId.Value);
+                }
+            }
+        }
 
         // Apply filters
         if (filter.InternshipId.HasValue)
@@ -137,6 +197,37 @@ public class DocumentService : IDocumentService
 
     public async Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100)
     {
+        return await GetDocumentsByInternshipAsync(internshipId, skip, take, null, isLecturerOrAdmin: true);
+    }
+
+    public async Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100, Guid? userId = null, bool isLecturerOrAdmin = false)
+    {
+        if (userId.HasValue)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+
+            if (!isSuperAdmin)
+            {
+                var internship = await _db.Internships
+                    .Include(i => i.Student)
+                    .Include(i => i.Lecturer)
+                    .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted);
+
+                if (internship == null)
+                    return Enumerable.Empty<DocumentListItemDto>();
+
+                var owns = internship.Student?.UserId == userId.Value;
+                var assigned = internship.Lecturer?.UserId == userId.Value;
+
+                if (!isLecturerOrAdmin && !owns)
+                    throw new UnauthorizedAccessException("You do not have access to documents for this internship");
+
+                if (isLecturerOrAdmin && !assigned && !owns)
+                    throw new UnauthorizedAccessException("You do not have access to documents for this internship");
+            }
+        }
+
         var documents = await _db.Documents
             .Where(d => d.InternshipId == internshipId && !d.IsDeleted)
             .Include(d => d.UploadedBy)
@@ -156,9 +247,16 @@ public class DocumentService : IDocumentService
 
     public async Task<DocumentDetailDto> UploadDocumentAsync(CreateDocumentRequest request, Stream fileStream, string fileName, Guid userId)
     {
-        var internshipExists = await _db.Internships.AnyAsync(i => i.Id == request.InternshipId && !i.IsDeleted);
-        if (!internshipExists)
+        var internship = await _db.Internships
+            .Include(i => i.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == request.InternshipId && !i.IsDeleted);
+        if (internship == null)
             throw new InvalidOperationException($"Internship with ID {request.InternshipId} not found");
+
+        var isAssignedLecturer = internship.Lecturer?.UserId == userId;
+        var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+        if (!isAssignedLecturer && !isSuperAdmin)
+            throw new UnauthorizedAccessException("You can only upload documents for internships assigned to you");
 
         var lecturerId = await _db.Lecturers
             .Where(l => l.UserId == userId && !l.IsDeleted)
@@ -194,11 +292,22 @@ public class DocumentService : IDocumentService
         return _mapper.Map<DocumentDetailDto>(created!);
     }
 
-    public async Task<DocumentDetailDto?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request)
+    public async Task<DocumentDetailDto?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, Guid? actorUserId = null)
     {
-        var document = await _db.Documents.FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+        var document = await _db.Documents
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
         if (document == null)
             return null;
+
+        if (actorUserId.HasValue)
+        {
+            var isAssigned = document.Internship?.Lecturer?.UserId == actorUserId.Value;
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isAssigned && !isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have permission to update this document");
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Title))
             document.Title = request.Title;
@@ -248,9 +357,39 @@ public class DocumentService : IDocumentService
 
     public async Task<DocumentDownloadDto?> DownloadDocumentAsync(Guid id)
     {
-        var document = await _db.Documents.FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+        return await DownloadDocumentAsync(id, Guid.Empty, isLecturerOrAdmin: true);
+    }
+
+    public async Task<DocumentDownloadDto?> DownloadDocumentAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var document = await _db.Documents
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(d => d.UploadedBy)
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+
         if (document == null)
             return null;
+
+        if (userId != Guid.Empty)
+        {
+            var ownsInternship = document.Internship?.Student?.UserId == userId;
+            var isAssignedLecturer = document.Internship?.Lecturer?.UserId == userId;
+            var isUploader = document.UploadedBy?.UserId == userId;
+
+            if (!isLecturerOrAdmin && !ownsInternship)
+                throw new UnauthorizedAccessException("You do not have access to this document");
+
+            if (isLecturerOrAdmin && !isAssignedLecturer && !isUploader && !ownsInternship)
+            {
+                var isSuperAdmin = await _db.Users
+                    .AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+                if (!isSuperAdmin)
+                    throw new UnauthorizedAccessException("You do not have access to this document");
+            }
+        }
 
         var fullPath = Path.Combine(GetUploadRoot(), document.FilePath);
 
@@ -269,9 +408,25 @@ public class DocumentService : IDocumentService
 
     public async Task<bool> DeleteDocumentAsync(Guid id)
     {
-        var document = await _db.Documents.FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+        return await DeleteDocumentAsync(id, null);
+    }
+
+    public async Task<bool> DeleteDocumentAsync(Guid id, Guid? actorUserId = null)
+    {
+        var document = await _db.Documents
+            .Include(d => d.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
         if (document == null)
             return false;
+
+        if (actorUserId.HasValue)
+        {
+            var isAssigned = document.Internship?.Lecturer?.UserId == actorUserId.Value;
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isAssigned && !isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have permission to delete this document");
+        }
 
         document.IsDeleted = true;
         document.UpdatedAt = DateTime.UtcNow;
@@ -335,6 +490,37 @@ public class DocumentService : IDocumentService
 
     public async Task<int> GetDocumentCountByInternshipAsync(Guid internshipId)
     {
+        return await GetDocumentCountByInternshipAsync(internshipId, null, isLecturerOrAdmin: true);
+    }
+
+    public async Task<int> GetDocumentCountByInternshipAsync(Guid internshipId, Guid? userId = null, bool isLecturerOrAdmin = false)
+    {
+        if (userId.HasValue)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId.Value && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+
+            if (!isSuperAdmin)
+            {
+                var internship = await _db.Internships
+                    .Include(i => i.Student)
+                    .Include(i => i.Lecturer)
+                    .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted);
+
+                if (internship == null)
+                    return 0;
+
+                var owns = internship.Student?.UserId == userId.Value;
+                var assigned = internship.Lecturer?.UserId == userId.Value;
+
+                if (!isLecturerOrAdmin && !owns)
+                    throw new UnauthorizedAccessException("You do not have access to documents for this internship");
+
+                if (isLecturerOrAdmin && !assigned && !owns)
+                    throw new UnauthorizedAccessException("You do not have access to documents for this internship");
+            }
+        }
+
         return await _db.Documents
             .Where(d => d.InternshipId == internshipId && !d.IsDeleted)
             .CountAsync();

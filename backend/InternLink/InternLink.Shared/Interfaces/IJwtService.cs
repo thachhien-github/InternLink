@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace InternLink.Shared.Interfaces
 {
     /// <summary>
@@ -6,5 +8,7 @@ namespace InternLink.Shared.Interfaces
     public interface IJwtService
     {
         string CreateToken(string userId, IEnumerable<string>? roles = null);
+        (string Token, string JwtId, DateTime ExpiresAt) CreateTokenWithMetadata(string userId, IEnumerable<string>? roles = null);
+        ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
     }
 }

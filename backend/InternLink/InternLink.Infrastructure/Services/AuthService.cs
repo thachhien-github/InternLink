@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
 using AutoMapper;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
@@ -44,7 +46,7 @@ public class AuthService : IAuthService
         _jwtSettings = jwtOptions.Value;
     }
 
-    public async Task<LoginResponse> LoginAsync(LoginRequest request)
+    public async Task<LoginResponse> LoginAsync(LoginRequest request, string? ipAddress = null)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == request.Username && !u.IsDeleted);
         if (user == null || !user.IsActive)
@@ -61,24 +63,200 @@ public class AuthService : IAuthService
         }
 
         user.LastLoginAt = DateTime.UtcNow;
+
+        var (token, jwtId, expires) = _jwt.CreateTokenWithMetadata(user.Id.ToString(), new[] { user.Role.ToString() });
+        var refreshTokenString = GenerateRefreshTokenString();
+        var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+
+        var refreshTokenEntity = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Token = refreshTokenString,
+            JwtId = jwtId,
+            IsUsed = false,
+            IsRevoked = false,
+            ExpiresAt = refreshTokenExpiry,
+            CreatedByIp = ipAddress,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.RefreshTokens.Add(refreshTokenEntity);
         await _db.SaveChangesAsync();
 
-        var token = _jwt.CreateToken(user.Id.ToString(), new[] { user.Role.ToString() });
-        _logger.LogInformation("User {Username} logged in successfully", request.Username);
-        var expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes > 0 ? _jwtSettings.ExpiresInMinutes : 60);
+        _logger.LogInformation("User {Username} logged in successfully with RefreshToken", request.Username);
+
         return new LoginResponse
         {
             Token = token,
             ExpiresAt = expires,
+            RefreshToken = refreshTokenString,
+            RefreshTokenExpiresAt = refreshTokenExpiry,
             Role = user.Role.ToString(),
             MustChangePassword = user.MustChangePassword
         };
     }
 
+    public async Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request, string? ipAddress = null)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            throw new UnauthorizedAccessException("Access token and refresh token are required");
+        }
+
+        var principal = _jwt.GetPrincipalFromExpiredToken(request.AccessToken);
+        if (principal == null)
+        {
+            throw new UnauthorizedAccessException("Invalid access token format or signature");
+        }
+
+        var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? principal.FindFirst("sub")?.Value;
+
+        var jwtIdClaim = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("Invalid user identity in token");
+        }
+
+        var storedToken = await _db.RefreshTokens
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Token == request.RefreshToken && !r.IsDeleted);
+
+        if (storedToken == null || storedToken.UserId != userId)
+        {
+            throw new UnauthorizedAccessException("Invalid refresh token");
+        }
+
+        // Anti-theft: If a used or revoked refresh token is presented, suspect token theft and revoke all user tokens!
+        if (storedToken.IsUsed || storedToken.IsRevoked)
+        {
+            _logger.LogWarning("Security Alert: Compromised refresh token attempt for user {UserId}. Revoking all sessions.", userId);
+            var allUserTokens = await _db.RefreshTokens
+                .Where(r => r.UserId == userId && !r.IsRevoked)
+                .ToListAsync();
+
+            foreach (var t in allUserTokens)
+            {
+                t.IsRevoked = true;
+                t.RevokedAt = DateTime.UtcNow;
+                t.RevokedByIp = ipAddress;
+            }
+
+            await _db.SaveChangesAsync();
+            throw new UnauthorizedAccessException("Session has been terminated due to security violation. Please log in again.");
+        }
+
+        if (DateTime.UtcNow >= storedToken.ExpiresAt)
+        {
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
+            storedToken.RevokedByIp = ipAddress;
+            await _db.SaveChangesAsync();
+            throw new UnauthorizedAccessException("Refresh token has expired");
+        }
+
+        if (!string.IsNullOrEmpty(jwtIdClaim) && storedToken.JwtId != jwtIdClaim)
+        {
+            _logger.LogWarning("JWT ID mismatch on refresh token attempt for user {UserId}", userId);
+            throw new UnauthorizedAccessException("Token identifier mismatch");
+        }
+
+        var user = storedToken.User;
+        if (user == null || !user.IsActive || user.IsDeleted)
+        {
+            throw new UnauthorizedAccessException("User is inactive or deleted");
+        }
+
+        // Token Rotation: Invalidate current token and replace with new one
+        var newRefreshTokenString = GenerateRefreshTokenString();
+        storedToken.IsUsed = true;
+        storedToken.RevokedAt = DateTime.UtcNow;
+        storedToken.RevokedByIp = ipAddress;
+        storedToken.ReplacedByToken = newRefreshTokenString;
+
+        var (newToken, newJwtId, newExpires) = _jwt.CreateTokenWithMetadata(user.Id.ToString(), new[] { user.Role.ToString() });
+        var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+
+        var newRefreshTokenEntity = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Token = newRefreshTokenString,
+            JwtId = newJwtId,
+            IsUsed = false,
+            IsRevoked = false,
+            ExpiresAt = newRefreshTokenExpiry,
+            CreatedByIp = ipAddress,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.RefreshTokens.Add(newRefreshTokenEntity);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Rotated refresh token for user {UserId}", userId);
+
+        return new LoginResponse
+        {
+            Token = newToken,
+            ExpiresAt = newExpires,
+            RefreshToken = newRefreshTokenString,
+            RefreshTokenExpiresAt = newRefreshTokenExpiry,
+            Role = user.Role.ToString(),
+            MustChangePassword = user.MustChangePassword
+        };
+    }
+
+    public async Task<bool> RevokeTokenAsync(string token, string? ipAddress = null)
+    {
+        var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == token && !r.IsDeleted && !r.IsRevoked);
+        if (storedToken == null)
+            return false;
+
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow;
+        storedToken.RevokedByIp = ipAddress;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Revoked refresh token for user {UserId}", storedToken.UserId);
+        return true;
+    }
+
+    public async Task<bool> RevokeAllTokensForUserAsync(Guid userId, string? ipAddress = null)
+    {
+        var activeTokens = await _db.RefreshTokens
+            .Where(r => r.UserId == userId && !r.IsRevoked && !r.IsDeleted)
+            .ToListAsync();
+
+        if (activeTokens.Count == 0)
+            return false;
+
+        var now = DateTime.UtcNow;
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = now;
+            token.RevokedByIp = ipAddress;
+        }
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Revoked all active refresh tokens ({Count}) for user {UserId}", activeTokens.Count, userId);
+        return true;
+    }
+
     public async Task LogoutAsync(Guid userId)
     {
-        _logger.LogInformation("User {UserId} logged out", userId);
-        await Task.CompletedTask;
+        await RevokeAllTokensForUserAsync(userId);
+        _logger.LogInformation("User {UserId} logged out and all active sessions revoked", userId);
+    }
+
+    private static string GenerateRefreshTokenString()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
     }
 
     public async Task<CurrentUserResponse?> GetCurrentUserAsync(Guid userId)

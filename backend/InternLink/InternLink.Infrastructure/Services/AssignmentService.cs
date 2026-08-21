@@ -30,10 +30,26 @@ public class AssignmentService : IAssignmentService
         if (!lecturerExists)
             throw new InvalidOperationException($"Lecturer with ID {request.LecturerId} not found");
 
-        // Validate semester exists
-        var semesterExists = await _db.Semesters.AnyAsync(s => s.Id == request.SemesterId && !s.IsDeleted);
-        if (!semesterExists)
-            throw new InvalidOperationException($"Semester with ID {request.SemesterId} not found");
+        // Validate or fallback semester
+        Guid targetSemesterId;
+        if (request.SemesterId.HasValue && request.SemesterId.Value != Guid.Empty)
+        {
+            var semesterExists = await _db.Semesters.AnyAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted);
+            if (!semesterExists)
+                throw new InvalidOperationException($"Semester with ID {request.SemesterId.Value} not found");
+            targetSemesterId = request.SemesterId.Value;
+        }
+        else
+        {
+            var activeSemester = await _db.Semesters
+                .FirstOrDefaultAsync(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
+                ?? await _db.Semesters.FirstOrDefaultAsync(s => !s.IsDeleted);
+
+            if (activeSemester == null)
+                throw new InvalidOperationException("No active semester found for assignment");
+
+            targetSemesterId = activeSemester.Id;
+        }
 
         var result = new BulkAssignResultDto();
         var errors = new List<AssignmentErrorDto>();
@@ -51,22 +67,21 @@ public class AssignmentService : IAssignmentService
                 continue;
             }
 
-            // Changed: Check for internship in specific semester, not just any internship
+            // Check for internship in specific semester
             var internship = await _db.Internships
                 .FirstOrDefaultAsync(i => 
                     i.StudentId == studentId && 
-                    i.SemesterId == request.SemesterId && 
+                    i.SemesterId == targetSemesterId && 
                     !i.IsDeleted);
 
             if (internship == null)
             {
-                // Changed: Create internship for this semester with nullable CompanyId
                 internship = new Internship
                 {
                     Id = Guid.NewGuid(),
                     StudentId = studentId,
-                    SemesterId = request.SemesterId,
-                    CompanyId = null, // Changed: nullable, assigned later by lecturer
+                    SemesterId = targetSemesterId,
+                    CompanyId = null,
                     LecturerId = request.LecturerId,
                     Status = InternshipStatus.NotStarted,
                     Notes = request.Note ?? "Phân công giảng viên — chờ gán doanh nghiệp",

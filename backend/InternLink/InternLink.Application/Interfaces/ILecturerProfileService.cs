@@ -12,5 +12,6 @@ public interface ILecturerProfileService
     Task<bool> DeleteAsync(Guid id);
     Task<LecturerImportResultDto> ImportFromExcelAsync(Stream excelStream);
     byte[] GetImportTemplate();
+    Task<byte[]> ExportLecturersExcelAsync();
     Task<LecturerOverviewDto?> GetOverviewAsync(Guid lecturerId);
 }

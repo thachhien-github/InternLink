@@ -3,7 +3,7 @@ namespace InternLink.Application.DTOs;
 public class BulkAssignRequest
 {
     public Guid LecturerId { get; set; }
-    public Guid SemesterId { get; set; } // Added: semester context for assignment
+    public Guid? SemesterId { get; set; }
     public IList<Guid> StudentIds { get; set; } = Array.Empty<Guid>();
     public string? Note { get; set; }
 }

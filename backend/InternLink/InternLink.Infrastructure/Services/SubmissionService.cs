@@ -77,6 +77,14 @@ public class SubmissionService : ISubmissionService
 
     public async Task<IEnumerable<SubmissionDto>> GetByInternshipAsync(Guid internshipId)
     {
+        return await GetByInternshipAsync(internshipId, Guid.Empty, isLecturerOrAdmin: true);
+    }
+
+    public async Task<IEnumerable<SubmissionDto>> GetByInternshipAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
+    {
+        if (userId != Guid.Empty)
+            await EnsureInternshipAccessAsync(internshipId, userId, isLecturerOrAdmin);
+
         var submissions = await _db.Submissions
             .Where(s => s.InternshipId == internshipId && !s.IsDeleted)
             .Include(s => s.Feedbacks.Where(f => !f.IsDeleted))
@@ -259,13 +267,20 @@ public class SubmissionService : ISubmissionService
         };
     }
 
-    public async Task<SubmissionDto?> UpdateStatusAsync(Guid id, UpdateSubmissionStatusRequest request)
+    public async Task<SubmissionDto?> UpdateStatusAsync(Guid id, UpdateSubmissionStatusRequest request, Guid? actorUserId = null)
     {
         var submission = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
 
         if (submission == null)
             return null;
+
+        if (actorUserId.HasValue)
+            await EnsureSubmissionActorAccessAsync(submission, actorUserId.Value);
 
         if (!Enum.TryParse<SubmissionStatus>(request.Status, true, out var status))
             throw new InvalidOperationException($"Invalid status: {request.Status}");
@@ -277,13 +292,20 @@ public class SubmissionService : ISubmissionService
         return await GetByIdAsync(id);
     }
 
-    public async Task<bool> SoftDeleteAsync(Guid id)
+    public async Task<bool> SoftDeleteAsync(Guid id, Guid? actorUserId = null)
     {
         var submission = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
 
         if (submission == null)
             return false;
+
+        if (actorUserId.HasValue)
+            await EnsureSubmissionActorAccessAsync(submission, actorUserId.Value);
 
         submission.IsDeleted = true;
         submission.UpdatedAt = DateTime.UtcNow;
@@ -380,6 +402,41 @@ public class SubmissionService : ISubmissionService
         await _db.SaveChangesAsync();
 
         return _mapper.Map<FeedbackDto>(feedback);
+    }
+
+    private async Task EnsureInternshipAccessAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
+    {
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .Include(i => i.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted);
+
+        if (internship == null)
+            throw new UnauthorizedAccessException("You do not have access to submissions for this internship");
+
+        await EnsureInternshipActorAccessAsync(internship, userId, isLecturerOrAdmin);
+    }
+
+    private async Task EnsureSubmissionActorAccessAsync(Submission submission, Guid userId)
+    {
+        await EnsureInternshipActorAccessAsync(submission.Internship, userId, isLecturerOrAdmin: true);
+    }
+
+    private async Task EnsureInternshipActorAccessAsync(Internship internship, Guid userId, bool isLecturerOrAdmin)
+    {
+        var ownsInternship = internship.Student?.UserId == userId;
+        var isAssignedLecturer = internship.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this submission");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this submission");
+        }
     }
 
     private async Task<Guid?> ResolveLecturerIdAsync(Guid userId)

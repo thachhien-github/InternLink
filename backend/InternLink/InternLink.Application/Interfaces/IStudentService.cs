@@ -66,4 +66,9 @@ public interface IStudentService
     /// Build a blank Excel template for student import.
     /// </summary>
     byte[] GetStudentImportTemplate();
+
+    /// <summary>
+    /// Export students list to styled Excel.
+    /// </summary>
+    Task<byte[]> ExportStudentsExcelAsync(Guid? semesterId = null, Guid? lecturerId = null);
 }

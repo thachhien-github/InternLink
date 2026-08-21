@@ -15,6 +15,7 @@ public class CompanyService : ICompanyService
 {
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
+    private readonly IExcelService _excelService;
 
     private static readonly string[] CompanyNameHeaders =
         ["tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name"];
@@ -28,10 +29,11 @@ public class CompanyService : ICompanyService
     private static readonly string[] WebsiteHeaders = ["website", "web", "trang web"];
     private static readonly string[] CapacityHeaders = ["succhua", "suc chua", "capacity", "so luong", "so luong sv"];
 
-    public CompanyService(AppDbContext db, IMapper mapper)
+    public CompanyService(AppDbContext db, IMapper mapper, IExcelService excelService)
     {
         _db = db;
         _mapper = mapper;
+        _excelService = excelService;
     }
 
     public async Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync(int skip = 0, int take = 100)
@@ -391,6 +393,36 @@ public class CompanyService : ICompanyService
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    public async Task<byte[]> ExportCompaniesExcelAsync()
+    {
+        var companies = await _db.Companies
+            .Include(c => c.Internships)
+            .Where(c => !c.IsDeleted)
+            .OrderBy(c => c.CompanyName)
+            .ToListAsync();
+
+        var mappings = new Dictionary<string, Func<Company, object?>>
+        {
+            ["STT"] = c => companies.IndexOf(c) + 1,
+            ["Tên Doanh Nghiệp"] = c => c.CompanyName,
+            ["Lĩnh Vực / Ngành"] = c => c.Industry ?? "-",
+            ["Người Đại Diện / Liên Hệ"] = c => c.ContactPerson ?? "-",
+            ["Email Liên Hệ"] = c => c.ContactEmail ?? "-",
+            ["Số Điện Thoại"] = c => c.ContactPhone ?? "-",
+            ["Địa Chỉ"] = c => c.Address ?? "-",
+            ["Website"] = c => c.Website ?? "-",
+            ["Sức Chứa (SV)"] = c => c.Capacity,
+            ["Số SV Đang Tiếp Nhận"] = c => c.Internships.Count(i => !i.IsDeleted),
+            ["Trạng Thái Hợp Tác"] = c => c.IsActive ? "Đang hoạt động" : "Tạm ngưng",
+        };
+
+        return _excelService.ExportToExcel(
+            "DanhSachDoanhNghiep",
+            "DANH SÁCH DOANH NGHIỆP ĐỐI TÁC TIẾP NHẬN THỰC TẬP",
+            companies,
+            mappings);
     }
 
     private enum CompanyColumn

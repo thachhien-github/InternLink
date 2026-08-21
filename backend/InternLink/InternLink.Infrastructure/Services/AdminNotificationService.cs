@@ -10,10 +10,12 @@ namespace InternLink.Infrastructure.Services;
 public class AdminNotificationService : IAdminNotificationService
 {
     private readonly AppDbContext _db;
+    private readonly IRealtimeNotificationService _realtimeService;
 
-    public AdminNotificationService(AppDbContext db)
+    public AdminNotificationService(AppDbContext db, IRealtimeNotificationService realtimeService)
     {
         _db = db;
+        _realtimeService = realtimeService;
     }
 
     public async Task<IReadOnlyList<AdminNotificationCampaignDto>> GetCampaignsAsync(int take = 100)
@@ -91,6 +93,30 @@ public class AdminNotificationService : IAdminNotificationService
 
         await _db.Notifications.AddRangeAsync(batch);
         await _db.SaveChangesAsync();
+
+        // Dispatch real-time notifications
+        var sampleDto = new NotificationDto
+        {
+            Id = batch.FirstOrDefault()?.Id ?? Guid.NewGuid(),
+            Title = title,
+            Content = content,
+            Link = link,
+            IsRead = false,
+            CreatedAt = sentAt
+        };
+
+        if (audience == "all")
+        {
+            await _realtimeService.SendToAllAsync(sampleDto);
+        }
+        else if (audience == "student")
+        {
+            await _realtimeService.SendToRoleAsync("Student", sampleDto);
+        }
+        else if (audience == "lecturer")
+        {
+            await _realtimeService.SendToRoleAsync("Lecturer", sampleDto);
+        }
 
         return new AdminBroadcastNotificationResultDto
         {

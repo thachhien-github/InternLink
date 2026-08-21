@@ -12,11 +12,13 @@ public class NotificationService : INotificationService
 {
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
+    private readonly IRealtimeNotificationService _realtimeService;
 
-    public NotificationService(AppDbContext db, IMapper mapper)
+    public NotificationService(AppDbContext db, IMapper mapper, IRealtimeNotificationService realtimeService)
     {
         _db = db;
         _mapper = mapper;
+        _realtimeService = realtimeService;
     }
 
     public async Task<IEnumerable<NotificationDto>> GetMineAsync(Guid userId)
@@ -45,7 +47,12 @@ public class NotificationService : INotificationService
         _db.Notifications.Add(notification);
         await _db.SaveChangesAsync();
 
-        return _mapper.Map<NotificationDto>(notification);
+        var dto = _mapper.Map<NotificationDto>(notification);
+
+        // Dispatch real-time push to the user
+        await _realtimeService.SendToUserAsync(dto.UserId, dto);
+
+        return dto;
     }
 
     public async Task<bool> MarkReadAsync(Guid id, Guid userId)

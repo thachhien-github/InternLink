@@ -2,6 +2,7 @@ using AutoMapper;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
+using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,10 +22,19 @@ public class EvaluationService : IEvaluationService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<EvaluationListItemDto>> GetAllEvaluationsAsync(int skip = 0, int take = 100)
+    private static IQueryable<Evaluation> ApplyLecturerScope(IQueryable<Evaluation> query, Guid? lecturerId)
     {
-        var evaluations = await _db.Evaluations
-            .Where(e => !e.IsDeleted)
+        if (lecturerId.HasValue)
+            return query.Where(e => e.Internship.LecturerId == lecturerId.Value);
+        return query;
+    }
+
+    public async Task<IEnumerable<EvaluationListItemDto>> GetAllEvaluationsAsync(int skip = 0, int take = 100, Guid? lecturerId = null)
+    {
+        var query = _db.Evaluations.Where(e => !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var evaluations = await query
             .Include(e => e.Internship)
                 .ThenInclude(i => i.Student)
             .Include(e => e.Internship)
@@ -53,7 +63,7 @@ public class EvaluationService : IEvaluationService
         });
     }
 
-    public async Task<PaginatedResponse<EvaluationListItemDto>> GetEvaluationsWithFilterAsync(EvaluationFilterRequest filter)
+    public async Task<PaginatedResponse<EvaluationListItemDto>> GetEvaluationsWithFilterAsync(EvaluationFilterRequest filter, Guid? lecturerId = null)
     {
         var query = _db.Evaluations
             .Where(e => !e.IsDeleted)
@@ -63,6 +73,8 @@ public class EvaluationService : IEvaluationService
                 .ThenInclude(i => i.Company)
             .Include(e => e.EvaluatedBy)
             .AsQueryable();
+
+        query = ApplyLecturerScope(query, lecturerId);
 
         // Apply filters
         if (filter.InternshipId.HasValue)
@@ -200,10 +212,45 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(evaluation);
     }
 
-    public async Task<IEnumerable<EvaluationListItemDto>> GetEvaluationsByStudentAsync(Guid studentId, int skip = 0, int take = 100)
+    public async Task<EvaluationDetailDto?> GetEvaluationByInternshipAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
     {
-        var evaluations = await _db.Evaluations
-            .Where(e => e.Internship.StudentId == studentId && !e.IsDeleted)
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Company)
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(e => e.EvaluatedBy)
+            .FirstOrDefaultAsync(e => e.InternshipId == internshipId && !e.IsDeleted);
+
+        if (evaluation == null)
+            return null;
+
+        var ownsInternship = evaluation.Internship?.Student?.UserId == userId;
+        var isAssignedLecturer = evaluation.Internship?.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this evaluation");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this evaluation");
+        }
+
+        return MapToDetailDto(evaluation);
+    }
+
+    public async Task<IEnumerable<EvaluationListItemDto>> GetEvaluationsByStudentAsync(Guid studentId, int skip = 0, int take = 100, Guid? lecturerId = null)
+    {
+        var query = _db.Evaluations
+            .Where(e => e.Internship.StudentId == studentId && !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var evaluations = await query
             .Include(e => e.Internship)
                 .ThenInclude(i => i.Student)
             .Include(e => e.Internship)
@@ -232,10 +279,13 @@ public class EvaluationService : IEvaluationService
         });
     }
 
-    public async Task<IEnumerable<EvaluationListItemDto>> GetEvaluationsByCompanyAsync(Guid companyId, int skip = 0, int take = 100)
+    public async Task<IEnumerable<EvaluationListItemDto>> GetEvaluationsByCompanyAsync(Guid companyId, int skip = 0, int take = 100, Guid? lecturerId = null)
     {
-        var evaluations = await _db.Evaluations
-            .Where(e => e.Internship.CompanyId == companyId && !e.IsDeleted)
+        var query = _db.Evaluations
+            .Where(e => e.Internship.CompanyId == companyId && !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var evaluations = await query
             .Include(e => e.Internship)
                 .ThenInclude(i => i.Student)
             .Include(e => e.Internship)
@@ -266,10 +316,17 @@ public class EvaluationService : IEvaluationService
 
     public async Task<EvaluationDetailDto> CreateEvaluationAsync(CreateEvaluationRequest request, Guid evaluatedById)
     {
-        // Verify internship exists
-        var internshipExists = await _db.Internships.AnyAsync(i => i.Id == request.InternshipId);
-        if (!internshipExists)
+        // Verify internship exists and check lecturer assignment
+        var internship = await _db.Internships
+            .Include(i => i.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == request.InternshipId && !i.IsDeleted);
+        if (internship == null)
             throw new InvalidOperationException($"Internship with ID {request.InternshipId} not found");
+
+        var isAssignedLecturer = internship.Lecturer?.UserId == evaluatedById;
+        var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == evaluatedById && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if (!isAssignedLecturer && !isSuperAdmin)
+            throw new UnauthorizedAccessException("You can only evaluate internships assigned to you");
 
         // Check if evaluation already exists for this internship
         var existingEvaluation = await _db.Evaluations
@@ -312,11 +369,22 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(created!);
     }
 
-    public async Task<EvaluationDetailDto?> UpdateEvaluationAsync(Guid id, UpdateEvaluationRequest request)
+    public async Task<EvaluationDetailDto?> UpdateEvaluationAsync(Guid id, UpdateEvaluationRequest request, Guid? actorUserId = null)
     {
-        var evaluation = await _db.Evaluations.FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
         if (evaluation == null)
             return null;
+
+        if (actorUserId.HasValue)
+        {
+            var isAssigned = evaluation.Internship?.Lecturer?.UserId == actorUserId.Value;
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId.Value && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isAssigned && !isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have permission to update this evaluation");
+        }
 
         // Don't allow updates to finalized evaluations
         if (evaluation.IsFinalized)
@@ -366,11 +434,22 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(updated!);
     }
 
-    public async Task<EvaluationDetailDto?> FinalizeEvaluationAsync(Guid id)
+    public async Task<EvaluationDetailDto?> FinalizeEvaluationAsync(Guid id, Guid? actorUserId = null)
     {
-        var evaluation = await _db.Evaluations.FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
         if (evaluation == null)
             return null;
+
+        if (actorUserId.HasValue)
+        {
+            var isAssigned = evaluation.Internship?.Lecturer?.UserId == actorUserId.Value;
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId.Value && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isAssigned && !isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have permission to finalize this evaluation");
+        }
 
         evaluation.IsFinalized = true;
         evaluation.UpdatedAt = DateTime.UtcNow;
@@ -390,11 +469,22 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(finalized!);
     }
 
-    public async Task<bool> DeleteEvaluationAsync(Guid id)
+    public async Task<bool> DeleteEvaluationAsync(Guid id, Guid? actorUserId = null)
     {
-        var evaluation = await _db.Evaluations.FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
         if (evaluation == null)
             return false;
+
+        if (actorUserId.HasValue)
+        {
+            var isAssigned = evaluation.Internship?.Lecturer?.UserId == actorUserId.Value;
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId.Value && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isAssigned && !isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have permission to delete this evaluation");
+        }
 
         // Don't allow deletion of finalized evaluations
         if (evaluation.IsFinalized)
@@ -420,11 +510,13 @@ public class EvaluationService : IEvaluationService
         return Math.Round(average, 2);
     }
 
-    public async Task<decimal> GetAverageGradeByCompanyAsync(Guid companyId)
+    public async Task<decimal> GetAverageGradeByCompanyAsync(Guid companyId, Guid? lecturerId = null)
     {
-        var average = await _db.Evaluations
-            .Where(e => e.Internship.CompanyId == companyId && !e.IsDeleted)
-            .AverageAsync(e => (decimal?)e.FinalGrade) ?? 0;
+        var query = _db.Evaluations
+            .Where(e => e.Internship.CompanyId == companyId && !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+
+        var average = await query.AverageAsync(e => (decimal?)e.FinalGrade) ?? 0;
 
         return Math.Round(average, 2);
     }
@@ -434,23 +526,52 @@ public class EvaluationService : IEvaluationService
         return await _db.Evaluations.AnyAsync(e => e.InternshipId == internshipId && !e.IsDeleted);
     }
 
-    public async Task<int> GetFinalizedEvaluationCountAsync()
+    public async Task<bool> HasEvaluationAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)
     {
-        return await _db.Evaluations
-            .Where(e => e.IsFinalized && !e.IsDeleted)
-            .CountAsync();
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .Include(i => i.Lecturer)
+            .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted);
+
+        if (internship == null)
+            return false;
+
+        var ownsInternship = internship.Student?.UserId == userId;
+        var isAssignedLecturer = internship.Lecturer?.UserId == userId;
+
+        if (!isLecturerOrAdmin && !ownsInternship)
+            throw new UnauthorizedAccessException("You do not have access to this internship evaluation");
+
+        if (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship)
+        {
+            var isSuperAdmin = await _db.Users
+                .AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this internship evaluation");
+        }
+
+        return await _db.Evaluations.AnyAsync(e => e.InternshipId == internshipId && !e.IsDeleted);
     }
 
-    public async Task<int> GetDraftEvaluationCountAsync()
+    public async Task<int> GetFinalizedEvaluationCountAsync(Guid? lecturerId = null)
     {
-        return await _db.Evaluations
-            .Where(e => !e.IsFinalized && !e.IsDeleted)
-            .CountAsync();
+        var query = _db.Evaluations.Where(e => e.IsFinalized && !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+        return await query.CountAsync();
     }
 
-    public async Task<Dictionary<string, int>> GetEvaluationDistributionAsync()
+    public async Task<int> GetDraftEvaluationCountAsync(Guid? lecturerId = null)
     {
-        var evaluations = await _db.Evaluations.Where(e => !e.IsDeleted).ToListAsync();
+        var query = _db.Evaluations.Where(e => !e.IsFinalized && !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+        return await query.CountAsync();
+    }
+
+    public async Task<Dictionary<string, int>> GetEvaluationDistributionAsync(Guid? lecturerId = null)
+    {
+        var query = _db.Evaluations.Where(e => !e.IsDeleted);
+        query = ApplyLecturerScope(query, lecturerId);
+        var evaluations = await query.ToListAsync();
 
         var distribution = new Dictionary<string, int>
         {

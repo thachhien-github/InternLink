@@ -61,4 +61,9 @@ public interface ICompanyService
     /// Build a blank Excel template for company import.
     /// </summary>
     byte[] GetCompanyImportTemplate();
+
+    /// <summary>
+    /// Export companies list to styled Excel.
+    /// </summary>
+    Task<byte[]> ExportCompaniesExcelAsync();
 }
