@@ -399,6 +399,7 @@ export const NotificationsView = () => {
   >("all");
 
   const [notifications, setNotifications] = useState<SystemNotificationItem[]>(() => {
+    if (!USE_MOCK) return [];
     try {
       const saved = localStorage.getItem("lecturer_notifications_v2");
       if (saved) return JSON.parse(saved);
@@ -497,10 +498,8 @@ export const NotificationsView = () => {
             attachments: base.attachments,
           };
         });
-        if (mapped.length > 0) {
-          setNotifications(mapped);
-          setSelectedNotif(mapped[0]);
-        }
+        setNotifications(mapped);
+        setSelectedNotif(mapped[0] || null);
       } catch (err) {
         if (!cancelled) showToast(getApiErrorMessage(err));
       }

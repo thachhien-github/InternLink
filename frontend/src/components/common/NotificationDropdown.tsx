@@ -167,7 +167,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "reports" | "system">("all");
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    return DEFAULT_MOCK_NOTIFICATIONS[role] || DEFAULT_MOCK_NOTIFICATIONS.Student;
+    return USE_MOCK ? (DEFAULT_MOCK_NOTIFICATIONS[role] || DEFAULT_MOCK_NOTIFICATIONS.Student) : [];
   });
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -183,23 +183,26 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         const rows = await notificationService.getMine();
         if (!isMounted) return;
 
-        if (rows && rows.length > 0) {
-          setNotifications(
-            rows.map((dto) => ({
-              id: dto.id,
-              title: dto.title,
-              message: dto.content,
-              category: (dto.category as any) || "report",
-              priority: dto.priority === "High" ? "urgent" : "normal",
-              timestamp: dto.createdAt ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "Vừa xong",
-              isRead: dto.isRead,
-              targetTab: dto.link ?? undefined,
-              sender: { name: dto.senderName ?? "Hệ thống", role: "Thông báo" },
-            }))
-          );
-        }
+        setNotifications(
+          (rows || []).map((dto) => ({
+            id: dto.id,
+            title: dto.title,
+            message: dto.content,
+            category: (dto.category as any) || "report",
+            priority: dto.priority === "High" ? "urgent" : "normal",
+            timestamp: dto.createdAt
+              ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Vừa xong",
+            isRead: dto.isRead,
+            targetTab: dto.link ?? undefined,
+            sender: { name: dto.senderName ?? "Hệ thống", role: "Thông báo" },
+          }))
+        );
       } catch {
-        // Fallback to initial mock if API is down
+        if (isMounted) setNotifications([]);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -564,15 +567,19 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
           {/* Footer Actions */}
           <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-            <button
-              type="button"
-              onClick={handleSimulateNewNotification}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-100/60 hover:bg-blue-100 rounded-md transition-colors"
-              title="Thử nghiệm nhận thông báo đẩy tức thì"
-            >
-              <Sparkles className="w-3 h-3 text-blue-600" />
-              <span>Mô phỏng tin mới</span>
-            </button>
+            {USE_MOCK ? (
+              <button
+                type="button"
+                onClick={handleSimulateNewNotification}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-100/60 hover:bg-blue-100 rounded-md transition-colors"
+                title="Thử nghiệm nhận thông báo đẩy tức thì"
+              >
+                <Sparkles className="w-3 h-3 text-blue-600" />
+                <span>Mô phỏng tin mới</span>
+              </button>
+            ) : (
+              <div />
+            )}
 
             <button
               type="button"

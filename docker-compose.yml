@@ -15,11 +15,11 @@ services:
       - Jwt__Secret=InternLink_SecretKey_Production_SuperSecure_32BytesLength!
       - Jwt__Issuer=InternLink
       - Jwt__Audience=InternLinkClients
-      - Email__Enabled=false
+      - Email__Enabled=true
       - Email__SmtpHost=smtp.gmail.com
       - Email__SmtpPort=587
       - Email__Username=internlink.cntt@gmail.com
-      - Email__Password=
+      - Email__Password=srikwzwtpsfjiafr
       - Email__FromAddress=internlink.cntt@gmail.com
       - Email__PortalUrl=http://localhost:3000
       - Cors__AllowedOrigins__0=http://localhost:3000
@@ -31,7 +31,7 @@ services:
     networks:
       - internlink_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -54,7 +54,7 @@ services:
     networks:
       - internlink_network
     healthcheck:
-      test: ["CMD-SHELL", "sh -c 'echo -e \"GET / HTTP/1.0\\r\\n\\r\\n\" | nc localhost 80 | head -1 | grep -qE \"200|301\"'"]
+      test: [ "CMD-SHELL", "sh -c 'echo -e \"GET / HTTP/1.0\\r\\n\\r\\n\" | nc localhost 80 | head -1 | grep -qE \"200|301\"'" ]
       interval: 15s
       timeout: 5s
       retries: 3

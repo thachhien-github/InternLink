@@ -18,10 +18,12 @@ public class AssignmentService : IAssignmentService
     public const int DefaultMaxCapacity = 40;
 
     private readonly AppDbContext _db;
+    private readonly INotificationService _notificationService;
 
-    public AssignmentService(AppDbContext db)
+    public AssignmentService(AppDbContext db, INotificationService notificationService)
     {
         _db = db;
+        _notificationService = notificationService;
     }
 
     public async Task<BulkAssignResultDto> BulkAssignAsync(BulkAssignRequest request)
@@ -104,6 +106,42 @@ public class AssignmentService : IAssignmentService
 
         if (result.AssignedCount > 0)
             await _db.SaveChangesAsync();
+
+        // Send notifications to lecturer and students
+        if (result.AssignedCount > 0)
+        {
+            var lecturer = await _db.Lecturers.FirstOrDefaultAsync(l => l.Id == request.LecturerId && !l.IsDeleted);
+            var lecturerName = lecturer?.FullName ?? "Giảng viên";
+
+            // Notify the lecturer
+            if (lecturer?.UserId != null)
+            {
+                await _notificationService.CreateAsync(new CreateNotificationRequest
+                {
+                    UserId = lecturer.UserId!.Value,
+                    Title = $"Phân công hướng dẫn: {result.AssignedCount} sinh viên mới",
+                    Content = $"Ban quản lý đã phân công {result.AssignedCount} sinh viên cho Thầy/Cô hướng dẫn thực tập.",
+                    Link = "/lecturer-students"
+                });
+            }
+
+            // Notify each assigned student
+            var assignedStudentIds = request.StudentIds.Distinct().ToList();
+            var assignedStudents = await _db.Students
+                .Where(s => assignedStudentIds.Contains(s.Id) && !s.IsDeleted && s.UserId != null)
+                .ToListAsync();
+
+            foreach (var student in assignedStudents)
+            {
+                await _notificationService.CreateAsync(new CreateNotificationRequest
+                {
+                    UserId = student.UserId!.Value,
+                    Title = $"Bạn đã được phân công giảng viên hướng dẫn: {lecturerName}",
+                    Content = $"Giảng viên {lecturerName} đã được chỉ định hướng dẫn thực tập cho bạn. Hãy liên hệ để nhận hướng dẫn.",
+                    Link = "/student-dashboard"
+                });
+            }
+        }
 
         result.FailedCount = errors.Count;
         result.Errors = errors;

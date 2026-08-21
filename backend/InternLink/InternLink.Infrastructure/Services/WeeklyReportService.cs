@@ -150,9 +150,19 @@ public class WeeklyReportService : IWeeklyReportService
 
     public async Task<WeeklyReportDto?> SubmitAsync(Guid id, Guid userId)
     {
-        var report = await LoadOwnedReportAsync(id, userId);
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
         if (report == null)
             return null;
+
+        // Verify ownership
+        if (report.Internship?.Student?.UserId != userId)
+            throw new UnauthorizedAccessException("Internship does not belong to the current student");
 
         if (report.Status != WeeklyReportStatus.Draft && report.Status != WeeklyReportStatus.RevisionRequested)
             throw new InvalidOperationException("Only draft or revision-requested reports can be submitted");
@@ -161,6 +171,20 @@ public class WeeklyReportService : IWeeklyReportService
         report.SubmittedAt = DateTime.UtcNow;
         report.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        // Notify the assigned lecturer
+        var lecturerUserId = report.Internship?.Lecturer?.UserId;
+        var studentName = report.Internship?.Student?.FullName ?? "Sinh viên";
+        if (lecturerUserId.HasValue)
+        {
+            await _notificationService.CreateAsync(new CreateNotificationRequest
+            {
+                UserId = lecturerUserId.Value,
+                Title = $"Sinh viên {studentName} đã nộp Báo cáo tuần {report.WeekNumber}",
+                Content = $"Sinh viên {studentName} vừa nộp báo cáo tuần {report.WeekNumber}. Vui lòng xem xét và đánh giá.",
+                Link = $"/weekly-reports/{report.Id}"
+            });
+        }
 
         return _mapper.Map<WeeklyReportDto>(report);
     }
@@ -208,11 +232,18 @@ public class WeeklyReportService : IWeeklyReportService
         var studentUserId = report.Internship.Student?.UserId;
         if (studentUserId.HasValue)
         {
+            var lecturerName = report.Internship.Lecturer?.FullName ?? "Giảng viên";
+            var statusText = status switch
+            {
+                WeeklyReportStatus.Approved => "đã được duyệt",
+                WeeklyReportStatus.RevisionRequested => "cần chỉnh sửa lại",
+                _ => "đã được nhận xét"
+            };
             await _notificationService.CreateAsync(new CreateNotificationRequest
             {
                 UserId = studentUserId.Value,
-                Title = "Weekly report reviewed",
-                Content = $"Your week {report.WeekNumber} report was marked as {status}.",
+                Title = $"Báo cáo tuần {report.WeekNumber} {statusText}",
+                Content = $"Giảng viên {lecturerName} đã đánh giá báo cáo tuần {report.WeekNumber} của bạn: {statusText}.",
                 Link = $"/weekly-reports/{report.Id}"
             });
         }
