@@ -37,3 +37,13 @@ frontend/vite.config.d.ts
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test & Uploads
+TestResults/
+uploads/
+backend/**/uploads/
+
+# IDE / Agent caches
+.agents/
+.hallmark/
+skills-lock.json
