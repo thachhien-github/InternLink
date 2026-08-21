@@ -31,7 +31,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request Error:', error);
+    console.warn('Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -45,9 +45,9 @@ apiClient.interceptors.response.use(
     } else if (error.response?.status === 403) {
       console.warn('Forbidden (403)');
     } else if (error.response?.status === 500) {
-      console.error('Server Error (500):', error.response.data);
+      console.warn('Server Error (500):', error.response.data);
     } else if (!error.response) {
-      console.error('Network Error:', error.message);
+      console.warn('Network Error / Backend unreachable:', error.message);
     }
     return Promise.reject(error);
   }

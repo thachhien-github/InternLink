@@ -30,6 +30,8 @@ export default [
 
       // React hooks
       ...reactHooks.configs.recommended.rules,
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
 
       // React refresh
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],

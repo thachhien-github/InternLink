@@ -104,10 +104,31 @@ export const apiService = {
 
   // ========== LECTURER ==========
   lecturer: {
-    getProfile: () => apiClient.get('/LecturerProfile'),
-    getStudents: () => apiClient.get('/Lecturer/students'),
+    getMe: () => apiClient.get('/Lecturer/me'),
+    getProfile: () => apiClient.get('/Lecturer/me'),
+    getDashboard: () => apiClient.get('/Lecturer/dashboard'),
+    getStats: () => apiClient.get('/Lecturer/stats'),
+    getStudents: (params?: any) => apiClient.get('/Lecturer/students', { params }),
     getCompanies: () => apiClient.get('/Lecturer/companies'),
     getInternships: () => apiClient.get('/Lecturer/internships'),
+    getInternship: (id: string) => apiClient.get(`/Lecturer/internships/${id}`),
+    getSubmissions: (internshipId: string) =>
+      apiClient.get(`/Lecturer/internships/${internshipId}/submissions`),
+    addFeedback: (submissionId: string, data: { comment: string; isPublic?: boolean; newStatus?: string }) =>
+      apiClient.post(`/Lecturer/submissions/${submissionId}/feedback`, data),
+    getWeeklyReports: (params?: any) => apiClient.get('/Lecturer/weekly-reports', { params }),
+    getWeeklyReport: (id: string) => apiClient.get(`/Lecturer/weekly-reports/${id}`),
+    reviewWeeklyReport: (id: string, data: { status: string; lecturerComment?: string }) =>
+      apiClient.post(`/Lecturer/weekly-reports/${id}/review`, data),
+    getEvaluations: (params?: any) => apiClient.get('/Lecturer/evaluations', { params }),
+    getEvaluationByInternship: (internshipId: string) => apiClient.get(`/Lecturer/evaluations/internship/${internshipId}`),
+    createEvaluation: (data: any) => apiClient.post('/Lecturer/evaluations', data),
+    updateEvaluation: (id: string, data: any) => apiClient.put(`/Lecturer/evaluations/${id}`, data),
+    finalizeEvaluation: (id: string) => apiClient.post(`/Lecturer/evaluations/${id}/finalize`, {}),
+    getDocuments: (params?: any) => apiClient.get('/Lecturer/documents', { params }),
+    uploadDocument: (formData: FormData) => apiClient.post('/Lecturer/documents/upload', formData),
+    downloadDocument: (id: string) => apiClient.get(`/Lecturer/documents/${id}/download`, { responseType: 'blob' }),
+    exportEndOfTerm: () => apiClient.get('/Lecturer/export/end-of-term', { responseType: 'blob' }),
   },
 
   // ========== SUBMISSIONS ==========

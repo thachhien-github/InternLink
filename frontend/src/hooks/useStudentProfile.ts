@@ -1,5 +1,4 @@
 import { useBackendData } from './useBackendData';
-import type { StudentProfile } from '../types/common';
 
 /**
  * Hook for fetching student profile from StudentPortal API

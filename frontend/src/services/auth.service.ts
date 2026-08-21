@@ -1,4 +1,10 @@
-import { apiRequest, setStoredToken } from "../lib/apiClient";
+import {
+  apiRequest,
+  setStoredToken,
+  setStoredRefreshToken,
+  getStoredRefreshToken,
+  clearAuthTokens,
+} from "../lib/apiClient";
 import type {
   ChangePasswordRequestDto,
   CurrentUserDto,
@@ -6,6 +12,7 @@ import type {
   LoginRequestDto,
   LoginResponseDto,
   ResetPasswordRequestDto,
+  RefreshTokenRequestDto,
 } from "../types/api";
 
 export const authService = {
@@ -16,6 +23,22 @@ export const authService = {
       auth: false,
     });
     setStoredToken(data.token);
+    if (data.refreshToken) {
+      setStoredRefreshToken(data.refreshToken);
+    }
+    return data;
+  },
+
+  async refreshToken(payload: RefreshTokenRequestDto): Promise<LoginResponseDto> {
+    const data = await apiRequest<LoginResponseDto>("/api/Auth/refresh-token", {
+      method: "POST",
+      body: payload,
+      auth: false,
+    });
+    setStoredToken(data.token);
+    if (data.refreshToken) {
+      setStoredRefreshToken(data.refreshToken);
+    }
     return data;
   },
 
@@ -24,10 +47,18 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
+    const rfToken = getStoredRefreshToken();
     try {
-      await apiRequest<null>("/api/Auth/logout", { method: "POST" });
+      if (rfToken) {
+        await apiRequest<null>("/api/Auth/revoke-token", {
+          method: "POST",
+          body: { refreshToken: rfToken },
+        }).catch(() => null);
+      } else {
+        await apiRequest<null>("/api/Auth/logout", { method: "POST" });
+      }
     } finally {
-      setStoredToken(null);
+      clearAuthTokens();
     }
   },
 

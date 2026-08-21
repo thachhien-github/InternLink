@@ -118,6 +118,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      setStoredToken(null);
+      setIsLoggedIn(false);
+      setUser(null);
+      setMustChangePassword(false);
+    };
+
+    window.addEventListener("internlink:unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("internlink:unauthorized", handleUnauthorized);
+    };
+  }, []);
+
+  useEffect(() => {
     if (USE_MOCK) return;
 
     let cancelled = false;

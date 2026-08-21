@@ -19,8 +19,19 @@ export interface LoginRequestDto {
 export interface LoginResponseDto {
   token: string;
   expiresAt: string;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
   role: string;
   mustChangePassword: boolean;
+}
+
+export interface RefreshTokenRequestDto {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface RevokeTokenRequestDto {
+  refreshToken: string;
 }
 
 export interface CurrentUserDto {
@@ -113,7 +124,9 @@ export interface PaginatedResponse<T> {
 
 export interface BulkAssignRequestDto {
   lecturerId: string;
+  semesterId?: string;
   studentIds: string[];
+  note?: string;
 }
 
 export interface BulkAssignResultDto {

@@ -199,7 +199,7 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ),
       );
     } catch (err) {
-      console.error("Error refreshing semester API counts:", err);
+      console.warn("Error refreshing semester API counts:", err);
     }
   }, []);
 

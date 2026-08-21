@@ -1,6 +1,7 @@
-/** API base URL — defaults to local backend launch profile. */
+/** API base URL — in production Docker defaults to relative root (Nginx Reverse Proxy), in local dev defaults to port 7109. */
 export const API_URL =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7109';
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? '' : 'http://localhost:7109');
 export const API_BASE_URL = API_URL;
 
 /** API timeout in milliseconds */
@@ -19,10 +20,11 @@ export const ENABLE_REAL_LECTURER_DATA =
 export const ENABLE_REAL_AUTH =
   import.meta.env.VITE_ENABLE_REAL_AUTH !== 'false';
 
-// ===== Deprecated/Legacy =====
-/** When true, auth + all portal pages use in-app mock data. */
+// ===== Mode Configuration =====
+/** When false (default), all portal pages, authentication and CRUD operations communicate directly with real Backend REST APIs. */
 export const USE_MOCK =
   import.meta.env.VITE_USE_MOCK === 'true' ||
   import.meta.env.VITE_USE_MOCK === '1';
 
 export const TOKEN_STORAGE_KEY = 'internlink_access_token';
+export const REFRESH_TOKEN_STORAGE_KEY = 'internlink_refresh_token';

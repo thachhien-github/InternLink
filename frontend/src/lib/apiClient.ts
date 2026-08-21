@@ -1,4 +1,4 @@
-import { API_BASE_URL, TOKEN_STORAGE_KEY } from "../config/env";
+import { API_BASE_URL, TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "../config/env";
 import type { ApiResponse } from "../types/api";
 
 export class ApiClientError extends Error {
@@ -22,6 +22,20 @@ export function setStoredToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export function getStoredRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export function setStoredRefreshToken(token: string | null): void {
+  if (token) localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+  else localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export function clearAuthTokens(): void {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
 export function getApiErrorMessage(err: unknown): string {
   if (err instanceof ApiClientError) return err.message;
   if (err instanceof Error) return err.message;
@@ -31,7 +45,52 @@ export function getApiErrorMessage(err: unknown): string {
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   auth?: boolean;
+  _retry?: boolean;
 };
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function attemptRefreshToken(): Promise<string | null> {
+  const currentAccessToken = getStoredToken();
+  const currentRefreshToken = getStoredRefreshToken();
+
+  if (!currentAccessToken || !currentRefreshToken) {
+    clearAuthTokens();
+    return null;
+  }
+
+  try {
+    const url = resolveApiUrl("/api/Auth/refresh-token");
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken: currentAccessToken,
+        refreshToken: currentRefreshToken,
+      }),
+    });
+
+    if (!res.ok) {
+      clearAuthTokens();
+      return null;
+    }
+
+    const json = (await res.json()) as ApiResponse<{ token: string; refreshToken?: string }>;
+    if (json.success && json.data?.token) {
+      setStoredToken(json.data.token);
+      if (json.data.refreshToken) {
+        setStoredRefreshToken(json.data.refreshToken);
+      }
+      return json.data.token;
+    }
+
+    clearAuthTokens();
+    return null;
+  } catch {
+    clearAuthTokens();
+    return null;
+  }
+}
 
 async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
   const text = await res.text();
@@ -62,7 +121,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, auth = true, headers, ...rest } = options;
+  const { body, auth = true, headers, _retry = false, ...rest } = options;
   const url = resolveApiUrl(path);
 
   const reqHeaders = new Headers(headers);
@@ -85,13 +144,42 @@ export async function apiRequest<T>(
           : JSON.stringify(body),
   });
 
+  // Handle Token Expiry & Automatic Refresh Token Flow
+  if (res.status === 401 && auth && !_retry && !path.includes("/api/Auth/login") && !path.includes("/api/Auth/refresh-token")) {
+    if (!refreshPromise) {
+      refreshPromise = attemptRefreshToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const newToken = await refreshPromise;
+    if (newToken) {
+      // Retry original request with fresh access token
+      return apiRequest<T>(path, {
+        ...options,
+        _retry: true,
+      });
+    }
+  }
+
   const payload = await parseJson<T>(res);
+
+  if (res.status === 401) {
+    clearAuthTokens();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("internlink:unauthorized", {
+          detail: { status: 401, message: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ." },
+        }),
+      );
+    }
+  }
 
   if (!res.ok || payload.success === false) {
     const msg =
       payload.error?.title ||
       payload.error?.detail ||
-      `HTTP ${res.status}`;
+      (res.status === 401 ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." : `HTTP ${res.status}`);
     throw new ApiClientError(msg, res.status, payload);
   }
 
@@ -103,7 +191,7 @@ export async function apiRequestRaw<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, auth = true, headers, ...rest } = options;
+  const { body, auth = true, headers, _retry = false, ...rest } = options;
   const url = resolveApiUrl(path);
 
   const reqHeaders = new Headers(headers);
@@ -126,9 +214,36 @@ export async function apiRequestRaw<T>(
           : JSON.stringify(body),
   });
 
+  // Handle Token Expiry & Automatic Refresh Token Flow
+  if (res.status === 401 && auth && !_retry && !path.includes("/api/Auth/login") && !path.includes("/api/Auth/refresh-token")) {
+    if (!refreshPromise) {
+      refreshPromise = attemptRefreshToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const newToken = await refreshPromise;
+    if (newToken) {
+      return apiRequestRaw<T>(path, {
+        ...options,
+        _retry: true,
+      });
+    }
+  }
+
   const text = await res.text();
   if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
+    if (res.status === 401) {
+      clearAuthTokens();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("internlink:unauthorized", {
+            detail: { status: 401, message: "Phiên đăng nhập đã hết hạn." },
+          }),
+        );
+      }
+    }
+    let msg = res.status === 401 ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." : `HTTP ${res.status}`;
     try {
       const err = JSON.parse(text) as { message?: string; title?: string };
       msg = err.message ?? err.title ?? msg;
@@ -189,3 +304,90 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Normalizes any backend list or paginated response format into a standard structure:
+ * { items: T[], total: number, page: number, pageSize: number, totalPages: number }
+ */
+export function normalizePaginatedData<T>(
+  res: unknown,
+  defaultPage = 1,
+  defaultPageSize = 50,
+): {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+} {
+  if (!res) {
+    return { items: [], total: 0, page: defaultPage, pageSize: defaultPageSize, totalPages: 0 };
+  }
+
+  // If res is directly an array
+  if (Array.isArray(res)) {
+    return {
+      items: res as T[],
+      total: res.length,
+      page: defaultPage,
+      pageSize: defaultPageSize,
+      totalPages: Math.ceil(res.length / defaultPageSize) || 1,
+    };
+  }
+
+  const obj = res as Record<string, unknown>;
+
+  // Check items / data / results array
+  let items: T[] = [];
+  if (Array.isArray(obj.items)) items = obj.items as T[];
+  else if (Array.isArray(obj.data)) items = obj.data as T[];
+  else if (Array.isArray(obj.results)) items = obj.results as T[];
+
+  const total =
+    typeof obj.total === "number"
+      ? obj.total
+      : typeof obj.totalCount === "number"
+        ? obj.totalCount
+        : typeof obj.count === "number"
+          ? obj.count
+          : items.length;
+
+  const pageSize =
+    typeof obj.pageSize === "number"
+      ? obj.pageSize
+      : typeof obj.take === "number"
+        ? obj.take
+        : defaultPageSize;
+
+  const page =
+    typeof obj.currentPage === "number"
+      ? obj.currentPage
+      : typeof obj.page === "number"
+        ? obj.page
+        : typeof obj.pageIndex === "number"
+          ? obj.pageIndex + 1
+          : typeof obj.skip === "number" && pageSize > 0
+            ? Math.floor(obj.skip / pageSize) + 1
+            : defaultPage;
+
+  const totalPages =
+    typeof obj.totalPages === "number"
+      ? obj.totalPages
+      : Math.ceil(total / (pageSize || 1)) || 1;
+
+  return { items, total, page, pageSize, totalPages };
+}
+
+/**
+ * Convenient extractor that reliably returns an array from any API payload
+ */
+export function extractItems<T>(res: unknown): T[] {
+  if (Array.isArray(res)) return res as T[];
+  if (!res || typeof res !== "object") return [];
+  const obj = res as Record<string, unknown>;
+  if (Array.isArray(obj.items)) return obj.items as T[];
+  if (Array.isArray(obj.data)) return obj.data as T[];
+  if (Array.isArray(obj.results)) return obj.results as T[];
+  return [];
+}
+

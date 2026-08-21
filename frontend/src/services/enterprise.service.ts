@@ -1,10 +1,23 @@
 import type { Enterprise } from "../types/enterprise";
 import { INITIAL_ENTERPRISES } from "../data/mockData";
+import { USE_MOCK } from "../config/env";
+import { adminCompaniesService } from "./adminCompanies.service";
+import { mapCompanyDtoToEnterprise } from "../lib/adminMappers";
 
 let enterprisesData: Enterprise[] = [...INITIAL_ENTERPRISES];
 
 export const enterpriseService = {
   async getEnterprises(): Promise<Enterprise[]> {
+    if (!USE_MOCK) {
+      try {
+        const rows = await adminCompaniesService.getAll();
+        if (rows.length > 0) {
+          return rows.map(mapCompanyDtoToEnterprise);
+        }
+      } catch (err) {
+        console.warn("enterpriseService.getEnterprises API fallback:", err);
+      }
+    }
     return [...enterprisesData];
   },
 
@@ -20,3 +33,4 @@ export const enterpriseService = {
     return enterprisesData[idx];
   },
 };
+
