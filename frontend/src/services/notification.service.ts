@@ -12,6 +12,10 @@ export const notificationService = {
     });
   },
 
+  markAsRead(id: string): Promise<void> {
+    return this.markRead(id);
+  },
+
   markAllRead(): Promise<number> {
     return apiRequest<number>("/api/Notification/mark-all-read", {
       method: "POST",

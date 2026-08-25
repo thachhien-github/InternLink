@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { USE_MOCK } from '../config/env';
 import { notificationService } from '../services/notification.service';
 import { mapNotificationDtoToLecturerUi } from '../lib/portalMappers';
 import type { SystemNotificationItem } from '../features/lecturer/pages/NotificationsView';
@@ -14,15 +13,10 @@ export interface UseLecturerNotificationsState {
 
 export const useLecturerNotifications = (): UseLecturerNotificationsState => {
   const [notifications, setNotifications] = useState<SystemNotificationItem[]>([]);
-  const [loading, setLoading] = useState(!USE_MOCK);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchNotifications = useCallback(async () => {
-    if (USE_MOCK) {
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       const rows = await notificationService.getMine();
@@ -58,12 +52,10 @@ export const useLecturerNotifications = (): UseLecturerNotificationsState => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isUnread: false } : n))
     );
-    if (!USE_MOCK) {
-      try {
-        await notificationService.markAsRead(id);
-      } catch (err) {
-        console.warn('Failed to mark notification as read:', err);
-      }
+    try {
+      await notificationService.markAsRead(id);
+    } catch (err) {
+      console.warn('Failed to mark notification as read:', err);
     }
   }, []);
 

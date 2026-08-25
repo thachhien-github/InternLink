@@ -112,8 +112,10 @@ public static class DependencyInjection
         // Admin broadcast notifications
         services.AddScoped<IAdminNotificationService, InternLink.Infrastructure.Services.AdminNotificationService>();
 
-        // Excel processing engine
+        // Excel processing & export engine
         services.AddScoped<IExcelService, InternLink.Infrastructure.Services.ExcelService>();
+        services.AddScoped<IExcelExportService, InternLink.Infrastructure.Services.ExcelExportService>();
+        services.AddScoped<IInternshipReportService, InternLink.Infrastructure.Services.InternshipReportService>();
 
         // PDF export engine
         services.AddScoped<IPdfExportService, InternLink.Infrastructure.Services.PdfExportService>();

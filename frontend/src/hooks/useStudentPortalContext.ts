@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { INTERNSHIP_WEEKS } from "../config/internship";
 import { getApiErrorMessage } from "../lib/apiClient";
 import {
   mapInternshipStatusToUi,
   mapWeeklyReportStatusToUi,
 } from "../lib/portalMappers";
-import { STUDENT_PROFILE } from "../data/studentMockData";
 import { studentPortalService } from "../services/studentPortal.service";
 import { weeklyReportService } from "../services/weeklyReport.service";
 import type { StudentProfile } from "../types/common";
@@ -15,6 +13,29 @@ import { useAuth } from "./useAuth";
 
 const DEFAULT_LOGO =
   "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=120&auto=format&fit=crop&q=80";
+
+const DEFAULT_EMPTY_STUDENT_PROFILE: StudentProfile = {
+  name: "Sinh viên",
+  mssv: "—",
+  class: "—",
+  semester: "—",
+  major: "—",
+  company: "—",
+  companyLogo: DEFAULT_LOGO,
+  position: "—",
+  statusBadge: "Đang tải…",
+  overallProgress: 0,
+  currentGrade: 0,
+  reportsSubmitted: 0,
+  totalReports: INTERNSHIP_WEEKS,
+  daysLeftForReport: 0,
+  lecturerName: "—",
+  supervisorName: "—",
+  supervisorEmail: "—",
+  supervisorPhone: "—",
+  companyAddress: "—",
+  currentPhase: "Chưa bắt đầu thực tập",
+};
 
 function internshipStatusToBadge(status: string): string {
   const map: Record<string, string> = {
@@ -84,12 +105,12 @@ export function useStudentPortalContext() {
   );
   const [weeklyCount, setWeeklyCount] = useState(0);
   const [approvedWeeklyCount, setApprovedWeeklyCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(!USE_MOCK && isLoggedIn);
+  const [isLoading, setIsLoading] = useState(isLoggedIn);
   const [error, setError] = useState<string | null>(null);
   const [internshipId, setInternshipId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (USE_MOCK || !isLoggedIn) return;
+    if (!isLoggedIn) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -119,7 +140,6 @@ export function useStudentPortalContext() {
   }, [load]);
 
   const profile: StudentProfile = useMemo(() => {
-    if (USE_MOCK) return STUDENT_PROFILE;
     if (portalData) {
       return buildStudentProfileFromPortal(
         portalData,
@@ -128,14 +148,9 @@ export function useStudentPortalContext() {
       );
     }
     return {
-      ...STUDENT_PROFILE,
+      ...DEFAULT_EMPTY_STUDENT_PROFILE,
       name: user?.name ?? "Sinh viên",
       mssv: user?.username ?? "—",
-      company: "—",
-      position: "—",
-      statusBadge: "Đang tải…",
-      lecturerName: "—",
-      supervisorName: "—",
     };
   }, [portalData, weeklyCount, approvedWeeklyCount, user]);
 

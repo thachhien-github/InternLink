@@ -73,7 +73,7 @@ export const AccountView = ({
   onShowToast: (msg: string) => void;
 }) => {
   const { user } = useAuth();
-  const { stats: navStats } = useAdminNavStats(!USE_MOCK);
+  const { stats: navStats } = useAdminNavStats(true);
 
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "preferences" | "activity">("profile");
 

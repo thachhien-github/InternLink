@@ -265,10 +265,11 @@ function parseContentDispositionFilename(
   return match ? decodeURIComponent(match[1].replace(/"/g, "")) : null;
 }
 
-/** Download binary file with JWT auth. */
+/** Download binary file with JWT auth and trigger browser download. */
 export async function downloadAuthenticatedFile(
   path: string,
   fallbackFilename: string,
+  autoTrigger = true,
 ): Promise<{ blob: Blob; filename: string }> {
   const url = resolveApiUrl(path);
   const token = getStoredToken();
@@ -289,6 +290,9 @@ export async function downloadAuthenticatedFile(
     parseContentDispositionFilename(res.headers.get("Content-Disposition")) ??
     fallbackFilename;
   const blob = await res.blob();
+  if (autoTrigger && typeof window !== "undefined") {
+    triggerBlobDownload(blob, filename);
+  }
   return { blob, filename };
 }
 

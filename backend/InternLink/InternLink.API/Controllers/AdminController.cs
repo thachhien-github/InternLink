@@ -1,8 +1,11 @@
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
+using InternLink.Domain.Entities;
+using InternLink.Infrastructure.Persistence;
 using InternLink.Shared.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace InternLink.API.Controllers;
 
@@ -16,11 +19,16 @@ public class AdminController : ControllerBase
 {
     private readonly IEmailService _emailService;
     private readonly IInternshipService _internshipService;
+    private readonly AppDbContext _db;
 
-    public AdminController(IEmailService emailService, IInternshipService internshipService)
+    public AdminController(
+        IEmailService emailService,
+        IInternshipService internshipService,
+        AppDbContext db)
     {
         _emailService = emailService;
         _internshipService = internshipService;
+        _db = db;
     }
 
     /// <summary>
@@ -41,7 +49,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Send a sample invitation email (for SMTP / LoggingEmailService verification).
+    /// Send a sample invitation email (for SMTP / LoggingEmailService verification) and persist audit log.
     /// </summary>
     [HttpPost("email/test")]
     public async Task<IActionResult> TestEmail([FromBody] TestEmailRequest request, CancellationToken cancellationToken)
@@ -61,6 +69,23 @@ public class AdminController : ControllerBase
         var result = await _emailService.SendInvitationAsync(invitation, cancellationToken);
         if (!result.Success)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = result.Message ?? "Failed to send email" }));
+
+        // Persist email notification in database
+        var targetUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == invitation.ToEmail && !u.IsDeleted, cancellationToken);
+        if (targetUser != null)
+        {
+            await _db.Notifications.AddAsync(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = targetUser.Id,
+                Title = "Kiểm tra gửi email thông báo hệ thống",
+                Content = $"Đã gửi thử nghiệm thư mời / thông báo tới email: {invitation.ToEmail} thành công.",
+                Link = "/admin-settings",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            }, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
 
         return Ok(ApiResponse<SendEmailResult>.Ok(result));
     }

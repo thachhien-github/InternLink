@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { adminAssignmentsService } from "../services/adminAssignments.service";
 import { adminLecturersService } from "../services/adminLecturers.service";
 import { adminNotificationsService } from "../services/adminNotifications.service";
@@ -15,7 +14,7 @@ export interface AdminNavStats {
   unreadNotificationCount: number;
 }
 
-const MOCK_NAV: AdminNavStats = {
+const DEFAULT_NAV_STATS: AdminNavStats = {
   studentCount: 0,
   lecturerCount: 0,
   unassignedCount: 0,
@@ -24,27 +23,14 @@ const MOCK_NAV: AdminNavStats = {
 };
 
 export function useAdminNavStats(enabled = true) {
-  const [stats, setStats] = useState<AdminNavStats>(
-    USE_MOCK ? MOCK_NAV : MOCK_NAV,
-  );
+  const [stats, setStats] = useState<AdminNavStats>(DEFAULT_NAV_STATS);
   const [recentNotifications, setRecentNotifications] = useState<
     NotificationDto[]
   >([]);
-  const [isLoading, setIsLoading] = useState(enabled && !USE_MOCK);
+  const [isLoading, setIsLoading] = useState(enabled);
 
   const load = useCallback(async () => {
     if (!enabled) return;
-    if (USE_MOCK) {
-      setStats({
-        studentCount: 1280,
-        lecturerCount: 42,
-        unassignedCount: 12,
-        notificationCampaignCount: 2,
-        unreadNotificationCount: 2,
-      });
-      setRecentNotifications([]);
-      return;
-    }
 
     setIsLoading(true);
     try {

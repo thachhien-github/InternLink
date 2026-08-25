@@ -146,7 +146,7 @@ public class LecturerServiceTests
         {
             Id = Guid.NewGuid(),
             InternshipId = internship2.Id,
-            LecturerId = lecturer.Id,
+            EvaluatedById = lecturerUser.Id,
             FinalGrade = 9.0m,
             IsFinalized = true,
             CreatedAt = DateTime.UtcNow
@@ -159,6 +159,7 @@ public class LecturerServiceTests
             WeekNumber = 1,
             Status = WeeklyReportStatus.Submitted,
             Title = "Báo cáo tuần 1",
+            Content = "Nội dung báo cáo tiến độ tuần 1",
             CreatedAt = DateTime.UtcNow
         };
 

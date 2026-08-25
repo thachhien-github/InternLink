@@ -134,4 +134,12 @@ public class LecturerProfileController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
     }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export()
+    {
+        var bytes = await _service.ExportLecturersExcelAsync();
+        var fileName = $"danh-sach-giang-vien-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
 }

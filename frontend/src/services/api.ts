@@ -8,8 +8,7 @@ import apiClient from './api.config';
 export const apiService = {
   // ========== AUTH ==========
   auth: {
-    login: (credentials: { email: string; password: string }) => {
-      console.log('🔐 Login attempt...');
+    login: (credentials: { username?: string; email?: string; password: string }) => {
       return apiClient.post('/Auth/login', credentials);
     },
     logout: () => apiClient.post('/Auth/logout', {}),
@@ -25,11 +24,12 @@ export const apiService = {
 
   // ========== STUDENT PORTAL ==========
   studentPortal: {
-    getProfile: () => apiClient.get('/StudentPortal/profile'),
-    getTasks: () => apiClient.get('/StudentPortal/tasks'),
-    getNotifications: () => apiClient.get('/StudentPortal/notifications'),
-    getFeedbacks: () => apiClient.get('/StudentPortal/feedback'),
-    getReports: () => apiClient.get('/StudentPortal/reports'),
+    getMe: () => apiClient.get('/StudentPortal/me'),
+    getProfile: () => apiClient.get('/StudentPortal/me'),
+    getNotifications: (params?: any) => apiClient.get('/Notification', { params }),
+    getFeedbacks: (params?: any) => apiClient.get('/Feedback', { params }),
+    getReports: () => apiClient.get('/WeeklyReport/mine'),
+    getSubmissions: () => apiClient.get('/Submission/mine'),
   },
 
   // ========== STUDENT ==========
@@ -61,12 +61,13 @@ export const apiService = {
 
   // ========== ADMIN - LECTURERS ==========
   adminLecturers: {
-    list: (params?: any) => apiClient.get('/Admin/lecturers', { params }),
-    get: (id: string) => apiClient.get(`/Admin/lecturers/${id}`),
-    create: (data: any) => apiClient.post('/Admin/lecturers', data),
+    list: (params?: any) => apiClient.get('/LecturerProfile', { params }),
+    get: (id: string) => apiClient.get(`/LecturerProfile/${id}`),
+    getOverview: (id: string) => apiClient.get(`/LecturerProfile/${id}/overview`),
+    create: (data: any) => apiClient.post('/LecturerProfile', data),
     update: (id: string, data: any) =>
-      apiClient.put(`/Admin/lecturers/${id}`, data),
-    delete: (id: string) => apiClient.delete(`/Admin/lecturers/${id}`),
+      apiClient.put(`/LecturerProfile/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/LecturerProfile/${id}`),
   },
 
   // ========== ADMIN - SEMESTERS ==========
@@ -76,6 +77,7 @@ export const apiService = {
     create: (data: any) => apiClient.post('/Admin/semesters', data),
     update: (id: string, data: any) =>
       apiClient.put(`/Admin/semesters/${id}`, data),
+    close: (id: string) => apiClient.post(`/Admin/semesters/${id}/close`, {}),
     delete: (id: string) => apiClient.delete(`/Admin/semesters/${id}`),
   },
 
@@ -84,12 +86,12 @@ export const apiService = {
     list: () => apiClient.get('/Admin/assignments'),
     getByLecturer: (lecturerId: string) =>
       apiClient.get(`/Admin/assignments/by-lecturer/${lecturerId}`),
-    get: (lecturerId: string, studentId: string) =>
-      apiClient.get(`/Admin/assignments/${lecturerId}/${studentId}`),
     bulkAssign: (data: { lecturerId: string; studentIds: string[] }) =>
       apiClient.post('/Admin/assignments', data),
     unassign: (data: { lecturerId: string; studentId: string }) =>
       apiClient.delete('/Admin/assignments', { data }),
+    getHistory: (limit = 50) => apiClient.get(`/Admin/assignments/history?limit=${limit}`),
+    autoAssign: (data: any) => apiClient.post('/Admin/assignments/auto', data),
   },
 
   // ========== ADMIN - USERS ==========
@@ -99,7 +101,23 @@ export const apiService = {
     create: (data: any) => apiClient.post('/Admin/users', data),
     update: (id: string, data: any) =>
       apiClient.put(`/Admin/users/${id}`, data),
+    resetPassword: (id: string) => apiClient.post(`/Admin/users/${id}/reset-password`, {}),
     delete: (id: string) => apiClient.delete(`/Admin/users/${id}`),
+  },
+
+  // ========== ADMIN - SETTINGS & STATS ==========
+  adminSettings: {
+    get: () => apiClient.get('/Admin/settings'),
+    update: (data: any) => apiClient.put('/Admin/settings', data),
+    reset: () => apiClient.post('/Admin/settings/reset', {}),
+  },
+  adminDashboard: {
+    getInternshipStats: () => apiClient.get('/Admin/internship-stats'),
+  },
+  adminNotifications: {
+    getCampaigns: () => apiClient.get('/Admin/notifications/campaigns'),
+    broadcast: (data: any) => apiClient.post('/Admin/notifications/broadcast', data),
+    deleteCampaign: (data: any) => apiClient.delete('/Admin/notifications/campaign', { data }),
   },
 
   // ========== LECTURER ==========

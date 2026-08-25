@@ -54,7 +54,7 @@ services:
     networks:
       - internlink_network
     healthcheck:
-      test: [ "CMD-SHELL", "sh -c 'echo -e \"GET / HTTP/1.0\\r\\n\\r\\n\" | nc localhost 80 | head -1 | grep -qE \"200|301\"'" ]
+      test: [ "CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 3

@@ -101,7 +101,8 @@ export const SubmissionsView = ({ onShowToast }) => {
       rawSubmissions
         .filter((s) => s.status === "RevisionRequested")
         .map((s) => {
-          const fb = (s.feedbacks ?? []).filter((f) => f.isPublic).at(-1);
+          const publicFeedbacks = (s.feedbacks ?? []).filter((f) => f.isPublic);
+          const fb = publicFeedbacks.length > 0 ? publicFeedbacks[publicFeedbacks.length - 1] : undefined;
           return {
             id: s.id,
             title: s.title ?? "Yêu cầu chỉnh sửa sản phẩm",
@@ -488,8 +489,10 @@ export const SubmissionsView = ({ onShowToast }) => {
                         <EmptyState
                           title="Chưa có sản phẩm nào được nộp"
                           description="Nhấp vào nút 'Nộp sản phẩm' phía trên để tải lên báo cáo cuối kỳ, slide, mã nguồn hoặc video demo."
-                          actionLabel="Nộp sản phẩm ngay"
-                          onAction={() => setShowUploadModal(true)}
+                          action={{
+                            label: "Nộp sản phẩm ngay",
+                            onClick: () => setShowUploadModal(true),
+                          }}
                         />
                       </td>
                     </tr>

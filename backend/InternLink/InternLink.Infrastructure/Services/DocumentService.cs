@@ -195,11 +195,6 @@ public class DocumentService : IDocumentService
         return _mapper.Map<DocumentDetailDto>(document);
     }
 
-    public async Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100)
-    {
-        return await GetDocumentsByInternshipAsync(internshipId, skip, take, null, isLecturerOrAdmin: true);
-    }
-
     public async Task<IEnumerable<DocumentListItemDto>> GetDocumentsByInternshipAsync(Guid internshipId, int skip = 0, int take = 100, Guid? userId = null, bool isLecturerOrAdmin = false)
     {
         if (userId.HasValue)

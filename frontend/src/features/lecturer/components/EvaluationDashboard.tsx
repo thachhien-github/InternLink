@@ -7,7 +7,6 @@ import { EvaluationWorkspace } from "./EvaluationWorkspace";
 import { RubricEvaluation } from "./RubricEvaluation";
 import { EvaluationDetail } from "./EvaluationDetail";
 import { EvaluationPdfModal } from "./EvaluationPdfModal";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapEvaluationListItemToUi } from "../../../lib/portalMappers";
 import { evaluationService } from "../../../services/evaluation.service";
@@ -32,199 +31,16 @@ import {
   Save,
   Sliders,
 } from "lucide-react";
-const INITIAL_EVALUATIONS = [
-  {
-    id: "eval-1",
-    name: "Nguy\u1EC5n V\u0103n An",
-    mssv: "20210001",
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15A",
-    major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-    company: "FPT Software",
-    supervisor: "Nguy\u1EC5n V\u0103n H\u1EA3i (Mentor)",
-    progress: 100,
-    enterpriseScore: 9.2,
-    lecturerScore: 9,
-    presentationScore: 9.5,
-    totalScore: 9.2,
-    status: "Hoàn thành",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Sinh viên hoàn thành xuất sắc đề tài, thái độ làm việc tại FPT rất chuyên nghiệp.",
-    gradeClassification: "Xuất sắc",
-  },
-  {
-    id: "eval-2",
-    name: "Trần Thị Bình",
-    mssv: "20210002",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15B",
-    major: "Khoa học Dữ liệu",
-    company: "Viettel Telecom",
-    supervisor: "Đặng Minh Khôi (Tech Lead)",
-    progress: 100,
-    enterpriseScore: 9.5,
-    lecturerScore: 9.3,
-    presentationScore: 9,
-    totalScore: 9.3,
-    status: "Hoàn thành",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Báo cáo Data Pipeline xuất sắc, được DN đánh giá cao và giữ lại làm chính thức.",
-    gradeClassification: "Xuất sắc",
-  },
-  {
-    id: "eval-3",
-    name: "Lê Hoàng Cường",
-    mssv: "20210003",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    class: "HTTT-K15",
-    major: "Hệ thống Thông tin",
-    company: "VNG Corporation",
-    supervisor: "Phạm Tuấn Anh (DevOps Lead)",
-    progress: 92,
-    enterpriseScore: 8.5,
-    lecturerScore: 8,
-    presentationScore: 8.5,
-    totalScore: 8.3,
-    status: "Đang chấm",
-    weeklyReportCount: "5/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Đang rà soát lại phần trình bày kiến trúc Cloud Infrastructure.",
-    gradeClassification: "Giỏi",
-  },
-  {
-    id: "eval-4",
-    name: "Phạm Minh Đức",
-    mssv: "20210004",
-    avatar:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15A",
-    major: "Kỹ thuật Phần mềm",
-    company: "MISA Joint Stock Co.",
-    supervisor: "Lê Thu Trang (HR Manager)",
-    progress: 100,
-    enterpriseScore: 8.8,
-    lecturerScore: 8.5,
-    presentationScore: 8.8,
-    totalScore: 8.7,
-    status: "Hoàn thành",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Đáp ứng tốt các chuẩn kỹ năng cơ bản, báo cáo trình bày mạch lạc.",
-    gradeClassification: "Giỏi",
-  },
-  {
-    id: "eval-5",
-    name: "Đỗ Thị Giang",
-    mssv: "20210005",
-    avatar:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15B",
-    major: "An toàn Thông tin",
-    company: "VNPT IT",
-    supervisor: "Hoàng Văn Nam (SecOps)",
-    progress: 80,
-    enterpriseScore: 8,
-    lecturerScore: null,
-    presentationScore: null,
-    totalScore: null,
-    status: "Chưa chấm",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments: "",
-    gradeClassification: void 0,
-  },
-  {
-    id: "eval-6",
-    name: "Vũ Quốc Huy",
-    mssv: "20210006",
-    avatar:
-      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-    class: "HTTT-K15",
-    major: "Hệ thống Thông tin",
-    company: "Techcombank",
-    supervisor: "Ngô Thanh Sơn (Solution Arch)",
-    progress: 75,
-    enterpriseScore: null,
-    lecturerScore: null,
-    presentationScore: null,
-    totalScore: null,
-    status: "Chưa chấm",
-    weeklyReportCount: "4/6",
-    finalReportSubmitted: false,
-    enterpriseFeedbackSubmitted: false,
-    lecturerComments: "",
-    gradeClassification: void 0,
-  },
-  {
-    id: "eval-7",
-    name: "Hoàng Thị Khánh",
-    mssv: "20210007",
-    avatar:
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15A",
-    major: "Kỹ thuật Phần mềm",
-    company: "CMC Global",
-    supervisor: "Bùi Đức Anh (PM)",
-    progress: 100,
-    enterpriseScore: 9,
-    lecturerScore: 9.2,
-    presentationScore: 9,
-    totalScore: 9.1,
-    status: "Hoàn thành",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Đề tài tích hợp AI vào quy trình thử nghiệm tự động rất ấn tượng.",
-    gradeClassification: "Xuất sắc",
-  },
-  {
-    id: "eval-8",
-    name: "Bùi Anh Long",
-    mssv: "20210008",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15B",
-    major: "Khoa học Dữ liệu",
-    company: "MB Bank",
-    supervisor: "Vũ Thị Hồng (Senior Analyst)",
-    progress: 60,
-    enterpriseScore: 5.5,
-    lecturerScore: 4.5,
-    presentationScore: 5,
-    totalScore: 5,
-    status: "Hoàn thành",
-    weeklyReportCount: "2/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Nghỉ quá số buổi qui định, báo cáo sơ sài không đủ tiêu chuẩn.",
-    gradeClassification: "Không đạt",
-  },
-];
+
 export const EvaluationDashboard = () => {
-  const [evaluations, setEvaluations] = useState(INITIAL_EVALUATIONS);
-  const [isLoadingApi, setIsLoadingApi] = useState(!USE_MOCK);
+  const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [isAiWidgetExpanded, setIsAiWidgetExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("HK I - 2026");
-  const [classFilter, setClassFilter] = useState("T\u1EA5t c\u1EA3");
-  const [enterpriseFilter, setEnterpriseFilter] = useState("T\u1EA5t c\u1EA3");
-  const [statusFilter, setStatusFilter] = useState("T\u1EA5t c\u1EA3");
+  const [classFilter, setClassFilter] = useState("Tất cả");
+  const [enterpriseFilter, setEnterpriseFilter] = useState("Tất cả");
+  const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [rubricStudent, setRubricStudent] = useState(null);
   const [workspaceStudent, setWorkspaceStudent] = useState(null);
   const [activeGradingStudent, setActiveGradingStudent] = useState(null);
@@ -238,7 +54,7 @@ export const EvaluationDashboard = () => {
     comments: "",
   });
   const [toastMessage, setToastMessage] = useState(null);
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3e3);
   };
@@ -249,7 +65,6 @@ export const EvaluationDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     (async () => {
       setIsLoadingApi(true);
@@ -431,51 +246,26 @@ export const EvaluationDashboard = () => {
     else if (total >= 5) classification = "Trung bình";
     else classification = "Không đạt";
 
-    if (!USE_MOCK) {
-      try {
-        await evaluationService.persistFromUi(
-          {
-            id: activeGradingStudent.id,
-            internshipId: activeGradingStudent.internshipId,
-            enterpriseScore: gradeInput.enterprise,
-            lecturerScore: gradeInput.lecturer,
-            presentationScore: gradeInput.presentation,
-            lecturerComments: gradeInput.comments,
-          },
-          true,
-        );
-        await refreshEvaluations();
-        showToast(
-          `Đã lưu & chốt điểm cho ${activeGradingStudent.name} (${total} điểm)`,
-        );
-        setActiveGradingStudent(null);
-        return;
-      } catch (err) {
-        showToast(getApiErrorMessage(err));
-        return;
-      }
+    try {
+      await evaluationService.persistFromUi(
+        {
+          id: activeGradingStudent.id,
+          internshipId: activeGradingStudent.internshipId,
+          enterpriseScore: gradeInput.enterprise,
+          lecturerScore: gradeInput.lecturer,
+          presentationScore: gradeInput.presentation,
+          lecturerComments: gradeInput.comments,
+        },
+        true,
+      );
+      await refreshEvaluations();
+      showToast(
+        `Đã lưu & chốt điểm cho ${activeGradingStudent.name} (${total} điểm)`,
+      );
+      setActiveGradingStudent(null);
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
     }
-
-    setEvaluations((prev) =>
-      prev.map((item) =>
-        item.id === activeGradingStudent.id
-          ? {
-              ...item,
-              enterpriseScore: gradeInput.enterprise,
-              lecturerScore: gradeInput.lecturer,
-              presentationScore: gradeInput.presentation,
-              totalScore: total,
-              status: "Hoàn thành",
-              lecturerComments: gradeInput.comments,
-              gradeClassification: classification,
-            }
-          : item,
-      ),
-    );
-    showToast(
-      `Đã lưu điểm thành công cho sinh viên ${activeGradingStudent.name} (${total} điểm)`,
-    );
-    setActiveGradingStudent(null);
   };
   if (rubricStudent) {
     return (
@@ -483,37 +273,21 @@ export const EvaluationDashboard = () => {
         student={rubricStudent}
         onBack={() => setRubricStudent(null)}
         onSave={async (data) => {
-          if (!USE_MOCK) {
-            try {
-              await evaluationService.persistFromUi(
-                {
-                  id: data.studentId,
-                  internshipId: rubricStudent.internshipId,
-                  lecturerScore: data.finalScore,
-                  enterpriseScore: data.finalScore,
-                  presentationScore: data.finalScore,
-                },
-                true,
-              );
-              await refreshEvaluations();
-            } catch (err) {
-              showToast(getApiErrorMessage(err));
-              return;
-            }
-          } else {
-            setEvaluations((prev) =>
-              prev.map((item) =>
-                item.id === data.studentId
-                  ? {
-                      ...item,
-                      lecturerScore: data.finalScore,
-                      totalScore: data.finalScore,
-                      status: "Hoàn thành",
-                      gradeClassification: data.classification,
-                    }
-                  : item,
-              ),
+          try {
+            await evaluationService.persistFromUi(
+              {
+                id: data.studentId,
+                internshipId: rubricStudent.internshipId,
+                lecturerScore: data.finalScore,
+                enterpriseScore: data.finalScore,
+                presentationScore: data.finalScore,
+              },
+              true,
             );
+            await refreshEvaluations();
+          } catch (err) {
+            showToast(getApiErrorMessage(err));
+            return;
           }
           setRubricStudent(null);
         }}
@@ -538,29 +312,23 @@ export const EvaluationDashboard = () => {
         student={workspaceStudent}
         onBack={() => setWorkspaceStudent(null)}
         onSave={async (updated) => {
-          if (!USE_MOCK) {
-            try {
-              const finalize = updated.status === "Hoàn thành";
-              await evaluationService.persistFromUi(
-                {
-                  id: updated.id,
-                  internshipId: updated.internshipId,
-                  enterpriseScore: updated.enterpriseScore,
-                  lecturerScore: updated.lecturerScore,
-                  presentationScore: updated.presentationScore,
-                  lecturerComments: updated.lecturerComments,
-                },
-                finalize,
-              );
-              await refreshEvaluations();
-            } catch (err) {
-              showToast(getApiErrorMessage(err));
-              return;
-            }
-          } else {
-            setEvaluations((prev) =>
-              prev.map((item) => (item.id === updated.id ? updated : item)),
+          try {
+            const finalize = updated.status === "Hoàn thành";
+            await evaluationService.persistFromUi(
+              {
+                id: updated.id,
+                internshipId: updated.internshipId,
+                enterpriseScore: updated.enterpriseScore,
+                lecturerScore: updated.lecturerScore,
+                presentationScore: updated.presentationScore,
+                lecturerComments: updated.lecturerComments,
+              },
+              finalize,
             );
+            await refreshEvaluations();
+          } catch (err) {
+            showToast(getApiErrorMessage(err));
+            return;
           }
           setWorkspaceStudent(null);
         }}

@@ -1,10 +1,12 @@
 using FluentAssertions;
 using InternLink.Application.DTOs;
+using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
 using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace InternLink.Tests.Services;
@@ -19,6 +21,9 @@ public class AdminNotificationServiceTests
         return new AppDbContext(options);
     }
 
+    private static AdminNotificationService CreateService(AppDbContext db) =>
+        new AdminNotificationService(db, Mock.Of<IRealtimeNotificationService>());
+
     [Fact]
     public async Task BroadcastAsync_AllAudience_ShouldSendToAllUsers()
     {
@@ -29,7 +34,7 @@ public class AdminNotificationServiceTests
         await db.Users.AddRangeAsync(user1, user2);
         await db.SaveChangesAsync();
 
-        var service = new AdminNotificationService(db);
+        var service = CreateService(db);
         var request = new AdminBroadcastNotificationRequest
         {
             Title = "System Maintenance",
@@ -50,7 +55,7 @@ public class AdminNotificationServiceTests
     public async Task BroadcastAsync_EmptyTitle_ShouldThrowInvalidOperationException()
     {
         var db = GetDb();
-        var service = new AdminNotificationService(db);
+        var service = CreateService(db);
         var request = new AdminBroadcastNotificationRequest
         {
             Title = "",
@@ -79,7 +84,7 @@ public class AdminNotificationServiceTests
         await db.Notifications.AddRangeAsync(notif1, notif2);
         await db.SaveChangesAsync();
 
-        var service = new AdminNotificationService(db);
+        var service = CreateService(db);
 
         var campaigns = await service.GetCampaignsAsync();
 

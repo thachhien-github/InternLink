@@ -37,14 +37,12 @@ export const Header = ({
   const navigate = useNavigate();
   const { semesters, selectedSemesterId, selectedSemester, selectSemester } = useSemester();
   const [showSemesterMenu, setShowSemesterMenu] = useState(false);
-  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const displayName = user?.name ?? "Quản trị viên";
   const displayEmail = user?.email ?? user?.username ?? "—";
   const initials = getNameInitials(displayName);
-  const unreadCount = stats?.unreadNotificationCount ?? 0;
 
   const getTabTitle = (tab: string) => {
     const normalized = tab?.startsWith("admin-") ? tab : `admin-${tab}`;

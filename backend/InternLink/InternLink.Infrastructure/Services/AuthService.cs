@@ -326,6 +326,20 @@ public class AuthService : IAuthService
             ExpiresAt = expiresAt,
             CreatedAt = DateTime.UtcNow
         });
+
+        // Record in-app notification in database
+        var forgotNotif = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Title = "Yêu cầu khôi phục mật khẩu InternLink",
+            Content = $"Yêu cầu đặt lại mật khẩu đã được gửi tới email {user.Email}. Vui lòng kiểm tra hộp thư để nhận đường dẫn đặt lại.",
+            Link = "/login",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _db.Notifications.AddAsync(forgotNotif);
+
         await _db.SaveChangesAsync();
 
         var resetLink = BuildResetLink(rawToken);
@@ -376,6 +390,19 @@ public class AuthService : IAuthService
             other.IsDeleted = true;
             other.UpdatedAt = DateTime.UtcNow;
         }
+
+        // Record in-app notification in database
+        var changedNotif = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Title = "Mật khẩu đã được thay đổi thành công",
+            Content = "Mật khẩu tài khoản InternLink của bạn đã được cập nhật thành công qua liên kết xác thực email.",
+            Link = "/login",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _db.Notifications.AddAsync(changedNotif);
 
         await _db.SaveChangesAsync();
         _logger.LogInformation("User {UserId} reset password via email token", user.Id);

@@ -360,10 +360,12 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
                         <EmptyState
                           title="Không tìm thấy báo cáo tuần phù hợp"
                           description="Thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm tuần."
-                          actionLabel="Xóa bộ lọc"
-                          onAction={() => {
-                            setSearchQuery("");
-                            setStatusFilter("Tất cả");
+                          action={{
+                            label: "Xóa bộ lọc",
+                            onClick: () => {
+                              setSearchQuery("");
+                              setStatusFilter("Tất cả");
+                            },
                           }}
                         />
                       </td>

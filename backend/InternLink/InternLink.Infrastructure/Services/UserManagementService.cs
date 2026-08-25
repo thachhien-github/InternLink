@@ -106,6 +106,20 @@ public class UserManagementService : IUserManagementService
 
         await _db.Users.AddAsync(user);
         await LinkProfileAsync(user, request.StudentCode, request.StaffCode, role);
+
+        // Record invitation in-app notification in database
+        var welcomeNotif = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Title = "Thư mời tham gia hệ thống InternLink",
+            Content = $"Chào mừng {user.FullName} ({user.Username}) đã được tạo tài khoản trên hệ thống InternLink. Mật khẩu tạm thời: {tempPassword}",
+            Link = "/login",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _db.Notifications.AddAsync(welcomeNotif);
+
         await _db.SaveChangesAsync();
 
         if (!string.IsNullOrWhiteSpace(user.Email))
@@ -169,6 +183,20 @@ public class UserManagementService : IUserManagementService
         user.PasswordHash = _hasher.HashPassword(user, newPassword);
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
+
+        // Record reset password notification in database
+        var resetNotif = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Title = "Cấp lại mật khẩu tài khoản InternLink",
+            Content = $"Mật khẩu tài khoản {user.Username} đã được thiết lập lại thành công. Mật khẩu tạm thời mới: {newPassword}",
+            Link = "/login",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _db.Notifications.AddAsync(resetNotif);
+
         await _db.SaveChangesAsync();
 
         var emailSent = false;

@@ -1,7 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useAuth } from "../../../hooks/useAuth";
@@ -138,7 +137,7 @@ export const AccountView = () => {
   };
 
   useEffect(() => {
-    if (USE_MOCK || !user) return;
+    if (!user) return;
     if (user.name) {
       setProfile((prev) => ({ ...prev, fullName: user.name }));
     }
@@ -209,17 +208,15 @@ export const AccountView = () => {
 
     setIsChangingPass(true);
     try {
-      if (!USE_MOCK) {
-        if (!currentPassword.trim()) {
-          setPassErrorMsg("Vui lòng nhập mật khẩu hiện tại.");
-          setIsChangingPass(false);
-          return;
-        }
-        await authService.changePassword({
-          currentPassword,
-          newPassword,
-        });
+      if (!currentPassword.trim()) {
+        setPassErrorMsg("Vui lòng nhập mật khẩu hiện tại.");
+        setIsChangingPass(false);
+        return;
       }
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+      });
 
       setPassSuccessMsg("Đổi mật khẩu tài khoản thành công!");
       showToast("Đổi mật khẩu thành công! Hãy sử dụng mật khẩu mới cho lần đăng nhập tiếp theo.");

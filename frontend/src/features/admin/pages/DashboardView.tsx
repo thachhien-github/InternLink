@@ -21,6 +21,8 @@ import {
 } from "../../../components/common/DashboardCharts";
 import { useAdminDashboardStats } from "../../../hooks/useAdminDashboardStats";
 import { exportAdminDashboardReport } from "../../../lib/adminDashboardExport";
+import { exportService } from "../../../services/export.service";
+import { useSemester } from "../../../contexts/SemesterContext";
 
 export const DashboardView = ({
   onShowToast,
@@ -31,6 +33,7 @@ export const DashboardView = ({
 }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const { currentSemester } = useSemester();
   const { stats, isLoading, updatedAt, reload } = useAdminDashboardStats(
     true,
     onShowToast,
@@ -42,15 +45,26 @@ export const DashboardView = ({
     onShowToast("Đã làm mới dữ liệu tổng quan!");
   };
 
-  const handleExportReport = () => {
-    if (!stats) {
-      onShowToast("Chưa có dữ liệu để xuất báo cáo. Vui lòng thử lại sau.");
-      return;
-    }
+  const handleExportC23 = async () => {
     setIsExporting(true);
     try {
-      const filename = exportAdminDashboardReport(stats);
-      onShowToast(`Đã tải xuống ${filename}`);
+      await exportService.downloadInternshipExcel(currentSemester?.id);
+      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+    } catch (err) {
+      onShowToast("Xuất file C23 thất bại. Đang tải báo cáo tổng quan...");
+      if (stats) exportAdminDashboardReport(stats);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportC22A = async () => {
+    setIsExporting(true);
+    try {
+      await exportService.downloadSummaryReport(currentSemester?.id);
+      onShowToast("Đã tải xuống Báo cáo tổng kết C22A (.xlsx)");
+    } catch (err) {
+      onShowToast("Xuất báo cáo tổng kết thất bại.");
     } finally {
       setIsExporting(false);
     }
@@ -89,12 +103,19 @@ export const DashboardView = ({
             loading: isLoading,
           },
           {
-            label: isExporting ? "Đang xuất…" : "Xuất báo cáo",
+            label: isExporting ? "Đang xuất…" : "Xuất bảng điểm C23",
             icon: Download,
-            onClick: handleExportReport,
+            onClick: () => void handleExportC23(),
             variant: "secondary",
-            disabled: isExporting || isLoading || !stats,
+            disabled: isExporting || isLoading,
             loading: isExporting,
+          },
+          {
+            label: "Báo cáo tổng kết C22A",
+            icon: Download,
+            onClick: () => void handleExportC22A(),
+            variant: "secondary",
+            disabled: isExporting || isLoading,
           },
           {
             label: "Phân công nhanh",

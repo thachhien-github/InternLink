@@ -33,11 +33,9 @@ import {
   MessageSquare,
   Sparkles,
 } from "lucide-react";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapNotificationDtoToLecturerUi } from "../../../lib/portalMappers";
 import { notificationService } from "../../../services/notification.service";
-import { INITIAL_STUDENTS } from "../../../data/mockData";
 
 export interface SystemNotificationItem {
   id: string;
@@ -90,268 +88,6 @@ export interface ScheduledBroadcast {
   attachments?: string[];
 }
 
-const INITIAL_MOCK_NOTIFICATIONS: SystemNotificationItem[] = [
-  // 1. THÔNG BÁO TỪ HỆ THỐNG / ADMIN
-  {
-    id: "notif-sys-1",
-    title: "Mở đợt thực tập tốt nghiệp Học kỳ I - 2026 & Phân công hướng dẫn",
-    desc: "Ban Chủ nhiệm Khoa CNTT đã chính thức mở đợt thực tập HK I - 2026 và phân bổ 28 sinh viên vào nhóm hướng dẫn.",
-    type: "admin",
-    category: "Hệ thống & Admin",
-    systemActionType: "SEMESTER_OPEN",
-    priority: "Quan trọng",
-    color: "blue",
-    isUnread: true,
-    time: "08:30 - Hôm nay",
-    sender: "Admin Ban Chủ nhiệm Khoa CNTT",
-    senderRole: "Quản trị viên Đào tạo",
-    receiver: "Giảng viên Trần Minh Huy",
-    content: `Kính gửi Thầy Trần Minh Huy,
-
-Khoa Công nghệ Thông tin thông báo chính thức mở đợt Thực tập tốt nghiệp Học kỳ I - Năm học 2026.
-Chi tiết phân công và cấu hình đợt thực tập:
-- Tên đợt: Thực tập tốt nghiệp HK I (2026 - 2027)
-- Số lượng sinh viên phân bổ cho Thầy: 28 sinh viên (Lớp C24A.TH1 và C24A.TH2)
-- Thời gian đợt: 15/08/2026 đến 30/11/2026
-- Thời hạn phê duyệt kế hoạch và đề cương: 30/08/2026
-- Thời hạn chấm điểm tổng kết: 25/11/2026
-
-Thầy vui lòng kiểm tra danh sách sinh viên được phân bổ và liên hệ với các doanh nghiệp tiếp nhận để đối soát thông tin.`,
-    attachments: [
-      "QuyDinh_ThucTap_HK1_2026.pdf",
-      "DanhSach_PhanCong_GVHD_2026.xlsx",
-    ],
-  },
-  {
-    id: "notif-sys-2",
-    title: "Cấp tài khoản & Phân quyền Giảng viên Hướng dẫn Đợt 2026",
-    desc: "Tài khoản SSO giảng viên đã được kích hoạt đầy đủ quyền chấm điểm, duyệt báo cáo và liên kết doanh nghiệp.",
-    type: "admin",
-    category: "Hệ thống & Admin",
-    systemActionType: "ACCOUNT_PROVISION",
-    priority: "Thông thường",
-    color: "purple",
-    isUnread: false,
-    time: "14:15 - Hôm qua",
-    sender: "Hệ thống Quản trị Tài khoản & Phân quyền (IT Admin)",
-    senderRole: "Admin Kỹ thuật",
-    receiver: "Giảng viên Trần Minh Huy (huy.tm@vlu.edu.vn)",
-    content: `Thông báo cấp quyền tài khoản Giảng viên:
-- Tài khoản: huy.tm@vlu.edu.vn
-- Quyền hạn: Giảng viên Hướng dẫn chính thức (Lecturer Supervisor)
-- Phân hệ truy cập:
-  + Cổng Giảng viên (/lecturer)
-  + Quản lý Báo cáo tuần & Chấm điểm giữa kỳ / cuối kỳ
-  + Kết nối & Đánh giá Doanh nghiệp tiếp nhận
-  + Phát thông báo trực tiếp cho sinh viên thuộc nhóm hướng dẫn
-Tài khoản đã đồng bộ với hệ thống Microsoft Office 365 / Google Workspace của Nhà trường.`,
-    attachments: ["HuongDan_SuDung_HeThong_GV.pdf"],
-  },
-  {
-    id: "notif-sys-3",
-    title: "Cập nhật chính sách bảo mật & Đồng bộ thông tin tài khoản",
-    desc: "Yêu cầu bật xác thực 2 bước (2FA) và rà soát lại thông tin liên hệ phục vụ liên lạc khẩn cấp.",
-    type: "system",
-    category: "Hệ thống & Admin",
-    systemActionType: "SECURITY_POLICY",
-    priority: "Thông thường",
-    color: "slate",
-    isUnread: false,
-    time: "25/10/2026",
-    sender: "Phòng Công nghệ Thông tin & An toàn Dữ liệu",
-    senderRole: "Security Center",
-    receiver: "Toàn thể Cán bộ - Giảng viên",
-    content: `Nhằm đảm bảo an toàn thông tin dữ liệu điểm và hồ sơ thực tập của sinh viên, hệ thống đã cập nhật chính sách bảo mật định kỳ:
-1. Yêu cầu kích hoạt bảo mật 2 lớp qua ứng dụng Authenticator hoặc SMS.
-2. Kiểm tra lại thông tin số điện thoại và email phụ tại mục Tài khoản.
-3. Không chia sẻ phiên đăng nhập cho bên thứ ba.`,
-    attachments: [],
-  },
-  {
-    id: "notif-sys-4",
-    title: "Nhắc nhở: Hệ thống sẽ đóng đợt thực tập HK I & Khóa sổ nộp điểm sau 5 ngày",
-    desc: "Hạn chót nhập điểm quá trình và phê duyệt báo cáo cuối kỳ là 23:59 ngày 30/10/2026.",
-    type: "admin",
-    category: "Hệ thống & Admin",
-    systemActionType: "SEMESTER_CLOSE",
-    priority: "Khẩn cấp",
-    color: "rose",
-    isUnread: true,
-    time: "07:45 - Hôm nay",
-    sender: "Hệ thống Quản lý Đào tạo Khoa CNTT",
-    senderRole: "Ban Đào tạo",
-    receiver: "Giảng viên Trần Minh Huy",
-    content: `Kính gửi Giảng viên,
-
-Hệ thống ghi nhận đợt thực tập Học kỳ I - 2026 sẽ chính thức ĐÓNG và KHÓA SỔ nhập điểm vào 23:59 ngày 30/10/2026.
-Đề nghị Thầy/Cô:
-1. Hoàn tất việc chấm điểm 100% sinh viên thuộc nhóm hướng dẫn.
-2. Kiểm tra các phiếu đánh giá từ Doanh nghiệp (đã nộp đủ hay chưa).
-3. Xuất file bảng điểm cuối kỳ có chữ ký số hoặc nộp file PDF ký tên về Văn phòng Khoa.
-
-Sau thời điểm trên, hệ thống sẽ tự động chuyển sang chế độ Lưu trữ (Archived) và không cho phép chỉnh sửa điểm.`,
-    attachments: ["BienBan_KhoaSo_Diem_HK1.docx"],
-  },
-
-  // 2. TIẾN ĐỘ DEADLINE CỦA SINH VIÊN
-  {
-    id: "notif-dl-1",
-    title: "CẢNH BÁO: Đinh Quốc Khánh quá hạn nộp Báo cáo Giữa kỳ (Trễ 4 ngày)",
-    desc: "Sinh viên Đinh Quốc Khánh (MSSV: 2421160051) chưa hoàn thành nộp Báo cáo giữa kỳ theo mốc quy định.",
-    type: "deadline",
-    category: "Tiến độ Deadline",
-    priority: "Khẩn cấp",
-    color: "rose",
-    isUnread: true,
-    time: "09:15 - Hôm nay",
-    sender: "Hệ thống Kiểm soát Tiến độ & Deadline",
-    senderRole: "Auto Tracker",
-    receiver: "Giảng viên Trần Minh Huy",
-    student: "Đinh Quốc Khánh",
-    studentMssv: "2421160051",
-    studentClass: "C24A.TH1",
-    company: "Viettel Group (Mentor: Lê Tuấn Vũ)",
-    deadlineMeta: {
-      milestoneName: "Báo cáo Giữa kỳ",
-      dueDate: "24/10/2026 23:59",
-      overdueDays: 4,
-      submittedCount: 26,
-      totalCount: 28,
-      status: "overdue",
-    },
-    content: `Cảnh báo trễ hạn nộp bài:
-- Sinh viên: Đinh Quốc Khánh (MSSV: 2421160051 - Lớp C24A.TH1)
-- Doanh nghiệp thực tập: Viettel Group
-- Hạng mục: Báo cáo Giữa kỳ
-- Hạn chót quy định: 23:59 ngày 24/10/2026 (Đã quá hạn 4 ngày)
-- Trạng thái bài nộp hiện tại: Bản nộp lần 1 bị yêu cầu chỉnh sửa do thiếu xác nhận doanh nghiệp và chưa nộp lại.
-
-Hệ thống gợi ý Thầy gửi thông báo nhắc nhở khẩn cấp hoặc liên hệ sinh viên để hỗ trợ kịp thời.`,
-    attachments: ["PhieuDanhGia_GiuaKy_Viettel.pdf"],
-  },
-  {
-    id: "notif-dl-2",
-    title: "Sắp đến hạn: Báo cáo tuần 6 sẽ kết thúc trong 24 giờ tới (Còn 3 sinh viên chưa nộp)",
-    desc: "Mốc Báo cáo tuần 6 có 25/28 sinh viên đã nộp. 3 sinh viên cần hoàn tất trước 23:59 ngày mai.",
-    type: "deadline",
-    category: "Tiến độ Deadline",
-    priority: "Quan trọng",
-    color: "amber",
-    isUnread: false,
-    time: "11:20 - Hôm nay",
-    sender: "Hệ thống Quản lý Bài nộp",
-    senderRole: "Auto Monitor",
-    receiver: "Giảng viên Trần Minh Huy",
-    deadlineMeta: {
-      milestoneName: "Báo cáo Tuần 6",
-      dueDate: "26/10/2026 23:59",
-      hoursLeft: 24,
-      submittedCount: 25,
-      totalCount: 28,
-      status: "upcoming",
-    },
-    content: `Theo dõi tiến độ nộp Báo cáo tuần 6:
-- Tổng số sinh viên: 28 sinh viên
-- Đã nộp đúng hạn: 25 sinh viên (89.3%)
-- Chưa nộp: 3 sinh viên:
-  1. Nguyễn Minh Phúc (MSSV: 2421160046 - FPT Software)
-  2. Bành Minh Tài (MSSV: 2421160008 - CMC Global)
-  3. Trần Nguyễn Tiên Thy (MSSV: 2321160029 - MISA Software)
-- Thời hạn chót: 23:59 ngày 26/10/2026.`,
-    attachments: [],
-  },
-
-  // 3. PHẢN HỒI & THẮC MẮC TỪ SINH VIÊN
-  {
-    id: "notif-fb-1",
-    title: "Sinh viên Trần Tuấn Anh gửi thắc mắc về tích hợp SSO và xin ý kiến đề tài",
-    desc: "Em xin phép hỏi Thầy về phần sơ đồ kiến trúc Microservices và cơ chế JWT Refresh Token tại FPT.",
-    type: "feedback",
-    category: "Phản hồi SV",
-    priority: "Thông thường",
-    color: "emerald",
-    isUnread: true,
-    time: "15:30 - Hôm nay",
-    sender: "Trần Tuấn Anh",
-    senderRole: "Sinh viên Lớp C24A.TH1",
-    receiver: "Giảng viên Trần Minh Huy",
-    student: "Trần Tuấn Anh",
-    studentMssv: "2421160043",
-    studentClass: "C24A.TH1",
-    company: "FPT Software (Vị trí: Fullstack Intern)",
-    feedbackStatus: "Cần trả lời",
-    content: `Kính gửi Thầy Minh Huy,
-
-Trong quá trình thực hiện Báo cáo tuần 6 và chuẩn bị cho phần Demo sản phẩm tại FPT Software, nhóm em có một thắc mắc về mô hình phân tách Microservices:
-1. Hiện tại dự án sử dụng API Gateway (Kong) kết hợp OAuth2 / JWT. Trong báo cáo, em có nên vẽ chi tiết luồng Refresh Token và sơ đồ DB phân tán không ạ?
-2. Mentor tại công ty (anh Nguyễn Văn Hải) đã đồng ý duyệt phần Source code, nhưng đề xuất bổ sung thêm phần kiểm thử tải (Load Testing với k6). Thầy có yêu cầu bắt buộc phần này trong slide bảo vệ không ạ?
-
-Em cảm ơn Thầy nhiều ạ!`,
-    attachments: ["SoDo_KienTruc_FPT_Draft.png"],
-    replies: [
-      {
-        id: "rep-1",
-        sender: "Giảng viên Trần Minh Huy",
-        senderRole: "Giảng viên Hướng dẫn",
-        content:
-          "Chào Tuấn Anh. Luồng Refresh Token và sơ đồ DB phân tán rất được khuyến khích đưa vào mục 3.2 của báo cáo. Phần Load Testing k6 sẽ là điểm cộng lớn khi bảo vệ trước hội đồng. Em tiếp tục phát huy nhé.",
-        time: "16:00 - Hôm nay",
-      },
-    ],
-  },
-  {
-    id: "notif-fb-2",
-    title: "Sinh viên Bành Minh Tài đề xuất xin gia hạn nộp hồ sơ tiếp nhận doanh nghiệp",
-    desc: "Doanh nghiệp CMC Global đang hoàn tất ký số đóng dấu mộc hợp đồng thực tập nên bị chậm 2 ngày.",
-    type: "feedback",
-    category: "Phản hồi SV",
-    priority: "Quan trọng",
-    color: "amber",
-    isUnread: false,
-    time: "10:45 - Hôm qua",
-    sender: "Bành Minh Tài",
-    senderRole: "Sinh viên Lớp C24A.TH1",
-    receiver: "Giảng viên Trần Minh Huy",
-    student: "Bành Minh Tài",
-    studentMssv: "2421160008",
-    studentClass: "C24A.TH1",
-    company: "CMC Global (Chưa hoàn tất dấu mộc)",
-    feedbackStatus: "Đang xử lý",
-    content: `Dạ em chào Thầy ạ,
-
-Em xin phép báo cáo tình hình tiếp nhận thực tập tại CMC Global. Hiện tại Phòng Nhân sự công ty đã gửi thư tiếp nhận (Offer letter) và em đã đi làm từ tuần trước. Tuy nhiên do Giám đốc nhân sự đang đi công tác nên giấy tiếp nhận thực tập có mộc đỏ của trường gửi sang dự kiến đến thứ 4 mới có chữ ký và dấu mộc chính thức.
-
-Em xin phép Thầy cho em gia hạn thời gian nộp bản scan Phiếu tiếp nhận có mộc đỏ đến hết thứ 4 tuần này ạ. Em xin đính kèm Offer Letter trước để Thầy xem qua ạ.`,
-    attachments: ["OfferLetter_CMC_Global_TaiBM.pdf"],
-  },
-
-  // 4. THÔNG BÁO TỪ DOANH NGHIỆP
-  {
-    id: "notif-ent-1",
-    title: "Doanh nghiệp MB Bank gửi Phiếu đánh giá thực tập giữa kỳ cho Lê Đặng Quang Hậu",
-    desc: "Mentor Vũ Thị Dung đánh giá sinh viên đạt 9.2/10 điểm với thái độ và kỹ năng an toàn thông tin xuất sắc.",
-    type: "enterprise",
-    category: "Doanh nghiệp",
-    priority: "Thông thường",
-    color: "emerald",
-    isUnread: false,
-    time: "09:30 - Hôm qua",
-    sender: "Phòng Quản lý Đào tạo & Nhân tài - Ngân hàng TMCP Quân đội (MB Bank)",
-    senderRole: "Doanh nghiệp Đối tác",
-    receiver: "Giảng viên Trần Minh Huy",
-    student: "Lê Đặng Quang Hậu",
-    studentMssv: "2421010230",
-    studentClass: "C24A.TH1",
-    company: "MB Bank",
-    content: `Kính gửi Thầy Trần Minh Huy,
-
-Ngân hàng TMCP Quân đội (MB Bank) trân trọng gửi Thầy Phiếu đánh giá kết quả thực tập giai đoạn giữa kỳ của sinh viên Lê Đặng Quang Hậu (MSSV: 2421010230).
-Sinh viên thể hiện tinh thần trách nhiệm cao, hoàn thành xuất sắc các bài kiểm thử bảo mật API cho hệ thống Mobile Banking thế hệ mới.
-Điểm đánh giá chi tiết: 9.2 / 10 điểm.`,
-    attachments: ["PhieuDanhGia_MBBank_LeDangQuangHau_KyTen.pdf"],
-  },
-];
-
 const QUICK_COMPOSE_TEMPLATES = [
   {
     title: "Nhắc nhở nộp Báo cáo tuần",
@@ -398,20 +134,8 @@ export const NotificationsView = () => {
     "all" | "system" | "deadline" | "feedback" | "broadcast"
   >("all");
 
-  const [notifications, setNotifications] = useState<SystemNotificationItem[]>(() => {
-    if (!USE_MOCK) return [];
-    try {
-      const saved = localStorage.getItem("lecturer_notifications_v2");
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return INITIAL_MOCK_NOTIFICATIONS;
-  });
-
-  const [selectedNotif, setSelectedNotif] = useState<SystemNotificationItem | null>(
-    () => notifications[0] || null,
-  );
+  const [notifications, setNotifications] = useState<SystemNotificationItem[]>([]);
+  const [selectedNotif, setSelectedNotif] = useState<SystemNotificationItem | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState("Tất cả");
@@ -474,7 +198,6 @@ export const NotificationsView = () => {
 
   // Load from API if not mock
   useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     (async () => {
       try {
@@ -487,7 +210,7 @@ export const NotificationsView = () => {
             title: base.title,
             desc: base.desc,
             type: base.type as any,
-            category: "Hệ thống & Admin",
+            category: base.category as any,
             priority: base.priority as any,
             color: base.color as any,
             isUnread: base.isUnread,
@@ -600,7 +323,7 @@ export const NotificationsView = () => {
     const target = notifications.find((n) => n.id === id);
     if (!target) return;
 
-    if (!USE_MOCK && target.isUnread) {
+    if (target.isUnread) {
       try {
         await notificationService.markRead(id);
       } catch (err) {
@@ -615,13 +338,11 @@ export const NotificationsView = () => {
   };
 
   const handleMarkAllRead = async () => {
-    if (!USE_MOCK) {
-      try {
-        await notificationService.markAllRead();
-      } catch (err) {
-        showToast(getApiErrorMessage(err));
-        return;
-      }
+    try {
+      await notificationService.markAllRead();
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+      return;
     }
     setNotifications((prev) => prev.map((n) => ({ ...n, isUnread: false })));
     showToast("Đã đánh dấu tất cả thông báo là đã đọc.");

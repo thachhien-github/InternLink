@@ -65,4 +65,11 @@ export const adminCompaniesService = {
       "company-import-template.xlsx",
     );
   },
+
+  downloadExport() {
+    return downloadAuthenticatedFile(
+      "/api/Admin/companies/export",
+      "danh-sach-doanh-nghiep.xlsx",
+    );
+  },
 };

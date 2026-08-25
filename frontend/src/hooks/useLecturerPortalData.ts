@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { getApiErrorMessage } from "../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../lib/adminMappers";
 import {
   mapInternshipDtoToStudent,
   mapSubmissionDtoToRow,
+  mapUiWeeklyReportReviewStatusToApi,
 } from "../lib/portalMappers";
-import {
-  INITIAL_ENTERPRISES,
-  INITIAL_STUDENTS,
-  INITIAL_SUBMISSIONS,
-} from "../data/mockData";
 import { lecturerCompaniesService } from "../services/lecturerCompanies.service";
 import { lecturerInternshipsService } from "../services/lecturerInternships.service";
 import { submissionApiService } from "../services/submissionApi.service";
@@ -19,27 +14,20 @@ import type { Student } from "../types/student";
 import type { Submission } from "../types/submission";
 import type { Enterprise } from "../types/enterprise";
 import type { WeeklyReportDto } from "../types/api";
-import { mapUiWeeklyReportReviewStatusToApi } from "../lib/portalMappers";
 
 export function useLecturerPortalData(
   enabled: boolean,
   lecturerName: string,
   onError?: (msg: string) => void,
 ) {
-  const [students, setStudents] = useState<Student[]>(
-    USE_MOCK ? INITIAL_STUDENTS : [],
-  );
-  const [submissions, setSubmissions] = useState<Submission[]>(
-    USE_MOCK ? INITIAL_SUBMISSIONS : [],
-  );
-  const [enterprises, setEnterprises] = useState<Enterprise[]>(
-    USE_MOCK ? INITIAL_ENTERPRISES : [],
-  );
+  const [students, setStudents] = useState<Student[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<WeeklyReportDto[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled && !USE_MOCK);
+  const [isLoading, setIsLoading] = useState(enabled);
 
   const load = useCallback(async () => {
-    if (USE_MOCK || !enabled) return;
+    if (!enabled) return;
     setIsLoading(true);
     try {
       const [internships, companies] = await Promise.all([
@@ -97,16 +85,7 @@ export function useLecturerPortalData(
 
   const updateSubmissionStatus = useCallback(
     async (id: string, uiStatus: string, note?: string) => {
-      if (USE_MOCK || !enabled) {
-        setSubmissions((prev) =>
-          prev.map((s) =>
-            s.id === id
-              ? { ...s, status: uiStatus, lecturerNote: note || s.lecturerNote }
-              : s,
-          ),
-        );
-        return;
-      }
+      if (!enabled) return;
       try {
         await submissionApiService.review(id, uiStatus, note);
         await load();
@@ -119,7 +98,7 @@ export function useLecturerPortalData(
 
   const reviewWeeklyReport = useCallback(
     async (id: string, uiStatus: string, comment?: string) => {
-      if (USE_MOCK || !enabled) return;
+      if (!enabled) return;
       try {
         await weeklyReportService.review(id, {
           status: mapUiWeeklyReportReviewStatusToApi(uiStatus),

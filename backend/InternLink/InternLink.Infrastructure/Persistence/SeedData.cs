@@ -23,6 +23,7 @@ public static class SeedData
         await EnsureStudentUserLinksAsync(context);
         await EnsureInternshipLecturerLinksAsync(context);
         await EnsureDemoInternshipsAsync(context);
+        await EnsureNotificationsAsync(context);
 
         if (await context.Companies.AnyAsync() || await context.Students.AnyAsync())
             return;
@@ -425,5 +426,71 @@ public static class SeedData
         {
             await context.SaveChangesAsync();
         }
+    }
+
+    private static async Task EnsureNotificationsAsync(AppDbContext context)
+    {
+        if (await context.Notifications.AnyAsync())
+            return;
+
+        var users = await context.Users.Where(u => !u.IsDeleted).ToListAsync();
+        if (users.Count == 0) return;
+
+        var studentUsers = users.Where(u => u.Role == Role.Student).ToList();
+        var lecturerUsers = users.Where(u => u.Role == Role.Lecturer).ToList();
+        var allUsers = users.Where(u => u.Role == Role.Student || u.Role == Role.Lecturer || u.Role == Role.SuperAdmin).ToList();
+
+        var notifs = new List<Notification>();
+
+        // Campaign 1: All users (Thông báo đợt thực tập)
+        var time1 = DateTime.UtcNow.AddDays(-10);
+        foreach (var u in allUsers)
+        {
+            notifs.Add(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = u.Id,
+                Title = "Thông báo Khởi động Đợt Thực tập Tốt nghiệp",
+                Content = "Khoa Công nghệ Thông tin chính thức phát động đợt thực tập tốt nghiệp. Kính đề nghị Quý Thầy/Cô và các bạn sinh viên kiểm tra danh sách phân công và quy chế thực tập.",
+                Link = "/admin-semesters",
+                IsRead = false,
+                CreatedAt = time1
+            });
+        }
+
+        // Campaign 2: Students only (Báo cáo tuần 1)
+        var time2 = DateTime.UtcNow.AddDays(-5);
+        foreach (var u in studentUsers)
+        {
+            notifs.Add(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = u.Id,
+                Title = "Nhắc nhở: Nộp Báo cáo Tiến độ Tuần 1",
+                Content = "Tất cả sinh viên đang tham gia thực tập tại doanh nghiệp bắt buộc hoàn tất việc nộp báo cáo tiến độ tuần 1 lên hệ thống InternLink để Giảng viên hướng dẫn chấm điểm đúng hạn.",
+                Link = "/student-reports",
+                IsRead = false,
+                CreatedAt = time2
+            });
+        }
+
+        // Campaign 3: Lecturers only (Lịch họp Hội đồng)
+        var time3 = DateTime.UtcNow.AddDays(-2);
+        foreach (var u in lecturerUsers)
+        {
+            notifs.Add(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = u.Id,
+                Title = "Lịch họp Hội đồng Đánh giá Tiến độ Thực tập",
+                Content = "Kính gửi Quý Thầy/Cô Giảng viên hướng dẫn, Ban Chủ nhiệm Khoa CNTT trân trọng kính mời Thầy/Cô tham dự buổi họp rà soát tiến độ và hướng dẫn chấm điểm vào lúc 14:00 Thứ Sáu.",
+                Link = "/lecturer-grading",
+                IsRead = false,
+                CreatedAt = time3
+            });
+        }
+
+        context.Notifications.AddRange(notifs);
+        await context.SaveChangesAsync();
     }
 }

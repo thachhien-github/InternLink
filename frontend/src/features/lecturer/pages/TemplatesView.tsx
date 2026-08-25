@@ -26,23 +26,16 @@ import {
 import { UploadDocumentWorkspace } from "../components/UploadDocumentWorkspace";
 import { StudentDocumentLibrary } from "../components/StudentDocumentLibrary";
 import { DocumentDetailWorkspace } from "../components/DocumentDetailWorkspace";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToUi } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
 import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
-import {
-  loadStoredTemplates,
-  saveStoredTemplates,
-} from "../../../data/initialTemplatesData";
 import type { DocumentItem, DocumentStatus, ArchiveLogEntry } from "../../../types/document";
 
 export const TemplatesView = () => {
-  const [documents, setDocuments] = useState<DocumentItem[]>(() => {
-    return loadStoredTemplates();
-  });
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [defaultInternshipId, setDefaultInternshipId] = useState<string | null>(null);
-  const [isLoadingDocs, setIsLoadingDocs] = useState(!USE_MOCK);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [subView, setSubView] = useState<"list" | "upload" | "detail" | "student_library">("list");
   const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED" | "DRAFT">("CIRCULATING");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
@@ -67,13 +60,7 @@ export const TemplatesView = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Sync state to localStorage whenever documents change
   useEffect(() => {
-    saveStoredTemplates(documents);
-  }, [documents]);
-
-  useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     (async () => {
       setIsLoadingDocs(true);
@@ -164,26 +151,6 @@ export const TemplatesView = () => {
   );
 
   const handleDownload = async (doc: DocumentItem) => {
-    if (USE_MOCK) {
-      setDocuments((prev) =>
-        prev.map((item) =>
-          item.id === doc.id ? { ...item, downloads: item.downloads + 1 } : item,
-        ),
-      );
-      const ext = (doc.fileType || "doc").toLowerCase();
-      const content = `TRƯỜNG ĐẠI HỌC - KHOA CÔNG NGHỆ THÔNG TIN\nTÀI LIỆU/BIỂU MẪU: ${doc.title.toUpperCase()}\nMã tài liệu: ${doc.code}\nPhân loại: ${doc.category}\nPhiên bản: ${doc.version}\nHọc kỳ áp dụng: ${doc.semester}\n\n1. TỔNG QUAN:\n${doc.description || "Tài liệu lưu hành nội bộ Khoa Công nghệ Thông tin phục vụ học phần Thực tập tốt nghiệp."}\n\n2. QUY ĐỊNH ÁP DỤNG:\n- Đối tượng: Toàn thể sinh viên và giảng viên hướng dẫn khoa CNTT.\n- Người ban hành: ${doc.uploader} (${doc.uploaderRole})\n\n(Ngày cập nhật: ${doc.updatedAt})\n`;
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${doc.title.replace(/[\/\\:*?"<>|]/g, "_")}.${ext === "docx" ? "doc" : ext === "pdf" ? "txt" : ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Đã tải xuống phiên bản ${doc.version} của: ${doc.title}`);
-      return;
-    }
     try {
       const { blob, filename } = await documentService.download(
         doc.id,
@@ -205,11 +172,6 @@ export const TemplatesView = () => {
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa tài liệu "${title}"?`)) {
-      return;
-    }
-    if (USE_MOCK) {
-      setDocuments((prev) => prev.filter((d) => d.id !== id));
-      showToast(`Đã xóa tài liệu "${title}" khỏi hệ thống.`);
       return;
     }
     try {
@@ -335,74 +297,7 @@ export const TemplatesView = () => {
     showToast(`Đã mở lưu hành công khai trở lại cho biểu mẫu "${doc.title}".`);
   };
 
-  const handleSaveDocument = async (payload: any, isDraft = false) => {
-    if (USE_MOCK) {
-      if (editingDoc) {
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === editingDoc.id ? { ...d, ...payload } : d)),
-        );
-        showToast(
-          isDraft
-            ? "Đã lưu bản nháp cập nhật"
-            : `Đã cập nhật thành công tài liệu "${payload.title}"`,
-        );
-      } else {
-        const newDoc: DocumentItem = {
-          id: payload.id || `doc-${Date.now()}`,
-          title: payload.title || "Tài liệu mới",
-          category: payload.category || "Biểu mẫu",
-          fileType: payload.fileType || "DOCX",
-          fileSize: payload.fileSize || "1.2 MB",
-          version: payload.version || "v1.0",
-          isLatest: true,
-          updatedAt: new Date().toLocaleDateString("vi-VN"),
-          uploader: "TS. Giảng viên",
-          uploaderRole: "Giảng viên Hướng dẫn",
-          downloads: 0,
-          semester: payload.semester || "HK I - 2026",
-          major: payload.major || "Tất cả ngành",
-          status: payload.status || (isDraft ? "Bản nháp" : "Đang lưu hành"),
-          isPublished: payload.isPublished ?? !isDraft,
-          isRequired: payload.isRequired ?? false,
-          description: payload.description || "",
-          archiveReason: payload.archiveReason,
-          archivedAt: payload.archivedAt,
-          archivedBy: payload.archivedBy,
-          versionHistory: payload.versionHistory || [
-            {
-              version: payload.version || "v1.0",
-              date: new Date().toLocaleDateString("vi-VN"),
-              author: "TS. Giảng viên",
-              note: "Khởi tạo tài liệu",
-            },
-          ],
-          archiveLogs: payload.archiveLogs || [
-            {
-              id: `log-${Date.now()}`,
-              timestamp: new Date().toISOString(),
-              date: new Date().toLocaleDateString("vi-VN"),
-              action: isDraft ? "DRAFT" : "CIRCULATING",
-              actionLabel: isDraft ? "Lưu bản nháp" : "Bắt đầu lưu hành chính thức",
-              performedBy: "TS. Giảng viên",
-              performedRole: "Giảng viên Hướng dẫn",
-              reason: isDraft ? "Bản nháp" : "Phát hành biểu mẫu chuẩn",
-              previousStatus: "Bản nháp",
-              newStatus: isDraft ? "Bản nháp" : "Đang lưu hành",
-            },
-          ],
-        };
-        setDocuments([newDoc, ...documents]);
-        showToast(
-          isDraft
-            ? "Đã lưu bản nháp tài liệu"
-            : `Đã phát hành thành công: ${newDoc.title}`,
-        );
-      }
-      setEditingDoc(null);
-      setSubView("list");
-      return;
-    }
-
+  const handleSaveDocument = async (payload: any) => {
     try {
       if (editingDoc) {
         const updated = await documentService.update(editingDoc.id, {

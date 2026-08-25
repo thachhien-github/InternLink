@@ -46,7 +46,8 @@ export function mapDocumentListItemToUi(d: DocumentListItemDto) {
     downloads: 0,
     semester: "HK I - 2026",
     major: "Tất cả ngành",
-    status: "Đang áp dụng",
+    status: "Đang lưu hành" as const,
+    isPublished: true,
     description: d.description ?? "",
     internshipId: d.internshipId,
     fileName: d.fileName,
@@ -58,5 +59,6 @@ export function mapDocumentListItemToUi(d: DocumentListItemDto) {
         note: "Tải lên hệ thống",
       },
     ],
+    archiveLogs: [],
   };
 }

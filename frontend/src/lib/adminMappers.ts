@@ -220,3 +220,28 @@ export function buildAssignmentMaps(
 
   return { studentAssignment, lecturerCounts };
 }
+
+/** Map StudentDto → Student (lecturer portal shape). */
+export function mapStudentDtoToStudent(s: StudentDto) {
+  return {
+    id: s.id,
+    name: s.fullName,
+    mssv: s.studentCode,
+    class: s.class ?? "—",
+    gpa: 0,
+    company: "Chưa có",
+    position: "—",
+    supervisor: "—",
+    lecturer: "—",
+    major: s.major ?? "—",
+    status: "Đúng tiến độ",
+    progress: 0,
+    riskFlag: false,
+    avatar: "",
+    lastReportName: "—",
+    lastReportDate: "—",
+    updatedAt: new Date().toISOString(),
+    notesCount: 0,
+    chatCount: 0,
+  };
+}

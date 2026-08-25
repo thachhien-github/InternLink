@@ -39,6 +39,7 @@ import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
 import { adminStudentsService } from "../../../services/adminStudents.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
+import { exportService } from "../../../services/export.service";
 import { useAdminStudentsPage } from "../../../hooks/useAdminStudentsPage";
 import { useSemester } from "../../../contexts/SemesterContext";
 export const StudentsView = ({
@@ -639,6 +640,16 @@ export const StudentsView = ({
       setIsImporting(false);
     }
   };
+
+  const handleExportC23 = async () => {
+    try {
+      await exportService.downloadInternshipExcel(selectedSemester?.id);
+      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
@@ -646,6 +657,12 @@ export const StudentsView = ({
         title="Quản lý Sinh viên"
         subtitle="Danh sách sinh viên đồng bộ từ API — GV, DN, tài khoản"
         actions={[
+          {
+            label: "Xuất Excel C23",
+            icon: Download,
+            onClick: () => void handleExportC23(),
+            variant: "secondary",
+          },
           {
             label: "Import Excel",
             icon: FileUp,

@@ -35,6 +35,7 @@ import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage, triggerBlobDownload } from "../../../lib/apiClient";
 import { formatRelativeTimeVi } from "../../../lib/formatRelativeTimeVi";
 import { adminAssignmentsService } from "../../../services/adminAssignments.service";
+import { exportService } from "../../../services/export.service";
 import { useAdminAssignmentMatrix } from "../../../hooks/useAdminAssignmentMatrix";
 import { useSemester } from "../../../contexts/SemesterContext";
 
@@ -1151,7 +1152,6 @@ export const AssignmentsView = ({
         onShowToast("File xuất ra trống hoặc lỗi — thử restart backend API.");
         return;
       }
-      triggerBlobDownload(blob, filename);
       onShowToast(`Đã tải xuống ${filename}`);
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
@@ -1159,6 +1159,18 @@ export const AssignmentsView = ({
       setIsExporting(false);
     }
   };
+  const handleExportC23 = async () => {
+    setIsExporting(true);
+    try {
+      await exportService.downloadInternshipExcel(selectedSemester ?? undefined);
+      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
@@ -1173,7 +1185,14 @@ export const AssignmentsView = ({
         }
         actions={[
           {
-            label: isExporting ? "Đang xuất…" : "Xuất Excel (.xlsx)",
+            label: "Xuất bảng điểm C23",
+            icon: Download,
+            onClick: () => void handleExportC23(),
+            variant: "secondary",
+            disabled: isExporting,
+          },
+          {
+            label: isExporting ? "Đang xuất…" : "Xuất ma trận (.xlsx)",
             icon: FileSpreadsheet,
             onClick: handleExportExcel,
             variant: "secondary",

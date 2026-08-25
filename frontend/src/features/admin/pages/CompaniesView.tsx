@@ -258,6 +258,15 @@ export const CompaniesView = ({
     }
   };
 
+  const handleExport = async () => {
+    try {
+      await adminCompaniesService.downloadExport();
+      onShowToast("Đã tải xuống danh sách doanh nghiệp (.xlsx)");
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
@@ -265,6 +274,12 @@ export const CompaniesView = ({
         title="Doanh nghiệp"
         subtitle="Danh mục đối tác thực tập — đồng bộ API"
         actions={[
+          {
+            label: "Xuất Excel",
+            icon: Download,
+            onClick: () => void handleExport(),
+            variant: "secondary",
+          },
           {
             label: "Import Excel",
             icon: FileUp,

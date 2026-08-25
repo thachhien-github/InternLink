@@ -613,12 +613,31 @@ export const LecturersView = ({
       setIsImporting(false);
     }
   };
+  const handleExportLecturers = async () => {
+    if (USE_MOCK) {
+      onShowToast("Đã xuất danh sách giảng viên (.xlsx)");
+      return;
+    }
+    try {
+      await adminLecturersService.downloadExport();
+      onShowToast("Đã tải xuống danh sách giảng viên (.xlsx)");
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
         icon={GraduationCap}
         title="Quản lý Giảng viên"
         actions={[
+          {
+            label: "Xuất Excel",
+            icon: Download,
+            onClick: () => void handleExportLecturers(),
+            variant: "secondary",
+          },
           {
             label: "Import Excel",
             icon: FileUp,

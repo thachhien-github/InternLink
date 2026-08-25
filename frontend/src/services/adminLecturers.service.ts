@@ -63,4 +63,11 @@ export const adminLecturersService = {
       "lecturer-import-template.xlsx",
     );
   },
+
+  downloadExport() {
+    return downloadAuthenticatedFile(
+      "/api/LecturerProfile/export",
+      "danh-sach-giang-vien.xlsx",
+    );
+  },
 };

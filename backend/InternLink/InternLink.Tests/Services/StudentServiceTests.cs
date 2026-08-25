@@ -44,6 +44,7 @@ public class StudentServiceTests
             _mapper,
             new PasswordHasher<User>(),
             email ?? Mock.Of<IEmailService>(),
+            Mock.Of<IExcelService>(),
             NullLogger<StudentService>.Instance);
     }
 

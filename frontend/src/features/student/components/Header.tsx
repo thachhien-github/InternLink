@@ -17,18 +17,11 @@ export interface HeaderProps {
 export const Header = ({
   activeTab,
   onNavigate,
-  _onSwitchPortal,
+  onSwitchPortal,
   onLogout,
   searchQuery,
   onSearchChange,
-}: {
-  activeTab: string;
-  onNavigate: (tab: string) => void;
-  _onSwitchPortal?: (role: UserRole) => void;
-  onLogout: () => void;
-  searchQuery?: string;
-  onSearchChange?: (query: string) => void;
-}) => {
+}: HeaderProps) => {
   const { profile } = useStudentPortal();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const getTabLabel = (tab: string) => {

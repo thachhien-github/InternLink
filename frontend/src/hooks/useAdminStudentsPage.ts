@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { getApiErrorMessage } from "../lib/apiClient";
 import {
   buildAssignmentMaps,
@@ -14,11 +13,9 @@ export type AdminStudentRow = ReturnType<typeof mapStudentDtoToRow>;
 
 export function useAdminStudentsPage(onError?: (msg: string) => void) {
   const [students, setStudents] = useState<AdminStudentRow[]>([]);
-  const [isLoading, setIsLoading] = useState(!USE_MOCK);
+  const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (USE_MOCK) return;
-
     setIsLoading(true);
     try {
       const [studentRows, lecturerRows, usersPage] = await Promise.all([

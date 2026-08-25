@@ -186,6 +186,8 @@ public class EvaluationServiceTests
             Id = Guid.NewGuid(),
             StudentId = newStudent.Id,
             Student = newStudent,
+            LecturerId = internship.LecturerId,
+            Lecturer = internship.Lecturer,
             Status = InternshipStatus.InProgress,
             CreatedAt = DateTime.UtcNow
         };

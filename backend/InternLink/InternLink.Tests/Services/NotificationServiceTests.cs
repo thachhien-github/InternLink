@@ -1,12 +1,14 @@
 using AutoMapper;
 using FluentAssertions;
 using InternLink.Application.DTOs;
+using InternLink.Application.Interfaces;
 using InternLink.Application.Mappings;
 using InternLink.Domain.Entities;
 using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace InternLink.Tests.Services;
@@ -40,7 +42,7 @@ public class NotificationServiceTests
         await db.Users.AddAsync(user);
         await db.SaveChangesAsync();
 
-        var service = new NotificationService(db, _mapper);
+        var service = new NotificationService(db, _mapper, Mock.Of<IRealtimeNotificationService>());
         var request = new CreateNotificationRequest
         {
             UserId = user.Id,
@@ -70,7 +72,7 @@ public class NotificationServiceTests
         await db.Notifications.AddRangeAsync(notif1, notif2);
         await db.SaveChangesAsync();
 
-        var service = new NotificationService(db, _mapper);
+        var service = new NotificationService(db, _mapper, Mock.Of<IRealtimeNotificationService>());
 
         var result = await service.GetMineAsync(user.Id);
 
@@ -89,7 +91,7 @@ public class NotificationServiceTests
         await db.Notifications.AddAsync(notif);
         await db.SaveChangesAsync();
 
-        var service = new NotificationService(db, _mapper);
+        var service = new NotificationService(db, _mapper, Mock.Of<IRealtimeNotificationService>());
 
         var result = await service.MarkReadAsync(notif.Id, user.Id);
 

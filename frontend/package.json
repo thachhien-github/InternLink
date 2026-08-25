@@ -15,7 +15,7 @@
     "smoke:m7": "powershell -ExecutionPolicy Bypass -File ../scripts/smoke-test-m7.ps1"
   },
   "dependencies": {
-    "@microsoft/signalr": "^8.0.7",
+    "@microsoft/signalr": "^8.0.29",
     "@tailwindcss/vite": "^4.1.14",
     "axios": "^1.19.0",
     "lucide-react": "^0.546.0",

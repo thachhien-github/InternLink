@@ -7,6 +7,7 @@ using InternLink.Domain.Entities;
 using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace InternLink.Tests.Services;
@@ -33,12 +34,15 @@ public class CompanyServiceTests
         return new AppDbContext(options);
     }
 
+    private CompanyService CreateService(AppDbContext db) =>
+        new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
     [Fact]
     public async Task CreateCompanyAsync_WithValidData_ShouldCreateCompany()
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = CreateService(db);
         var request = new CreateCompanyRequest
         {
             CompanyName = "Tech Corp",
@@ -66,7 +70,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = CreateService(db);
 
         var request1 = new CreateCompanyRequest { CompanyName = "Tech Corp" };
         var request2 = new CreateCompanyRequest { CompanyName = "Tech Corp" };
@@ -85,7 +89,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
         var company = new Company
         {
             Id = Guid.NewGuid(),
@@ -111,7 +115,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         // Act
         var result = await service.GetCompanyByIdAsync(Guid.NewGuid());
@@ -125,7 +129,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
         var company = new Company
         {
             Id = Guid.NewGuid(),
@@ -159,7 +163,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
         var company = new Company
         {
             Id = Guid.NewGuid(),
@@ -185,7 +189,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
         var company = new Company
         {
             Id = Guid.NewGuid(),
@@ -207,7 +211,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         db.Companies.AddRange(new[]
         {
@@ -230,7 +234,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         for (int i = 1; i <= 5; i++)
         {
@@ -255,7 +259,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         db.Companies.AddRange(new[]
         {
@@ -284,7 +288,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         db.Companies.AddRange(new[]
         {
@@ -312,7 +316,7 @@ public class CompanyServiceTests
     {
         // Arrange
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         db.Companies.AddRange(new[]
         {
@@ -334,7 +338,7 @@ public class CompanyServiceTests
     public async Task ImportCompaniesFromExcelAsync_WithValidRows_ShouldCreateCompanies()
     {
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         using var stream = CreateCompanyExcel(
             ("FPT Software", "CNTT", "Ms. Linh", "linh@fpt.com", "0901111111", "Q7 HCMC", "https://fpt.com", "10"),
@@ -352,7 +356,7 @@ public class CompanyServiceTests
     public async Task ImportCompaniesFromExcelAsync_WithDuplicateName_ShouldReportError()
     {
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
         db.Companies.Add(new Company
         {
             Id = Guid.NewGuid(),
@@ -376,7 +380,7 @@ public class CompanyServiceTests
     public void GetCompanyImportTemplate_ShouldReturnXlsxBytes()
     {
         var db = GetInMemoryDbContext();
-        var service = new CompanyService(db, _mapper);
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         var bytes = service.GetCompanyImportTemplate();
 

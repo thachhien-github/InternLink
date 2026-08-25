@@ -7,6 +7,8 @@ using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
+using Moq;
+
 namespace InternLink.Tests.Services;
 
 public class AssignmentServiceTests
@@ -33,7 +35,8 @@ public class AssignmentServiceTests
         return (db, semester);
     }
 
-    private static IAssignmentService CreateService(AppDbContext db) => new AssignmentService(db);
+    private static IAssignmentService CreateService(AppDbContext db) =>
+        new AssignmentService(db, Mock.Of<INotificationService>());
 
     [Fact]
     public async Task BulkAssignAsync_ShouldCreateStubsForNewStudents()

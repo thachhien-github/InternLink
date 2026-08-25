@@ -8,15 +8,15 @@ import {
   Award,
   Building2,
   ShieldAlert,
-  Sparkles,
   ChevronRight,
   CheckCircle2,
   Info,
+  Send,
 } from "lucide-react";
 import type { UserRole } from "../../types/common";
 import { notificationService } from "../../services/notification.service";
+import { adminNotificationsService } from "../../services/adminNotifications.service";
 import { signalRNotificationService } from "../../services/signalr.service";
-import { USE_MOCK } from "../../config/env";
 
 export interface AppNotification {
   id: string;
@@ -40,124 +40,46 @@ interface NotificationDropdownProps {
   onShowToast?: (msg: string) => void;
 }
 
-const DEFAULT_MOCK_NOTIFICATIONS: Record<UserRole, AppNotification[]> = {
-  Student: [
-    {
-      id: "notif-s1",
-      title: "GVHD đã nhận xét Báo cáo tuần 11",
-      message: "ThS. Nguyễn Văn Phước đã phản hồi và phê duyệt báo cáo tuần 11 của bạn: 'Tiến độ tốt, cần bổ sung tài liệu API...'",
-      category: "report",
-      priority: "normal",
-      timestamp: "5 phút trước",
-      isRead: false,
-      targetTab: "student-weekly-reports",
-      sender: { name: "ThS. Nguyễn Văn Phước", role: "GVHD" },
-    },
-    {
-      id: "notif-s2",
-      title: "Doanh nghiệp đã cập nhật đánh giá giữa kỳ",
-      message: "Mentor FPT Software đã hoàn tất bảng đánh giá năng lực & chuyên cần (Điểm: 9.2/10).",
-      category: "grade",
-      priority: "urgent",
-      timestamp: "2 giờ trước",
-      isRead: false,
-      targetTab: "student-feedback",
-      sender: { name: "FPT Software Mentor", role: "Doanh nghiệp" },
-    },
-    {
-      id: "notif-s3",
-      title: "Nhắc nhở: Hạn nộp Báo cáo cuối kỳ",
-      message: "Chỉ còn 3 ngày để hoàn thành nộp Báo cáo tổng kết, Slide bảo vệ và Mã nguồn dự án lên hệ thống.",
-      category: "deadline",
-      priority: "urgent",
-      timestamp: "Hôm qua",
-      isRead: true,
-      targetTab: "student-submissions",
-      sender: { name: "Phòng Đào tạo", role: "Ban Quản lý" },
-    },
-    {
-      id: "notif-s4",
-      title: "Lịch bảo vệ thực tập tốt nghiệp",
-      message: "Hội đồng đánh giá thực tập sẽ bắt đầu làm việc từ ngày 28/08/2026 tại Phòng A2-301.",
-      category: "announcement",
-      priority: "normal",
-      timestamp: "3 ngày trước",
-      isRead: true,
-      targetTab: "student-internship",
-      sender: { name: "Khoa CNTT", role: "Thông báo chung" },
-    },
-  ],
-  Lecturer: [
-    {
-      id: "notif-l1",
-      title: "Sinh viên mới nộp Báo cáo tuần 12",
-      message: "Nguyễn Văn An (MSSV: 20210001) vừa nộp báo cáo tuần 12 kèm sản phẩm mã nguồn GitHub.",
-      category: "report",
-      priority: "normal",
-      timestamp: "10 phút trước",
-      isRead: false,
-      targetTab: "reports",
-      sender: { name: "Nguyễn Văn An", role: "Sinh viên" },
-    },
-    {
-      id: "notif-l2",
-      title: "3 sinh viên chưa nộp sản phẩm cuối kỳ",
-      message: "Hạn chót khóa cổng nộp sản phẩm là 23:59 ngày mai. Vui lòng kiểm tra và gửi nhắc nhở.",
-      category: "deadline",
-      priority: "urgent",
-      timestamp: "1 giờ trước",
-      isRead: false,
-      targetTab: "students",
-      sender: { name: "Hệ thống InternLink", role: "Tự động" },
-    },
-    {
-      id: "notif-l3",
-      title: "Cổng nhập điểm đợt 1 đã mở",
-      message: "Ban Quản lý đã kích hoạt cổng nhập điểm Rubric và xuất file điểm cuối kỳ (.xlsx) cho Giảng viên.",
-      category: "grade",
-      priority: "normal",
-      timestamp: "Hôm qua",
-      isRead: true,
-      targetTab: "evaluations",
-      sender: { name: "Khoa CNTT", role: "Ban Quản lý" },
-    },
-  ],
-  Admin: [
-    {
-      id: "notif-a1",
-      title: "Yêu cầu liên kết từ Doanh nghiệp mới",
-      message: "Tập đoàn VNG Corporation đã gửi đề xuất tiếp nhận 20 sinh viên thực tập học kỳ I 2026.",
-      category: "enterprise",
-      priority: "normal",
-      timestamp: "15 phút trước",
-      isRead: false,
-      targetTab: "admin-companies",
-      sender: { name: "VNG HR Talent", role: "Đối tác" },
-    },
-    {
-      id: "notif-a2",
-      title: "Tạo tài khoản tự động hoàn tất",
-      message: "Đã kích hoạt thành công 120 tài khoản sinh viên khóa K15 và 15 tài khoản GVHD.",
-      category: "system",
-      priority: "normal",
-      timestamp: "2 giờ trước",
-      isRead: true,
-      targetTab: "admin-users",
-      sender: { name: "System Scheduler", role: "Core Service" },
-    },
-    {
-      id: "notif-a3",
-      title: "Cảnh báo bảo mật hệ thống",
-      message: "Phát hiện 3 lần đăng nhập sai liên tiếp từ địa chỉ IP lạ. Đã tự động kích hoạt bảo vệ 2FA.",
-      category: "system",
-      priority: "urgent",
-      timestamp: "1 ngày trước",
-      isRead: true,
-      targetTab: "admin-settings",
-      sender: { name: "Security Audit", role: "Bảo mật" },
-    },
-  ],
-};
+/* No mock notifications — all data fetched from database API */
+
+const NOTIFS_READ_STORAGE_KEY = "internlink_read_notif_ids";
+const NOTIFS_DELETED_STORAGE_KEY = "internlink_deleted_notif_ids";
+
+function getReadNotifIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(NOTIFS_READ_STORAGE_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function saveReadNotifId(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const set = getReadNotifIds();
+    set.add(id);
+    localStorage.setItem(NOTIFS_READ_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function getDeletedNotifIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(NOTIFS_DELETED_STORAGE_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function saveDeletedNotifId(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const set = getDeletedNotifIds();
+    set.add(id);
+    localStorage.setItem(NOTIFS_DELETED_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   role,
@@ -166,57 +88,154 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "reports" | "system">("all");
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    return USE_MOCK ? (DEFAULT_MOCK_NOTIFICATIONS[role] || DEFAULT_MOCK_NOTIFICATIONS.Student) : [];
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [_isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sync with API when available
-  useEffect(() => {
-    if (USE_MOCK) return;
+  // Sync with API and Local Storage
+  const refreshNotifications = async () => {
+    const readIds = getReadNotifIds();
+    const deletedIds = getDeletedNotifIds();
 
-    let isMounted = true;
-    const fetchApiNotifs = async () => {
-      try {
-        setIsLoading(true);
-        const rows = await notificationService.getMine();
-        if (!isMounted) return;
+    try {
+      setIsLoading(true);
+      if (role === "Admin") {
+        // For Admin, fetch personal notifications and broadcast campaigns
+        const [mineRows, campaigns] = await Promise.all([
+          notificationService.getMine().catch(() => []),
+          adminNotificationsService.getCampaigns(20).catch(() => []),
+        ]);
 
-        setNotifications(
-          (rows || []).map((dto) => ({
+        const personalNotifs: AppNotification[] = (mineRows || []).map((dto) => {
+          const text = `${dto.title} ${dto.content}`.toLowerCase();
+          let category: AppNotification["category"] = "system";
+          if (text.includes("doanh nghiệp") || text.includes("công ty") || text.includes("đối tác")) category = "enterprise";
+          else if (text.includes("báo cáo") || text.includes("nộp")) category = "report";
+          else if (text.includes("deadline") || text.includes("hạn") || text.includes("kỳ")) category = "deadline";
+
+          let targetTab = dto.link ?? "admin-notifications";
+          if (text.includes("giảng viên")) targetTab = "admin-lecturers";
+          else if (text.includes("sinh viên")) targetTab = "admin-students";
+          else if (text.includes("tài khoản") || text.includes("mật khẩu")) targetTab = "admin-users";
+          else if (text.includes("cài đặt") || text.includes("cấu hình")) targetTab = "admin-settings";
+          else if (text.includes("doanh nghiệp")) targetTab = "admin-companies";
+
+          return {
             id: dto.id,
             title: dto.title,
             message: dto.content,
-            category: (dto.category as any) || "report",
-            priority: dto.priority === "High" ? "urgent" : "normal",
+            category,
+            priority: (text.includes("khẩn") || text.includes("gấp") || dto.priority === "High") ? "urgent" : "normal",
             timestamp: dto.createdAt
               ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", {
                   hour: "2-digit",
                   minute: "2-digit",
-                })
+                }) + " " + new Date(dto.createdAt).toLocaleDateString("vi-VN")
               : "Vừa xong",
-            isRead: dto.isRead,
-            targetTab: dto.link ?? undefined,
-            sender: { name: dto.senderName ?? "Hệ thống", role: "Thông báo" },
-          }))
-        );
-      } catch {
-        if (isMounted) setNotifications([]);
-      } finally {
-        if (isMounted) setIsLoading(false);
+            isRead: dto.isRead || readIds.has(dto.id),
+            targetTab,
+            sender: { name: dto.senderName ?? "InternLink Admin", role: "Hệ thống" },
+          };
+        });
+
+        // Also check cached campaigns from localStorage
+        let activeCampaigns = campaigns;
+        if ((!activeCampaigns || activeCampaigns.length === 0) && typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem("internlink_admin_campaigns_cache");
+            if (raw) activeCampaigns = JSON.parse(raw);
+          } catch {}
+        }
+
+        const campaignNotifs: AppNotification[] = (activeCampaigns || []).map((c: any) => ({
+          id: `campaign-${c.id || Date.now()}`,
+          title: `[Chiến dịch] ${c.title}`,
+          message: `Gửi đến: ${c.audienceLabel || (c.targetRole === "All" ? "Toàn trường" : c.targetRole === "Student" ? "Sinh viên" : "Giảng viên")} (${c.recipientCount || "Toàn bộ"} người nhận) - ${c.content}`,
+          category: "announcement",
+          priority: (c.priority === "urgent" || c.priority === "high") ? "urgent" : "normal",
+          timestamp: c.sentAt || "Vừa xong",
+          isRead: readIds.has(`campaign-${c.id}`),
+          targetTab: "admin-notifications",
+          sender: { name: "Ban Quản trị", role: "Chiến dịch" },
+        }));
+
+        const combinedMap = new Map<string, AppNotification>();
+        campaignNotifs.forEach((item) => combinedMap.set(item.id, item));
+        personalNotifs.forEach((item) => combinedMap.set(item.id, item));
+
+        const list = Array.from(combinedMap.values()).filter((n) => !deletedIds.has(n.id));
+        setNotifications(list);
+      } else {
+        // For Student & Lecturer
+        const rows = await notificationService.getMine().catch(() => []);
+        if (rows && rows.length > 0) {
+          const mapped: AppNotification[] = rows.map((dto) => {
+            const text = `${dto.title} ${dto.content}`.toLowerCase();
+            let category: AppNotification["category"] = "system";
+            if (text.includes("báo cáo") || text.includes("nộp") || text.includes("phản hồi")) category = "report";
+            else if (text.includes("điểm") || text.includes("đánh giá") || text.includes("rubric")) category = "grade";
+            else if (text.includes("doanh nghiệp") || text.includes("công ty") || text.includes("đối tác") || text.includes("vng") || text.includes("fpt")) category = "enterprise";
+            else if (text.includes("deadline") || text.includes("hạn") || text.includes("khóa")) category = "deadline";
+            else if (text.includes("thông báo") || text.includes("khoa") || text.includes("lịch")) category = "announcement";
+
+            let sender = { name: dto.senderName ?? "InternLink", role: "Hệ thống" };
+            if (text.includes("giảng viên") || text.includes("gvhd")) {
+              sender = { name: dto.senderName ?? "Giảng viên hướng dẫn", role: "GVHD" };
+            } else if (text.includes("doanh nghiệp") || text.includes("mentor")) {
+              sender = { name: dto.senderName ?? "Doanh nghiệp thực tập", role: "Doanh nghiệp" };
+            } else if (text.includes("khoa") || text.includes("đào tạo")) {
+              sender = { name: dto.senderName ?? "Khoa CNTT", role: "Ban Quản lý" };
+            }
+
+            return {
+              id: dto.id,
+              title: dto.title,
+              message: dto.content,
+              category,
+              priority: (text.includes("khẩn") || text.includes("gấp") || dto.priority === "High") ? "urgent" : "normal",
+              timestamp: dto.createdAt
+                ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }) + " " + new Date(dto.createdAt).toLocaleDateString("vi-VN")
+                : "Vừa xong",
+              isRead: dto.isRead || readIds.has(dto.id),
+              targetTab: dto.link ?? undefined,
+              sender,
+            };
+          });
+          setNotifications(mapped.filter((n) => !deletedIds.has(n.id)));
+        } else {
+          setNotifications([]);
+        }
       }
+    } catch {
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshNotifications();
+
+    const handleUpdateEvent = () => {
+      void refreshNotifications();
     };
 
-    fetchApiNotifs();
+    if (typeof window !== "undefined") {
+      window.addEventListener("internlink_notification_updated", handleUpdateEvent);
+    }
+
     return () => {
-      isMounted = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("internlink_notification_updated", handleUpdateEvent);
+      }
     };
   }, [role]);
 
   // Real-time SignalR Notification Listener
   useEffect(() => {
-    // Start SignalR connection (graceful fallback if offline/mock)
     signalRNotificationService.start();
 
     const unsubscribeNotif = signalRNotificationService.onNotification((incoming) => {
@@ -224,11 +243,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         id: incoming.id || `notif-rt-${Date.now()}`,
         title: incoming.title,
         message: incoming.content,
-        category: "report",
+        category: role === "Admin" ? "system" : "report",
         priority: "urgent",
         timestamp: "Vừa xong",
         isRead: false,
-        targetTab: incoming.link,
+        targetTab: incoming.link || (role === "Admin" ? "admin-notifications" : undefined),
         sender: { name: "Hệ thống (Live)", role: "Realtime Hub" },
       };
 
@@ -263,7 +282,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       unsubscribeNotif();
       unsubscribeReportStatus();
     };
-  }, [onShowToast]);
+  }, [onShowToast, role]);
 
   // Click outside listener
   useEffect(() => {
@@ -284,17 +303,23 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const filteredNotifications = notifications.filter((item) => {
     if (activeFilter === "unread") return !item.isRead;
-    if (activeFilter === "reports") return item.category === "report" || item.category === "grade";
-    if (activeFilter === "system") return item.category === "system" || item.category === "deadline" || item.category === "enterprise";
+    if (role === "Admin") {
+      if (activeFilter === "reports") return item.category === "enterprise" || item.category === "announcement";
+      if (activeFilter === "system") return item.category === "system" || item.category === "deadline";
+    } else {
+      if (activeFilter === "reports") return item.category === "report" || item.category === "grade";
+      if (activeFilter === "system") return item.category === "system" || item.category === "deadline" || item.category === "enterprise";
+    }
     return true;
   });
 
   const handleMarkAsRead = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    saveReadNotifId(id);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
-    if (!USE_MOCK) {
+    if (!USE_MOCK && !id.startsWith("campaign-")) {
       try {
         await notificationService.markRead(id);
       } catch {}
@@ -302,6 +327,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   };
 
   const handleMarkAllAsRead = async () => {
+    notifications.forEach((n) => saveReadNotifId(n.id));
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     onShowToast?.("Đã đánh dấu tất cả thông báo là đã đọc!");
     if (!USE_MOCK) {
@@ -313,6 +339,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    saveDeletedNotifId(id);
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     onShowToast?.("Đã xóa thông báo khỏi danh sách.");
   };
@@ -326,48 +353,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     }
   };
 
-  const handleSimulateNewNotification = () => {
-    const newItems: Record<UserRole, AppNotification> = {
-      Student: {
-        id: `notif-sim-${Date.now()}`,
-        title: "⚡ Thông báo mới từ GVHD",
-        message: "Giảng viên vừa duyệt báo cáo tuần và để lại lời nhắn động viên.",
-        category: "report",
-        priority: "urgent",
-        timestamp: "Vừa xong",
-        isRead: false,
-        targetTab: "student-weekly-reports",
-        sender: { name: "ThS. Nguyễn Văn Phước", role: "GVHD" },
-      },
-      Lecturer: {
-        id: `notif-sim-${Date.now()}`,
-        title: "⚡ Sinh viên nộp báo cáo bổ sung",
-        message: "Trần Thị Bình vừa gửi lại tệp báo cáo tuần đã chỉnh sửa.",
-        category: "report",
-        priority: "normal",
-        timestamp: "Vừa xong",
-        isRead: false,
-        targetTab: "reports",
-        sender: { name: "Trần Thị Bình", role: "Sinh viên" },
-      },
-      Admin: {
-        id: `notif-sim-${Date.now()}`,
-        title: "⚡ Cập nhật đồng bộ kỳ thực tập",
-        message: "Hệ thống vừa đồng bộ danh sách 25 giảng viên từ Phòng Đào tạo.",
-        category: "system",
-        priority: "normal",
-        timestamp: "Vừa xong",
-        isRead: false,
-        targetTab: "admin-lecturers",
-        sender: { name: "Core API", role: "System" },
-      },
-    };
-
-    const newItem = newItems[role];
-    setNotifications((prev) => [newItem, ...prev]);
-    onShowToast?.(`🔔 Thông báo mới: ${newItem.title}`);
-  };
-
   const getCategoryIcon = (category: AppNotification["category"]) => {
     switch (category) {
       case "report":
@@ -378,6 +363,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         return <Building2 className="w-4 h-4 text-emerald-600" />;
       case "deadline":
         return <Clock className="w-4 h-4 text-rose-600" />;
+      case "announcement":
+        return <Send className="w-4 h-4 text-indigo-600" />;
       case "system":
         return <ShieldAlert className="w-4 h-4 text-purple-600" />;
       default:
@@ -414,7 +401,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               </div>
               <div>
                 <h4 className="font-bold text-xs tracking-tight">
-                  Trung tâm Thông báo
+                  {role === "Admin" ? "Thông báo Quản trị & Hệ thống" : "Trung tâm Thông báo"}
                 </h4>
                 <p className="text-[10px] text-slate-300">
                   {unreadCount > 0
@@ -429,7 +416,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="px-2 py-1 text-[11px] font-semibold text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors flex items-center gap-1"
+                  className="px-2 py-1 text-[11px] font-semibold text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors flex items-center gap-1 cursor-pointer"
                   title="Đánh dấu tất cả đã đọc"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
@@ -444,7 +431,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             <button
               type="button"
               onClick={() => setActiveFilter("all")}
-              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap cursor-pointer ${
                 activeFilter === "all"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
@@ -455,7 +442,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             <button
               type="button"
               onClick={() => setActiveFilter("unread")}
-              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap cursor-pointer ${
                 activeFilter === "unread"
                   ? "bg-rose-600 text-white shadow-xs"
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
@@ -466,24 +453,24 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             <button
               type="button"
               onClick={() => setActiveFilter("reports")}
-              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap cursor-pointer ${
                 activeFilter === "reports"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
               }`}
             >
-              Báo cáo & Điểm
+              {role === "Admin" ? "Chiến dịch & Đối tác" : "Báo cáo & Điểm"}
             </button>
             <button
               type="button"
               onClick={() => setActiveFilter("system")}
-              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-full transition-all whitespace-nowrap cursor-pointer ${
                 activeFilter === "system"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
               }`}
             >
-              Hạn chót & Hệ thống
+              {role === "Admin" ? "Bảo mật & Cấu hình" : "Hạn chót & Hệ thống"}
             </button>
           </div>
 
@@ -498,7 +485,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   Không có thông báo nào trong mục này
                 </p>
                 <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                  Mọi phản hồi và tin tức mới nhất sẽ tự động xuất hiện tại đây.
+                  Mọi cập nhật và tin tức mới nhất sẽ tự động xuất hiện tại đây.
                 </p>
               </div>
             ) : (
@@ -554,7 +541,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     <button
                       type="button"
                       onClick={(e) => handleDeleteNotification(item.id, e)}
-                      className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600"
+                      className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
                       title="Xóa thông báo"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -567,19 +554,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
           {/* Footer Actions */}
           <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-            {USE_MOCK ? (
-              <button
-                type="button"
-                onClick={handleSimulateNewNotification}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-100/60 hover:bg-blue-100 rounded-md transition-colors"
-                title="Thử nghiệm nhận thông báo đẩy tức thì"
-              >
-                <Sparkles className="w-3 h-3 text-blue-600" />
-                <span>Mô phỏng tin mới</span>
-              </button>
-            ) : (
-              <div />
-            )}
+            <span className="text-[11px] text-slate-400 font-medium">
+              Tự động cập nhật thời gian thực
+            </span>
 
             <button
               type="button"
@@ -591,7 +568,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   else onNavigate("admin-notifications");
                 }
               }}
-              className="font-bold text-[11px] text-slate-700 hover:text-blue-600 transition-colors flex items-center gap-1"
+              className="font-bold text-[11px] text-slate-700 hover:text-blue-600 transition-colors flex items-center gap-1 cursor-pointer"
             >
               <span>Xem tất cả</span>
               <ChevronRight className="w-3 h-3" />

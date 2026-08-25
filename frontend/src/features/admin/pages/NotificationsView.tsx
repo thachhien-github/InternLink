@@ -165,7 +165,7 @@ export const NotificationsView = ({
   onShowToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
 }) => {
-  const { stats: navStats } = useAdminNavStats(!USE_MOCK);
+  const { stats: navStats } = useAdminNavStats(true);
   const {
     notifications,
     loading: isLoading,

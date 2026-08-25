@@ -31,11 +31,12 @@ public class AdminNotificationService : IAdminNotificationService
             .ToListAsync();
 
         var campaigns = notifications
-            .GroupBy(n => new { n.Title, n.Content, n.CreatedAt })
+            .GroupBy(n => new { n.Title, n.Content })
             .Select(g =>
             {
                 var roles = g.Select(x => x.User?.Role).Where(r => r.HasValue).Select(r => r!.Value).Distinct().ToList();
                 var audience = InferAudience(roles);
+                var latestSentAt = g.Max(x => x.CreatedAt);
                 return new AdminNotificationCampaignDto
                 {
                     Title = g.Key.Title,
@@ -43,7 +44,7 @@ public class AdminNotificationService : IAdminNotificationService
                     Audience = audience,
                     RecipientCount = g.Count(),
                     ReadCount = g.Count(x => x.IsRead),
-                    SentAt = g.Key.CreatedAt,
+                    SentAt = latestSentAt,
                 };
             })
             .OrderByDescending(c => c.SentAt)
@@ -131,13 +132,28 @@ public class AdminNotificationService : IAdminNotificationService
         var title = request.Title.Trim();
         var content = request.Content.Trim();
 
+        var minTime = sentAt.AddSeconds(-2);
+        var maxTime = sentAt.AddSeconds(2);
+
         var items = await _db.Notifications
             .Where(n =>
                 !n.IsDeleted &&
                 n.Title == title &&
                 n.Content == content &&
-                n.CreatedAt == sentAt)
+                n.CreatedAt >= minTime &&
+                n.CreatedAt <= maxTime)
             .ToListAsync();
+
+        if (items.Count == 0)
+        {
+            // Fallback match on title and content if date is slightly shifted
+            items = await _db.Notifications
+                .Where(n =>
+                    !n.IsDeleted &&
+                    n.Title == title &&
+                    n.Content == content)
+                .ToListAsync();
+        }
 
         if (items.Count == 0)
             return 0;

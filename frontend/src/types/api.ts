@@ -362,6 +362,8 @@ export interface NotificationDto {
   title: string;
   content: string;
   link?: string | null;
+  senderName?: string | null;
+  senderRole?: string | null;
   isRead: boolean;
   readAt?: string | null;
   createdAt: string;

@@ -38,6 +38,7 @@ public class LecturerProfileServiceTests
             _mapper,
             new PasswordHasher<User>(),
             email ?? Mock.Of<IEmailService>(),
+            Mock.Of<IExcelService>(),
             NullLogger<LecturerProfileService>.Instance);
     }
 

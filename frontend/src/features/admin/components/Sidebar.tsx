@@ -38,6 +38,7 @@ export const Sidebar = ({
 }) => {
   const unassigned = stats?.unassignedCount ?? 0;
   const campaigns = stats?.notificationCampaignCount ?? 0;
+  const unread = stats?.unreadNotificationCount ?? 0;
 
   const navSections: { title: string; items: NavItem[] }[] = [
     {
@@ -100,7 +101,11 @@ export const Sidebar = ({
           id: "admin-notifications",
           label: "Thông báo",
           icon: Bell,
-          ...(campaigns > 0 ? { badge: String(campaigns) } : {}),
+          ...(unread > 0
+            ? { badge: String(unread), badgeAlert: true }
+            : campaigns > 0
+            ? { badge: String(campaigns) }
+            : {}),
         },
         { id: "admin-settings", label: "Cài đặt", icon: Settings },
         { id: "admin-account", label: "Tài khoản", icon: User },

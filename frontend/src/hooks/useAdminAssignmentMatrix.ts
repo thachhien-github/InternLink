@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { getApiErrorMessage } from "../lib/apiClient";
 import {
   buildAssignmentMaps,
@@ -23,13 +22,13 @@ export function useAdminAssignmentMatrix(
 ) {
   const [lecturers, setLecturers] = useState<AssignmentLecturerRow[]>([]);
   const [students, setStudents] = useState<AssignmentStudentRow[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled && !USE_MOCK);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [selectedLecturerId, setSelectedLecturerId] = useState<string | null>(
     null,
   );
 
   const load = useCallback(async () => {
-    if (USE_MOCK || !enabled) return;
+    if (!enabled) return;
     setIsLoading(true);
     try {
       const [lecturerDtos, studentDtos] = await Promise.all([

@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
@@ -159,18 +158,14 @@ export const AccountView = ({
 
     setIsPasswordLoading(true);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-      } else {
-        if (!currentPassword.trim()) {
-          setPasswordError("Vui lòng nhập mật khẩu hiện tại.");
-          return;
-        }
-        await authService.changePassword({
-          currentPassword,
-          newPassword,
-        });
+      if (!currentPassword.trim()) {
+        setPasswordError("Vui lòng nhập mật khẩu hiện tại.");
+        return;
       }
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+      });
       setPasswordSaved(true);
       setCurrentPassword("");
       setNewPassword("");

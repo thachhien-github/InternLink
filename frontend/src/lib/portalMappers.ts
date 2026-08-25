@@ -260,17 +260,46 @@ export function mapEvaluationListItemToUi(e: EvaluationListItemDto) {
 }
 
 export function mapNotificationDtoToStudentUi(n: NotificationDto) {
+  const text = `${n.title} ${n.content}`.toLowerCase();
+  
+  let category = "Thông báo Khoa";
+  let senderName = "Văn phòng Khoa CNTT";
+  let senderRole = "Khoa / Quản trị";
+
+  if (text.includes("giảng viên") || text.includes("gvhd") || text.includes("nhận xét") || text.includes("phê duyệt") || text.includes("báo cáo tuần")) {
+    category = "Giảng viên";
+    senderName = n.senderName || "Giảng viên hướng dẫn";
+    senderRole = "GVHD";
+  } else if (text.includes("doanh nghiệp") || text.includes("công ty") || text.includes("mentor") || text.includes("đánh giá giữa kỳ") || text.includes("tiếp nhận")) {
+    category = "Doanh nghiệp";
+    senderName = n.senderName || "Doanh nghiệp thực tập";
+    senderRole = "Doanh nghiệp";
+  } else if (text.includes("hạn nộp") || text.includes("deadline") || text.includes("nhắc nhở") || text.includes("hạn chót") || text.includes("khóa cổng")) {
+    category = "Deadline";
+    senderName = n.senderName || "Hệ thống InternLink";
+    senderRole = "Ban Quản lý";
+  } else if (n.senderName) {
+    senderName = n.senderName;
+  }
+
+  let priority = "Bình thường";
+  if (text.includes("khẩn") || text.includes("gấp") || text.includes("hạn chót") || text.includes("cảnh báo")) {
+    priority = "Khẩn";
+  } else if (!n.isRead || text.includes("quan trọng") || text.includes("chú ý") || text.includes("nhắc nhở")) {
+    priority = "Quan trọng";
+  }
+
   return {
     id: n.id,
     title: n.title,
     description: n.content.slice(0, 120) + (n.content.length > 120 ? "…" : ""),
     fullContent: n.content,
-    senderName: "InternLink",
-    senderRole: "Hệ thống",
+    senderName,
+    senderRole,
     dateStr: formatViDate(n.createdAt),
     timeAgo: formatViDate(n.createdAt),
-    category: "Thông báo",
-    priority: n.isRead ? "Thường" : "Quan trọng",
+    category,
+    priority,
     isUnread: !n.isRead,
     relatedModule: n.link ?? "—",
     relatedTab: n.link ?? "",
@@ -283,17 +312,50 @@ export function mapNotificationDtoToStudentUi(n: NotificationDto) {
 /** UI row for Lecturer NotificationsView inbox. */
 export function mapNotificationDtoToLecturerUi(n: NotificationDto) {
   const isUnread = !n.isRead;
+  const text = `${n.title} ${n.content}`.toLowerCase();
+
+  let category: "Hệ thống & Admin" | "Tiến độ Deadline" | "Phản hồi SV" | "Doanh nghiệp" = "Hệ thống & Admin";
+  let sender = n.senderName || "Hệ thống InternLink";
+
+  if (text.includes("sinh viên") || text.includes("báo cáo") || text.includes("nộp") || text.includes("phản hồi") || text.includes("nhận xét")) {
+    category = "Phản hồi SV";
+    sender = n.senderName || "Sinh viên thực tập";
+  } else if (text.includes("deadline") || text.includes("hạn") || text.includes("nhắc nhở") || text.includes("khóa sổ") || text.includes("hết hạn")) {
+    category = "Tiến độ Deadline";
+    sender = "Ban Quản lý đào tạo";
+  } else if (text.includes("doanh nghiệp") || text.includes("công ty") || text.includes("đối tác") || text.includes("tiếp nhận")) {
+    category = "Doanh nghiệp";
+    sender = n.senderName || "Doanh nghiệp đối tác";
+  }
+
+  let priority: "Thông thường" | "Quan trọng" | "Khẩn cấp" = "Thông thường";
+  let type: "system" | "deadline" | "feedback" | "urgent" = "system";
+  let color: "blue" | "amber" | "rose" | "emerald" = "blue";
+
+  if (text.includes("khẩn") || text.includes("gấp") || text.includes("cảnh báo")) {
+    priority = "Khẩn cấp";
+    type = "urgent";
+    color = "rose";
+  } else if (isUnread || text.includes("quan trọng") || text.includes("deadline")) {
+    priority = "Quan trọng";
+    type = category === "Tiến độ Deadline" ? "deadline" : "urgent";
+    color = "amber";
+  } else if (category === "Phản hồi SV") {
+    type = "feedback";
+    color = "blue";
+  }
+
   return {
     id: n.id,
     title: n.title,
-    desc:
-      n.content.slice(0, 90) + (n.content.length > 90 ? "…" : ""),
-    type: isUnread ? "urgent" : "system",
-    priority: isUnread ? "Quan trọng" : "Thông thường",
-    color: isUnread ? "amber" : "blue",
+    desc: n.content.slice(0, 90) + (n.content.length > 90 ? "…" : ""),
+    type,
+    category,
+    priority,
+    color,
     isUnread,
     time: formatViDate(n.createdAt),
-    sender: "InternLink",
+    sender,
     receiver: "Giảng viên",
     content: n.content,
     attachments: [] as string[],

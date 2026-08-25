@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { USE_MOCK } from "../config/env";
 import { getApiErrorMessage } from "../lib/apiClient";
 import { adminCompaniesService } from "../services/adminCompanies.service";
 import { adminAssignmentsService } from "../services/adminAssignments.service";
@@ -135,56 +134,15 @@ export interface AdminDashboardStats {
   recentActivities: AdminDashboardActivity[];
 }
 
-const MOCK_STATS: AdminDashboardStats = {
-  lecturerCount: 42,
-  lecturersWithStudents: 38,
-  studentCount: 1280,
-  activeStudents: 1180,
-  pendingStudentAccounts: 12,
-  pendingLecturerAccounts: 3,
-  companyCount: 185,
-  activeCompanies: 124,
-  internshipTotal: 2,
-  internshipInProgress: 2,
-  internshipStats: {
-    total: 1280,
-    notStarted: 45,
-    inProgress: 980,
-    behindSchedule: 12,
-    awaitingFeedback: 86,
-    requiresRevision: 34,
-    completed: 98,
-    graded: 25,
-  },
-  assignedStudents: 1235,
-  unassignedStudents: 45,
-  avgStudentsPerLecturer: 30.2,
-  workloadBreakdown: [
-    { category: "Đạt định mức (10–30 SV)", count: 24, percent: 57.1, color: "bg-emerald-500" },
-    { category: "Tải cao (31–35 SV)", count: 12, percent: 28.6, color: "bg-amber-500" },
-    { category: "Quá tải (>35 SV)", count: 2, percent: 4.8, color: "bg-rose-500" },
-    { category: "Dưới định mức (<10 SV)", count: 4, percent: 9.5, color: "bg-blue-500" },
-  ],
-  actionItems: [],
-  recentActivities: [],
-};
-
 export function useAdminDashboardStats(
   enabled: boolean,
   onError?: (msg: string) => void,
 ) {
-  const [stats, setStats] = useState<AdminDashboardStats | null>(
-    USE_MOCK ? MOCK_STATS : null,
-  );
-  const [isLoading, setIsLoading] = useState(enabled && !USE_MOCK);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
-    if (USE_MOCK) {
-      setStats(MOCK_STATS);
-      setUpdatedAt(new Date());
-      return;
-    }
     if (!enabled) return;
 
     setIsLoading(true);

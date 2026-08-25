@@ -11,12 +11,12 @@ import {
 export const Sidebar = ({
   activeTab,
   onNavigate,
-  _onSwitchPortal,
+  onSwitchPortal,
   studentName = "Nguyễn Văn A",
 }: {
   activeTab: string;
   onNavigate: (tab: string) => void;
-  _onSwitchPortal?: (role: string) => void;
+  onSwitchPortal?: (role: any) => void;
   studentName?: string;
 }) => {
   const navSections = [

@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { lecturerExportService } from "../../../services/lecturerExport.service";
 import {
@@ -55,117 +54,7 @@ export const ExportView = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const handleExportMockCsv = () => {
-    const headers = [
-      "STT",
-      "Mã số SV",
-      "Họ và tên",
-      "Lớp",
-      "Ngành học",
-      "Doanh nghiệp thực tập",
-      "Giảng viên hướng dẫn",
-      "Số báo cáo tuần",
-      "Điểm DN (40%)",
-      "Điểm GV (40%)",
-      "Điểm Bảo vệ (20%)",
-      "Điểm Tổng kết",
-      "Xếp loại",
-      "Trạng thái",
-      "Nhận xét",
-    ];
-
-    const sampleRows = [
-      [
-        1,
-        '"20210001"',
-        '"Nguyễn Văn An"',
-        '"CNTT-K15A"',
-        '"Kỹ thuật Phần mềm"',
-        '"FPT Software"',
-        '"ThS. Nguyễn Văn Phước"',
-        '"12/12"',
-        9.2,
-        9.0,
-        9.5,
-        9.2,
-        '"Xuất sắc"',
-        '"Hoàn thành"',
-        '"Hoàn thành xuất sắc đề tài"',
-      ],
-      [
-        2,
-        '"20210002"',
-        '"Trần Thị Bình"',
-        '"CNTT-K15B"',
-        '"Khoa học Dữ liệu"',
-        '"Viettel Telecom"',
-        '"ThS. Nguyễn Văn Phước"',
-        '"12/12"',
-        9.5,
-        9.3,
-        9.0,
-        9.3,
-        '"Xuất sắc"',
-        '"Hoàn thành"',
-        '"Báo cáo Data Pipeline xuất sắc"',
-      ],
-      [
-        3,
-        '"20210003"',
-        '"Lê Hoàng Cường"',
-        '"HTTT-K15"',
-        '"Hệ thống Thông tin"',
-        '"VNG Corporation"',
-        '"ThS. Nguyễn Văn Phước"',
-        '"11/12"',
-        8.5,
-        8.0,
-        8.5,
-        8.3,
-        '"Giỏi"',
-        '"Hoàn thành"',
-        '"Kiến trúc Cloud tốt"',
-      ],
-      [
-        4,
-        '"20210004"',
-        '"Phạm Minh Đức"',
-        '"CNTT-K15A"',
-        '"Kỹ thuật Phần mềm"',
-        '"MISA Joint Stock Co."',
-        '"ThS. Nguyễn Văn Phước"',
-        '"12/12"',
-        8.8,
-        8.5,
-        8.8,
-        8.7,
-        '"Giỏi"',
-        '"Hoàn thành"',
-        '"Kỹ năng đáp ứng tốt chuẩn"',
-      ],
-    ];
-
-    const csvContent =
-      "\uFEFF" +
-      [headers.join(","), ...sampleRows.map((r) => r.join(","))].join("\r\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Bang_Diem_Tong_Hop_Thuc_Tap_HK1_2026.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    onShowToast(`Đã xuất và tải xuống bảng điểm tổng hợp (.csv) thành công!`);
-  };
-
   const handleExport = async () => {
-    if (USE_MOCK) {
-      handleExportMockCsv();
-      return;
-    }
     setIsExporting(true);
     try {
       const { blob, filename } =

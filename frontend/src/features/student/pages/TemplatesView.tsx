@@ -17,8 +17,6 @@ import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToStudentTemplate } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
-import { USE_MOCK } from "../../../config/env";
-import { loadStoredTemplates } from "../../../data/initialTemplatesData";
 
 export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => void }) => {
   const { internshipId, profile } = useStudentPortal();
@@ -29,50 +27,21 @@ export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => v
   const pageSize = 6;
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load templates from API or sync with stored circulating templates
+  // Load templates from API
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setIsLoading(true);
       try {
-        if (!USE_MOCK) {
-          const docs = internshipId
-            ? await documentService.getByInternship(internshipId)
-            : await documentService.getAll();
-          if (!cancelled) {
-            // Only show published / circulating documents for students
-            const activeDocs = docs.filter((d: any) => d.status !== "Ngưng lưu hành" && d.status !== "Lưu trữ");
-            setTemplates(activeDocs.map(mapDocumentListItemToStudentTemplate));
-          }
-        } else {
-          // In mock/local storage mode: load from stored templates and ONLY take circulating templates
-          const stored = loadStoredTemplates();
-          const circulatingOnly = stored.filter(
-            (d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng",
-          );
-
-          const studentMapped = circulatingOnly.map((d) => ({
-            id: d.id,
-            code: `${d.category.slice(0, 3).toUpperCase()}-${d.id.slice(0, 4).toUpperCase()}`,
-            name: d.title,
-            category: d.category || "Biểu mẫu",
-            fileType: d.fileType || "DOCX",
-            fileSize: d.fileSize || "1.2 MB",
-            version: d.version || "v1.0",
-            uploadDate: d.updatedAt,
-            uploaderName: d.uploader,
-            uploaderRole: d.uploaderRole || "Giảng viên hướng dẫn",
-            isRequired: d.isRequired ?? false,
-            description: d.description || "",
-            usageInstructions: "Tải file về máy và làm theo đúng quy cách hướng dẫn của Giảng viên.",
-            downloadCount: d.downloads || 0,
-            fileName: `${d.title}.${d.fileType.toLowerCase()}`,
-            semester: d.semester,
-          }));
-
-          if (!cancelled) {
-            setTemplates(studentMapped);
-          }
+        const docs = internshipId
+          ? await documentService.getByInternship(internshipId)
+          : await documentService.getAll();
+        if (!cancelled) {
+          // Only show published / circulating documents for students
+          const activeDocs = docs.filter((d: any) => d.status !== "Ngưng lưu hành" && d.status !== "Lưu trữ");
+          setTemplates(activeDocs.map(mapDocumentListItemToStudentTemplate));
         }
       } catch (err) {
         if (!cancelled) onShowToast(getApiErrorMessage(err));
@@ -97,21 +66,6 @@ export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => v
 
   const handleDownload = async (doc: any) => {
     try {
-      if (USE_MOCK) {
-        const ext = (doc.fileType || "doc").toLowerCase();
-        const content = `TRƯỜNG ĐẠI HỌC - KHOA CÔNG NGHỆ THÔNG TIN\nBIỂU MẪU CHÍNH THỨC: ${doc.name?.toUpperCase()}\nPhân loại: ${doc.category || "Biểu mẫu"}\nMã biểu mẫu: ${doc.code || "BM-01"}\nPhiên bản: ${doc.version || "v1.0"}\n\n1. MỤC ĐÍCH:\n${doc.description || "Tài liệu hướng dẫn và biểu mẫu chuẩn hóa thực tập tốt nghiệp."}\n\n2. HƯỚNG DẪN SỬ DỤNG:\n${doc.usageInstructions || "Điền đầy đủ thông tin và nộp lại cho Giảng viên hướng dẫn theo đúng hạn quy định."}\n\n(Ban hành bởi: ${doc.uploaderName || "Khoa Công nghệ Thông tin"})\n`;
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${(doc.fileName || doc.name || "Bieu_Mau").replace(/[\/\\:*?"<>|]/g, "_")}.${ext === "docx" ? "doc" : ext === "pdf" ? "txt" : ext}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        onShowToast(`Đã tải xuống biểu mẫu: ${doc.name}`);
-        return;
-      }
       const { blob, filename } = await documentService.download(
         doc.id,
         doc.fileName || `${doc.name}.bin`,

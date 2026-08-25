@@ -75,7 +75,44 @@ export const DEFAULT_MOCK_NOTIFICATIONS: AdminNotificationItem[] = [
     createdBy: "Super Admin (Phòng Đào tạo)",
     status: "sent",
   },
+  {
+    id: "TB-2026-085",
+    title: "Thông báo Tiếp nhận Sinh viên Thực tập Doanh nghiệp Đợt 1",
+    content:
+      "Hệ thống đã phê duyệt danh sách các đơn vị đối tác gồm VNG, FPT Software, Viettel và TMA Solutions tiếp nhận sinh viên khóa K20.",
+    type: "Doanh nghiệp",
+    priority: "medium",
+    audienceType: "all",
+    audienceLabel: "Toàn bộ hệ thống",
+    recipientCount: 1322,
+    sentAt: "05/08/2026 10:00",
+    createdAt: "05/08/2026 09:30",
+    createdBy: "Super Admin (Quan hệ Doanh nghiệp)",
+    status: "sent",
+  },
 ];
+
+const CAMPAIGNS_STORAGE_KEY = "internlink_admin_campaigns_cache";
+
+function getCachedCampaigns(): AdminNotificationItem[] {
+  if (typeof window === "undefined") return DEFAULT_MOCK_NOTIFICATIONS;
+  try {
+    const raw = localStorage.getItem(CAMPAIGNS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_MOCK_NOTIFICATIONS;
+}
+
+function saveCachedCampaigns(items: AdminNotificationItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent("internlink_notification_updated"));
+  } catch {}
+}
 
 export interface UseAdminNotificationsState {
   notifications: AdminNotificationItem[];
@@ -97,14 +134,14 @@ export interface UseAdminNotificationsState {
 
 export const useAdminNotifications = (): UseAdminNotificationsState => {
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>(
-    USE_MOCK ? DEFAULT_MOCK_NOTIFICATIONS : [],
+    () => (USE_MOCK ? getCachedCampaigns() : []),
   );
   const [loading, setLoading] = useState<boolean>(!USE_MOCK);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchCampaigns = useCallback(async () => {
     if (USE_MOCK) {
-      setNotifications(DEFAULT_MOCK_NOTIFICATIONS);
+      setNotifications(getCachedCampaigns());
       setLoading(false);
       return;
     }
@@ -112,9 +149,11 @@ export const useAdminNotifications = (): UseAdminNotificationsState => {
     setError(null);
     try {
       const campaigns = await adminNotificationsService.getCampaigns(100);
-      setNotifications(campaigns.map(mapCampaignToAdminRow));
+      const mapped = campaigns.map(mapCampaignToAdminRow);
+      setNotifications(mapped);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(getApiErrorMessage(err)));
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -154,12 +193,19 @@ export const useAdminNotifications = (): UseAdminNotificationsState => {
         createdBy: "Super Admin",
         status: "sent",
       };
-      setNotifications((prev) => [newNotif, ...prev]);
+      setNotifications((prev) => {
+        const updated = [newNotif, ...prev];
+        saveCachedCampaigns(updated);
+        return updated;
+      });
       return mockResult;
     }
 
     const res = await adminNotificationsService.broadcast(payload);
     await fetchCampaigns();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("internlink_notification_updated"));
+    }
     return res;
   };
 
@@ -171,16 +217,18 @@ export const useAdminNotifications = (): UseAdminNotificationsState => {
     if (!USE_MOCK) {
       await adminNotificationsService.deleteCampaign(target);
     }
-    setNotifications((prev) =>
-      prev.filter(
+    setNotifications((prev) => {
+      const updated = prev.filter(
         (n) =>
           !(
             n.title === target.title &&
             n.content === target.content &&
             (n.campaignSentAt === target.sentAt || n.sentAt === target.sentAt)
           ),
-      ),
-    );
+      );
+      saveCachedCampaigns(updated);
+      return updated;
+    });
   };
 
   return {
