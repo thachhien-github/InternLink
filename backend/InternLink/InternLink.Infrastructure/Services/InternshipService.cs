@@ -420,10 +420,16 @@ public class InternshipService : IInternshipService
         return true;
     }
 
-    public async Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null)
+    public async Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null, Guid? semesterId = null)
     {
         var query = _db.Internships.Where(i => !i.IsDeleted);
         query = ApplyLecturerScope(query, lecturerId);
+
+        if (semesterId.HasValue && semesterId.Value != Guid.Empty)
+        {
+            query = query.Where(i => i.SemesterId == semesterId.Value);
+        }
+
         var internships = await query.ToListAsync();
 
         return new InternshipStatsDto

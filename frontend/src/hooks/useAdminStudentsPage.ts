@@ -11,7 +11,10 @@ import { adminUsersService } from "../services/adminUsers.service";
 
 export type AdminStudentRow = ReturnType<typeof mapStudentDtoToRow>;
 
-export function useAdminStudentsPage(onError?: (msg: string) => void) {
+export function useAdminStudentsPage(
+  semesterId?: string | null,
+  onError?: (msg: string) => void,
+) {
   const [students, setStudents] = useState<AdminStudentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,7 +29,9 @@ export function useAdminStudentsPage(onError?: (msg: string) => void) {
 
       const assignmentGroups = await Promise.all(
         lecturerRows.map((l) =>
-          adminAssignmentsService.getByLecturer(l.id).catch(() => []),
+          adminAssignmentsService
+            .getByLecturer(l.id, semesterId ?? undefined)
+            .catch(() => []),
         ),
       );
 
@@ -60,7 +65,7 @@ export function useAdminStudentsPage(onError?: (msg: string) => void) {
     } finally {
       setIsLoading(false);
     }
-  }, [onError]);
+  }, [semesterId, onError]);
 
   useEffect(() => {
     void load();

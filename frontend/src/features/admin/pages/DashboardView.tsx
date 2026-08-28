@@ -36,6 +36,7 @@ export const DashboardView = ({
   const { currentSemester } = useSemester();
   const { stats, isLoading, updatedAt, reload } = useAdminDashboardStats(
     true,
+    currentSemester?.id,
     onShowToast,
   );
 
@@ -45,24 +46,24 @@ export const DashboardView = ({
     onShowToast("Đã làm mới dữ liệu tổng quan!");
   };
 
-  const handleExportC23 = async () => {
+  const handleExportInternshipList = async () => {
     setIsExporting(true);
     try {
       await exportService.downloadInternshipExcel(currentSemester?.id);
-      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+      onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
-      onShowToast("Xuất file C23 thất bại. Đang tải báo cáo tổng quan...");
+      onShowToast("Xuất danh sách thực tập thất bại. Đang tải báo cáo tổng quan...");
       if (stats) exportAdminDashboardReport(stats);
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleExportC22A = async () => {
+  const handleExportSummaryReport = async () => {
     setIsExporting(true);
     try {
       await exportService.downloadSummaryReport(currentSemester?.id);
-      onShowToast("Đã tải xuống Báo cáo tổng kết C22A (.xlsx)");
+      onShowToast("Đã tải xuống Báo cáo tổng kết thực tập (.xlsx)");
     } catch (err) {
       onShowToast("Xuất báo cáo tổng kết thất bại.");
     } finally {
@@ -103,17 +104,17 @@ export const DashboardView = ({
             loading: isLoading,
           },
           {
-            label: isExporting ? "Đang xuất…" : "Xuất bảng điểm C23",
+            label: isExporting ? "Đang xuất…" : "Xuất danh sách thực tập",
             icon: Download,
-            onClick: () => void handleExportC23(),
+            onClick: () => void handleExportInternshipList(),
             variant: "secondary",
             disabled: isExporting || isLoading,
             loading: isExporting,
           },
           {
-            label: "Báo cáo tổng kết C22A",
+            label: "Xuất báo cáo tổng kết",
             icon: Download,
-            onClick: () => void handleExportC22A(),
+            onClick: () => void handleExportSummaryReport(),
             variant: "secondary",
             disabled: isExporting || isLoading,
           },

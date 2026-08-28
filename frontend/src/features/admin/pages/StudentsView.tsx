@@ -27,6 +27,7 @@ import { CreateStudentModal } from "../components/modals/CreateStudentModal";
 import type { CreateStudentFormPayload } from "../components/modals/CreateStudentModal";
 import { EditStudentModal } from "../components/modals/EditStudentModal";
 import type { EditStudentFormPayload } from "../components/modals/EditStudentModal";
+import { ImportStudentsModal } from "../components/modals/ImportStudentsModal";
 import type { AdminStudentRow } from "../../../hooks/useAdminStudentsPage";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
@@ -37,6 +38,7 @@ import { SkeletonBox } from "../../../components/common/SkeletonLoader";
 import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
+import { ImportStudentsModal } from "../components/modals/ImportStudentsModal";
 import { adminStudentsService } from "../../../services/adminStudents.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
 import { exportService } from "../../../services/export.service";
@@ -51,7 +53,7 @@ export const StudentsView = ({
 }) => {
   const { selectedSemester } = useSemester();
   const [searchParams] = useSearchParams();
-  const apiPage = useAdminStudentsPage(onShowToast);
+  const apiPage = useAdminStudentsPage(selectedSemester?.id, onShowToast);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<AdminStudentRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminStudentRow | null>(null);
@@ -607,44 +609,12 @@ export const StudentsView = ({
       onShowToast(getApiErrorMessage(err));
     }
   };
-  const handleFileDrop = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImportFileName(e.target.files[0].name);
-      setImportFile(e.target.files[0]);
-    }
-  };
 
-  const handleConfirmImport = async () => {
-    if (USE_MOCK) {
-      onShowToast("Đã import thành công danh sách sinh viên từ Excel");
-      setIsImportModalOpen(false);
-      return;
-    }
-    if (!importFile) {
-      onShowToast("Vui lòng chọn file Excel trước khi import");
-      return;
-    }
-    setIsImporting(true);
-    try {
-      const result = await adminStudentsService.importExcel(importFile);
-      await reloadStudents();
-      onShowToast(
-        `Import xong: ${result.successCount}/${result.totalRows} sinh viên · email: ${result.emailSentCount} · MK: 8 ký tự ngẫu nhiên/email`,
-      );
-      setIsImportModalOpen(false);
-      setImportFile(null);
-      setImportFileName(null);
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
-  const handleExportC23 = async () => {
+  const handleExportInternshipList = async () => {
     try {
       await exportService.downloadInternshipExcel(selectedSemester?.id);
-      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+      onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     }
@@ -658,9 +628,9 @@ export const StudentsView = ({
         subtitle="Danh sách sinh viên đồng bộ từ API — GV, DN, tài khoản"
         actions={[
           {
-            label: "Xuất Excel C23",
+            label: "Xuất danh sách thực tập",
             icon: Download,
-            onClick: () => void handleExportC23(),
+            onClick: () => void handleExportInternshipList(),
             variant: "secondary",
           },
           {
@@ -1045,74 +1015,6 @@ export const StudentsView = ({
         </div>
       </Panel>
 
-      {/* IMPORT EXCEL MODAL */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-lg w-full p-6 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-bold text-slate-900 text-base">
-                  Import Danh sách Sinh viên từ Excel
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/20 rounded-lg p-6 transition-all text-center relative cursor-pointer">
-              <input
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleFileDrop}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-              <div className="space-y-2 flex flex-col items-center">
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center shadow-xs">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">
-                    Kéo thả file Excel (.xlsx) vào đây hoặc{" "}
-                    <span className="text-blue-600 underline">
-                      bấm để chọn file
-                    </span>
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Hỗ trợ định dạng .XLSX, .XLS - Tối đa 15MB
-                  </p>
-                </div>
-                {importFileName && (
-                  <p className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> {importFileName}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => void handleDownloadTemplate()}
-                className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Tải file Excel mẫu</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsImportModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-md cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={() => void handleConfirmImport()}
                   disabled={isImporting}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-md shadow-xs cursor-pointer"
                 >
@@ -1318,6 +1220,15 @@ export const StudentsView = ({
           </div>
         </div>
       )}
+
+      {/* IMPORT STUDENTS MODAL */}
+      <ImportStudentsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onShowToast={onShowToast}
+        onSuccess={() => void reloadStudents()}
+        currentSemesterId={selectedSemester?.id}
+      />
 
       {/* CREATE STUDENT MODAL */}
       <CreateStudentModal

@@ -5,6 +5,9 @@ import type {
   AutoAssignResultDto,
   BulkAssignRequestDto,
   BulkAssignResultDto,
+  CompanyAllocationImportResultDto,
+  CompanyAllocationItemDto,
+  LecturerAssignmentImportResultDto,
   LecturerAssignmentItemDto,
 } from "../types/api";
 
@@ -16,9 +19,10 @@ export const adminAssignmentsService = {
     });
   },
 
-  getByLecturer(lecturerId: string) {
+  getByLecturer(lecturerId: string, semesterId?: string) {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
     return apiRequest<LecturerAssignmentItemDto[]>(
-      `/api/Admin/assignments/by-lecturer/${lecturerId}`,
+      `/api/Admin/assignments/by-lecturer/${lecturerId}${qs}`,
     );
   },
 
@@ -42,10 +46,69 @@ export const adminAssignmentsService = {
     });
   },
 
-  downloadExport() {
+  downloadExport(semesterId?: string) {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
-      "/api/Admin/assignments/export",
-      "phan-cong-huong-dan.xlsx",
+      `/api/Admin/assignments/export${qs}`,
+      "Danh-sach-phan-cong-GVHD.xlsx",
+    );
+  },
+
+  // Company Allocation
+  getCompanyAllocations(semesterId?: string) {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<CompanyAllocationItemDto[]>(
+      `/api/Admin/assignments/company-allocation${qs}`,
+    );
+  },
+
+  downloadCompanyAllocationTemplate() {
+    return downloadAuthenticatedFile(
+      "/api/Admin/assignments/company-allocation/template",
+      "Mau_Import_Phan_Bo_Doanh_Nghiep.xlsx",
+    );
+  },
+
+  importCompanyAllocations(file: File, semesterId?: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<CompanyAllocationImportResultDto>(
+      `/api/Admin/assignments/company-allocation/import${qs}`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+  },
+
+  downloadCompanyAllocationExport(semesterId?: string) {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return downloadAuthenticatedFile(
+      `/api/Admin/assignments/company-allocation/export${qs}`,
+      "DanhSachPhanBoDoanhNghiep.xlsx",
+    );
+  },
+
+  // Lecturer Assignment Import & Template
+  downloadLecturerAssignmentTemplate() {
+    return downloadAuthenticatedFile(
+      "/api/Admin/assignments/template",
+      "Mau_Import_Phan_Cong_Giang_Vien.xlsx",
+    );
+  },
+
+  importLecturerAssignments(file: File, semesterId?: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<LecturerAssignmentImportResultDto>(
+      `/api/Admin/assignments/import${qs}`,
+      {
+        method: "POST",
+        body: formData,
+      },
     );
   },
 };
+

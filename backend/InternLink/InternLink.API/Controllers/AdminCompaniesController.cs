@@ -149,7 +149,7 @@ public class AdminCompaniesController : ControllerBase
     public IActionResult DownloadImportTemplate()
     {
         var bytes = _companyService.GetCompanyImportTemplate();
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "company-import-template.xlsx");
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Mau-danh-sach-doanh-nghiep.xlsx");
     }
 
     [HttpPost("import")]
@@ -183,7 +183,7 @@ public class AdminCompaniesController : ControllerBase
     public async Task<IActionResult> Export()
     {
         var bytes = await _companyService.ExportCompaniesExcelAsync();
-        var fileName = $"danh-sach-doanh-nghiep-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        var fileName = $"Danh-sach-doanh-nghiep-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }

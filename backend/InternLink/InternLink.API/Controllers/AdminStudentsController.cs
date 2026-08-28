@@ -136,7 +136,7 @@ public class AdminStudentsController : ControllerBase
     public IActionResult DownloadImportTemplate()
     {
         var bytes = _studentService.GetStudentImportTemplate();
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "student-import-template.xlsx");
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Mau-danh-sach-SV.xlsx");
     }
 
     [HttpPost("import")]
@@ -170,7 +170,7 @@ public class AdminStudentsController : ControllerBase
     public async Task<IActionResult> Export([FromQuery] Guid? semesterId = null)
     {
         var bytes = await _studentService.ExportStudentsExcelAsync(semesterId);
-        var fileName = $"danh-sach-sinh-vien-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        var fileName = $"Danh-sach-SV-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }

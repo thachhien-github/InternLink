@@ -36,6 +36,8 @@ import {
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapNotificationDtoToLecturerUi } from "../../../lib/portalMappers";
 import { notificationService } from "../../../services/notification.service";
+import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
+import type { InternshipDto } from "../../../types/api";
 
 export interface SystemNotificationItem {
   id: string;
@@ -135,6 +137,7 @@ export const NotificationsView = () => {
   >("all");
 
   const [notifications, setNotifications] = useState<SystemNotificationItem[]>([]);
+  const [assignedStudents, setAssignedStudents] = useState<InternshipDto[]>([]);
   const [selectedNotif, setSelectedNotif] = useState<SystemNotificationItem | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,7 +150,7 @@ export const NotificationsView = () => {
     {
       id: "s1",
       title: "Nhắc nhở nộp Báo cáo Tuần 6 đợt HK I - 2026",
-      audience: "Toàn bộ sinh viên Lớp C24A.TH1 (28 SV)",
+      audience: "Toàn bộ sinh viên hướng dẫn",
       scheduleTime: "08:00 - 02/11/2026",
       priority: "Quan trọng",
       status: "Đã lên lịch",
@@ -156,7 +159,7 @@ export const NotificationsView = () => {
     {
       id: "s2",
       title: "Yêu cầu doanh nghiệp xác nhận phiếu đánh giá cuối đợt",
-      audience: "6 Doanh nghiệp hợp tác",
+      audience: "Doanh nghiệp hợp tác",
       scheduleTime: "09:00 - 05/11/2026",
       priority: "Khẩn cấp",
       status: "Đang chờ gửi",
@@ -172,7 +175,7 @@ export const NotificationsView = () => {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTitle, setComposeTitle] = useState("");
   const [composeContent, setComposeContent] = useState("");
-  const [composeAudience, setComposeAudience] = useState("Toàn bộ sinh viên hướng dẫn (28 SV)");
+  const [composeAudience, setComposeAudience] = useState("Toàn bộ sinh viên hướng dẫn");
   const [composeSpecificStudent, setComposeSpecificStudent] = useState("");
   const [composePriority, setComposePriority] = useState<"Thông thường" | "Quan trọng" | "Khẩn cấp">("Thông thường");
   const [composeCategory, setComposeCategory] = useState<"Tiến độ Deadline" | "Phản hồi SV" | "Thông báo chung">("Thông báo chung");
@@ -196,13 +199,17 @@ export const NotificationsView = () => {
     }
   }, [notifications]);
 
-  // Load from API if not mock
+  // Load from API
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await notificationService.getMine();
+        const [rows, internships] = await Promise.all([
+          notificationService.getMine().catch(() => []),
+          lecturerInternshipsService.getAll().catch(() => []),
+        ]);
         if (cancelled) return;
+        setAssignedStudents(internships);
         const mapped = rows.map((n): SystemNotificationItem => {
           const base = mapNotificationDtoToLecturerUi(n);
           return {
@@ -1504,10 +1511,10 @@ export const NotificationsView = () => {
                     onChange={(e) => setComposeSpecificStudent(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-blue-500 font-semibold text-slate-900"
                   >
-                    <option value="">-- Chọn sinh viên trong danh sách 28 SV --</option>
-                    {INITIAL_STUDENTS.slice(0, 15).map((sv) => (
-                      <option key={sv.id} value={`${sv.name} (${sv.mssv} - ${sv.company})`}>
-                        {sv.name} (MSSV: {sv.mssv}) - {sv.company}
+                    <option value="">-- Chọn sinh viên nhận thông báo --</option>
+                    {assignedStudents.map((sv) => (
+                      <option key={sv.id} value={`${sv.studentName} (${sv.studentCode} - ${sv.companyName})`}>
+                        {sv.studentName} (MSSV: {sv.studentCode}) - {sv.companyName}
                       </option>
                     ))}
                   </select>

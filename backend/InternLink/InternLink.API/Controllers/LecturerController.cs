@@ -499,7 +499,7 @@ public class LecturerController : ControllerBase
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
         var bytes = await _lecturerService.ExportEndOfTermExcelAsync(userId.Value);
-        var fileName = $"tong-ket-cuoi-ky-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        var fileName = $"Tong-ket-cuoi-ky-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 

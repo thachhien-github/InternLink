@@ -18,6 +18,7 @@ export type AssignmentStudentRow = ReturnType<
 
 export function useAdminAssignmentMatrix(
   enabled: boolean,
+  semesterId?: string | null,
   onError?: (msg: string) => void,
 ) {
   const [lecturers, setLecturers] = useState<AssignmentLecturerRow[]>([]);
@@ -38,7 +39,9 @@ export function useAdminAssignmentMatrix(
 
       const assignmentGroups = await Promise.all(
         lecturerDtos.map((l) =>
-          adminAssignmentsService.getByLecturer(l.id).catch(() => []),
+          adminAssignmentsService
+            .getByLecturer(l.id, semesterId ?? undefined)
+            .catch(() => []),
         ),
       );
 
@@ -66,7 +69,7 @@ export function useAdminAssignmentMatrix(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, onError]);
+  }, [enabled, semesterId, onError]);
 
   useEffect(() => {
     load();

@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Clock,
   FileSpreadsheet,
+  FileUp,
   UserX,
   ChevronDown,
   ChevronUp,
@@ -38,6 +39,8 @@ import { adminAssignmentsService } from "../../../services/adminAssignments.serv
 import { exportService } from "../../../services/export.service";
 import { useAdminAssignmentMatrix } from "../../../hooks/useAdminAssignmentMatrix";
 import { useSemester } from "../../../contexts/SemesterContext";
+import { CompanyAllocationsTab } from "../components/CompanyAllocationsTab";
+import { ImportLecturerAssignmentsModal } from "../components/modals/ImportLecturerAssignmentsModal";
 
 export const AssignmentsView = ({
   onShowToast,
@@ -46,10 +49,10 @@ export const AssignmentsView = ({
   onShowToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
 }) => {
-  const apiMatrix = useAdminAssignmentMatrix(true, onShowToast);
   const { semesters, selectedSemesterId, selectedSemester: currentSemesterObj, selectSemester } = useSemester();
   const selectedSemester = selectedSemesterId;
   const setSelectedSemester = selectSemester;
+  const apiMatrix = useAdminAssignmentMatrix(true, selectedSemesterId, onShowToast);
   const [activeTab, setActiveTab] = useState("by-lecturer");
   const [mockLecturers, setMockLecturers] = useState([
     {
@@ -561,6 +564,7 @@ export const AssignmentsView = ({
   const [selectedAssignedStudentIds, setSelectedAssignedStudentIds] = useState(
     [],
   );
+  const [showImportLecturerModal, setShowImportLecturerModal] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [majorFilter, setMajorFilter] = useState("all");
@@ -1159,11 +1163,11 @@ export const AssignmentsView = ({
       setIsExporting(false);
     }
   };
-  const handleExportC23 = async () => {
+  const handleExportInternshipList = async () => {
     setIsExporting(true);
     try {
       await exportService.downloadInternshipExcel(selectedSemester ?? undefined);
-      onShowToast("Đã tải xuống Danh sách thực tập C23 (.xlsx)");
+      onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     } finally {
@@ -1185,11 +1189,17 @@ export const AssignmentsView = ({
         }
         actions={[
           {
-            label: "Xuất bảng điểm C23",
+            label: "Xuất danh sách thực tập",
             icon: Download,
-            onClick: () => void handleExportC23(),
+            onClick: () => void handleExportInternshipList(),
             variant: "secondary",
             disabled: isExporting,
+          },
+          {
+            label: "Import PC Giảng viên",
+            icon: FileUp,
+            onClick: () => setShowImportLecturerModal(true),
+            variant: "secondary",
           },
           {
             label: isExporting ? "Đang xuất…" : "Xuất ma trận (.xlsx)",
@@ -1311,6 +1321,14 @@ export const AssignmentsView = ({
                 {unassignedStudents.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("company-allocation")}
+            className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "company-allocation" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
+          >
+            <Building2 className="w-4 h-4 shrink-0" />
+            <span>Phân bổ Doanh nghiệp</span>
           </button>
 
           <button
@@ -2193,7 +2211,15 @@ export const AssignmentsView = ({
         </div>
       )}
 
-      {/* TAB 3: THỐNG KÊ & CÂN BẰNG TẢI */}
+      {/* TAB 3: PHÂN BỔ DOANH NGHIỆP THỰC TẬP (NEW) */}
+      {activeTab === "company-allocation" && (
+        <CompanyAllocationsTab
+          selectedSemesterId={selectedSemester}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {/* TAB 4: THỐNG KÊ & CÂN BẰNG TẢI */}
       {activeTab === "stats" && (
         <div className="space-y-6">
           <Panel className="space-y-4">
@@ -2527,6 +2553,18 @@ export const AssignmentsView = ({
           </div>
         </div>
       )}
+
+      {/* MODAL 5: IMPORT LECTURER ASSIGNMENTS */}
+      <ImportLecturerAssignmentsModal
+        isOpen={showImportLecturerModal}
+        onClose={() => setShowImportLecturerModal(false)}
+        onShowToast={onShowToast}
+        onSuccess={() => {
+          setShowImportLecturerModal(false);
+          apiMatrix.reload();
+        }}
+        currentSemesterId={selectedSemester}
+      />
     </div>
   );
 };

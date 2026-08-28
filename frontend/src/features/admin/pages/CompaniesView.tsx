@@ -21,11 +21,10 @@ import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { useAdminCompanies } from "../../../hooks/useAdminCompanies";
 import type { Enterprise } from "../../../types/enterprise";
-import { INITIAL_ENTERPRISES } from "../../../data/mockData";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../../../lib/adminMappers";
 import { adminCompaniesService } from "../../../services/adminCompanies.service";
+import { ImportCompaniesModal } from "../components/modals/ImportCompaniesModal";
 
 const emptyForm = {
   name: "",
@@ -45,8 +44,8 @@ export const CompaniesView = ({
   onShowToast: (msg: string) => void;
 }) => {
   const { companies: initialCompanies, loading: companiesLoading, error: companiesError } = useAdminCompanies();
-  const [companies, setCompanies] = useState<Enterprise[]>(USE_MOCK ? INITIAL_ENTERPRISES : []);
-  const [isLoadingApi, setIsLoadingApi] = useState(USE_MOCK ? false : companiesLoading);
+  const [companies, setCompanies] = useState<Enterprise[]>([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(companiesLoading);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Enterprise | null>(null);
@@ -56,9 +55,6 @@ export const CompaniesView = ({
   const [deleteTarget, setDeleteTarget] = useState<Enterprise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importFileName, setImportFileName] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   const reloadCompanies = async () => {
     const rows = await adminCompaniesService.getAll();
@@ -75,7 +71,7 @@ export const CompaniesView = ({
 
   // Handle errors from hook
   useEffect(() => {
-    if (!USE_MOCK && companiesError) {
+    if (companiesError) {
       onShowToast(getApiErrorMessage(companiesError));
     }
   }, [companiesError, onShowToast]);
@@ -139,50 +135,6 @@ export const CompaniesView = ({
       capacity: Number(form.capacity) || 0,
     };
 
-    if (USE_MOCK) {
-      if (editing) {
-        setCompanies((prev) =>
-          prev.map((c) =>
-            c.id === editing.id
-              ? {
-                  ...c,
-                  ...form,
-                  updatedAt: new Date().toLocaleDateString("vi-VN"),
-                }
-              : c,
-          ),
-        );
-        onShowToast(`Đã cập nhật doanh nghiệp ${form.name}`);
-      } else {
-        const created: Enterprise = {
-          id: `dn-${Date.now()}`,
-          name: form.name.trim(),
-          shortCode: form.name.trim().slice(0, 3).toUpperCase(),
-          badge: "MỚI",
-          badgeType: "gray",
-          studentCount: 0,
-          activeThisWeek: false,
-          contactEmail: form.contactEmail,
-          location: form.location,
-          status: form.status,
-          field: form.field,
-          contactPerson: form.contactPerson,
-          contactPhone: form.contactPhone,
-          website: form.website,
-          capacity: Number(form.capacity) || 0,
-          rating: 0,
-          hasStipend: false,
-          isHiring: true,
-          isPriority: false,
-          updatedAt: new Date().toLocaleDateString("vi-VN"),
-        };
-        setCompanies((prev) => [created, ...prev]);
-        onShowToast(`Đã thêm doanh nghiệp ${created.name}`);
-      }
-      setIsFormOpen(false);
-      return;
-    }
-
     setIsSaving(true);
     try {
       if (editing) {
@@ -206,11 +158,6 @@ export const CompaniesView = ({
   };
 
   const handleDelete = async (c: Enterprise) => {
-    if (USE_MOCK) {
-      setCompanies((prev) => prev.filter((x) => x.id !== c.id));
-      onShowToast(`Đã xóa ${c.name} (mock)`);
-      return;
-    }
     try {
       await adminCompaniesService.delete(c.id);
       await reloadCompanies();
@@ -231,32 +178,7 @@ export const CompaniesView = ({
     }
   };
 
-  const handleConfirmImport = async () => {
-    if (USE_MOCK) {
-      onShowToast("Đã import thành công danh sách doanh nghiệp từ Excel");
-      setIsImportModalOpen(false);
-      return;
-    }
-    if (!importFile) {
-      onShowToast("Vui lòng chọn file Excel trước khi import");
-      return;
-    }
-    setIsImporting(true);
-    try {
-      const result = await adminCompaniesService.importExcel(importFile);
-      await reloadCompanies();
-      onShowToast(
-        `Import xong: ${result.successCount}/${result.totalRows} doanh nghiệp`,
-      );
-      setIsImportModalOpen(false);
-      setImportFile(null);
-      setImportFileName(null);
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    } finally {
-      setIsImporting(false);
-    }
-  };
+
 
   const handleExport = async () => {
     try {
@@ -526,49 +448,13 @@ export const CompaniesView = ({
         </div>
       )}
 
-      {isImportModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-sm">Import Doanh nghiệp</h3>
-              <button type="button" onClick={() => setIsImportModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => void adminCompaniesService.downloadImportTemplate().then(() => onShowToast("Đã tải file mẫu import doanh nghiệp"))}
-              className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
-            >
-              <Download className="w-3.5 h-3.5" /> Tải file Excel mẫu
-            </button>
-            <label className="block border-2 border-dashed border-blue-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400">
-              <Upload className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <span className="text-xs font-bold text-slate-700">
-                {importFileName ?? "Chọn file .xlsx"}
-              </span>
-              <input
-                type="file"
-                accept=".xlsx"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setImportFile(file);
-                    setImportFileName(file.name);
-                  }
-                }}
-              />
-            </label>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-md">Hủy</button>
-              <button type="button" disabled={isImporting} onClick={() => void handleConfirmImport()} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-md">
-                {isImporting ? "Đang import…" : "Xác nhận Import"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* IMPORT COMPANIES MODAL */}
+      <ImportCompaniesModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onShowToast={onShowToast}
+        onSuccess={() => void reloadCompanies()}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

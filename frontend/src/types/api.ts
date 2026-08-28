@@ -172,6 +172,55 @@ export interface AutoAssignResultDto {
   lecturersUsed: number;
 }
 
+export interface CompanyAllocationItemDto {
+  internshipId: string;
+  studentId: string;
+  studentCode: string;
+  studentName: string;
+  class?: string | null;
+  major?: string | null;
+  companyId?: string | null;
+  companyName?: string | null;
+  lecturerId?: string | null;
+  lecturerName?: string | null;
+  status: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface CompanyAllocationImportErrorDto {
+  rowNumber: number;
+  studentCode?: string | null;
+  studentName?: string | null;
+  className?: string | null;
+  companyName?: string | null;
+  message: string;
+}
+
+export interface CompanyAllocationImportResultDto {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: CompanyAllocationImportErrorDto[];
+  updatedAllocations: CompanyAllocationItemDto[];
+}
+
+export interface LecturerAssignmentImportErrorDto {
+  rowNumber: number;
+  studentCode?: string | null;
+  studentName?: string | null;
+  staffCode?: string | null;
+  lecturerName?: string | null;
+  message: string;
+}
+
+export interface LecturerAssignmentImportResultDto {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: LecturerAssignmentImportErrorDto[];
+}
+
 export interface StudentPortalProfileDto {
   student: StudentDto;
   internship?: InternshipDto | null;

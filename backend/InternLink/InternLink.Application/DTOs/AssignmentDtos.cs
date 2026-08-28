@@ -68,3 +68,58 @@ public class AssignmentHistoryItemDto
     public IList<string> ClassGroups { get; set; } = Array.Empty<string>();
     public string AssignedBy { get; set; } = null!;
 }
+
+public class CompanyAllocationImportResultDto
+{
+    public int TotalRows { get; set; }
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public IList<CompanyAllocationImportErrorDto> Errors { get; set; } = new List<CompanyAllocationImportErrorDto>();
+    public IList<CompanyAllocationItemDto> UpdatedAllocations { get; set; } = new List<CompanyAllocationItemDto>();
+}
+
+public class CompanyAllocationImportErrorDto
+{
+    public int RowNumber { get; set; }
+    public string? StudentCode { get; set; }
+    public string? StudentName { get; set; }
+    public string? ClassName { get; set; }
+    public string? CompanyName { get; set; }
+    public string Message { get; set; } = null!;
+}
+
+public class CompanyAllocationItemDto
+{
+    public Guid InternshipId { get; set; }
+    public Guid StudentId { get; set; }
+    public string StudentCode { get; set; } = null!;
+    public string StudentName { get; set; } = null!;
+    public string? Class { get; set; }
+    public string? Major { get; set; }
+    public Guid? CompanyId { get; set; }
+    public string? CompanyName { get; set; }
+    public Guid? LecturerId { get; set; }
+    public string? LecturerName { get; set; }
+    public string Status { get; set; } = null!;
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+}
+
+public class LecturerAssignmentImportResultDto
+{
+    public int TotalRows { get; set; }
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public IList<LecturerAssignmentImportErrorDto> Errors { get; set; } = new List<LecturerAssignmentImportErrorDto>();
+}
+
+public class LecturerAssignmentImportErrorDto
+{
+    public int RowNumber { get; set; }
+    public string? StudentCode { get; set; }
+    public string? StudentName { get; set; }
+    public string? StaffCode { get; set; }
+    public string? LecturerName { get; set; }
+    public string Message { get; set; } = null!;
+}
+

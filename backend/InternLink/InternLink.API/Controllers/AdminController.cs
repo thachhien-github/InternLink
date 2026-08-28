@@ -35,11 +35,11 @@ public class AdminController : ControllerBase
     /// Internship status counts for admin dashboard KPIs and charts.
     /// </summary>
     [HttpGet("internship-stats")]
-    public async Task<IActionResult> GetInternshipStats()
+    public async Task<IActionResult> GetInternshipStats([FromQuery] Guid? semesterId = null)
     {
         try
         {
-            var stats = await _internshipService.GetInternshipStatsAsync();
+            var stats = await _internshipService.GetInternshipStatsAsync(null, semesterId);
             return Ok(ApiResponse<InternshipStatsDto>.Ok(stats));
         }
         catch (Exception ex)

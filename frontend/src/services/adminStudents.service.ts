@@ -50,10 +50,11 @@ export const adminStudentsService = {
     });
   },
 
-  importExcel(file: File) {
+  importExcel(file: File, semesterId?: string) {
     const form = new FormData();
     form.append("file", file);
-    return apiRequest<StudentImportResultDto>("/api/Admin/students/import", {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<StudentImportResultDto>(`/api/Admin/students/import${qs}`, {
       method: "POST",
       body: form,
     });

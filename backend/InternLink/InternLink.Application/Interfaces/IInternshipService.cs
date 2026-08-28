@@ -61,7 +61,7 @@ public interface IInternshipService
     /// <summary>
     /// Get internship statistics (count by status)
     /// </summary>
-    Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null);
+    Task<InternshipStatsDto> GetInternshipStatsAsync(Guid? lecturerId = null, Guid? semesterId = null);
 
     /// <summary>
     /// Check if a student already has an internship assigned

@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Templates\InternshipExportTemplate.xlsx">
+    <None Update="Templates\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

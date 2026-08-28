@@ -8,7 +8,6 @@ import {
   Loader2,
   Lock,
 } from "lucide-react";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useAuth } from "../../../hooks/useAuth";
@@ -35,7 +34,7 @@ export function ChangePasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!USE_MOCK && !currentPassword.trim()) {
+    if (!currentPassword.trim()) {
       setError("Vui lòng nhập mật khẩu hiện tại.");
       return;
     }
@@ -50,15 +49,11 @@ export function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-      } else {
-        await authService.changePassword({
-          currentPassword,
-          newPassword: password,
-        });
-        clearMustChangePassword();
-      }
+      await authService.changePassword({
+        currentPassword,
+        newPassword: password,
+      });
+      clearMustChangePassword();
       setSubmitted(true);
       setTimeout(() => {
         navigate(`/${role}/dashboard`, { replace: true });

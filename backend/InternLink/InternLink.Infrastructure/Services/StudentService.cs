@@ -27,9 +27,11 @@ public class StudentService : IStudentService
     private readonly IExcelService _excelService;
     private readonly ILogger<StudentService> _logger;
 
-    private static readonly string[] StudentCodeHeaders = ["mssv", "studentCode", "student number", "studentcode", "ma sv", "masv"];
-    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "fullname", "full name", "student name", "ten sinh vien"];
-    private static readonly string[] ClassHeaders = ["lop", "class"];
+    private static readonly string[] StudentCodeHeaders = ["mssv", "studentCode", "student number", "studentcode", "ma sv", "masv", "ma sinh vien"];
+    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "ho va ten", "fullname", "full name", "student name", "ten sinh vien"];
+    private static readonly string[] HoHeaders = ["ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname"];
+    private static readonly string[] TenHeaders = ["ten", "tên", "first name", "firstname"];
+    private static readonly string[] ClassHeaders = ["lop", "class", "classname", "lop hoc"];
     private static readonly string[] MajorHeaders = ["nganh", "ngành", "chuyen nganh", "chuyên ngành", "major"];
     private static readonly string[] EmailHeaders = ["email", "e-mail"];
     private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại"];
@@ -311,11 +313,18 @@ public class StudentService : IStudentService
         if (usedRange == null)
             throw new InvalidOperationException("Excel file is empty");
 
-        var headerRow = usedRange.FirstRow();
-        var columnMap = BuildColumnMap(headerRow);
+        var headerRow = TemplateHelper.FindHeaderRow(worksheet, row =>
+        {
+            var map = BuildColumnMap(row);
+            return map.ContainsKey(StudentColumn.StudentCode) &&
+                   (map.ContainsKey(StudentColumn.FullName) || map.ContainsKey(StudentColumn.Ten) || map.ContainsKey(StudentColumn.Ho));
+        }) ?? usedRange.FirstRow();
 
-        if (!columnMap.ContainsKey(StudentColumn.StudentCode) || !columnMap.ContainsKey(StudentColumn.FullName))
-            throw new InvalidOperationException("Excel must include MSSV and HoTen (or studentCode and FullName) columns");
+        var columnMap = BuildColumnMap(headerRow);
+        var hasValidNameCol = columnMap.ContainsKey(StudentColumn.FullName) || columnMap.ContainsKey(StudentColumn.Ten) || columnMap.ContainsKey(StudentColumn.Ho);
+
+        if (!columnMap.ContainsKey(StudentColumn.StudentCode) || !hasValidNameCol)
+            throw new InvalidOperationException("Excel must include MSSV and HoTen (or Ho/Ten/FullName) columns");
 
         var errors = new List<StudentImportErrorDto>();
         var emailErrors = new List<StudentImportErrorDto>();
@@ -328,11 +337,17 @@ public class StudentService : IStudentService
         var emailSentCount = 0;
         var emailFailedCount = 0;
 
-        foreach (var row in usedRange.RowsUsed().Skip(1))
+        foreach (var row in usedRange.RowsUsed())
         {
+            if (row.RowNumber() <= headerRow.RowNumber())
+                continue;
+
             var rowNumber = row.RowNumber();
             var studentCode = GetCell(row, columnMap, StudentColumn.StudentCode);
-            var fullName = GetCell(row, columnMap, StudentColumn.FullName);
+            var hoTen = GetCell(row, columnMap, StudentColumn.FullName);
+            var ho = GetCell(row, columnMap, StudentColumn.Ho);
+            var ten = GetCell(row, columnMap, StudentColumn.Ten);
+            var fullName = TemplateHelper.CombineFullName(ho, ten, hoTen);
             var className = GetCell(row, columnMap, StudentColumn.Class);
             var major = GetCell(row, columnMap, StudentColumn.Major);
             var email = GetCell(row, columnMap, StudentColumn.Email);
@@ -575,37 +590,40 @@ public class StudentService : IStudentService
 
     public byte[] GetStudentImportTemplate()
     {
-        using var workbook = new XLWorkbook();
-        var sheet = workbook.Worksheets.Add("Students");
+        return TemplateHelper.GetTemplateBytes("Mau-danh-sach-SV.xlsx", () =>
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("Students");
 
-        sheet.Cell(1, 1).Value = "MSSV";
-        sheet.Cell(1, 2).Value = "HoTen";
-        sheet.Cell(1, 3).Value = "Lop";
-        sheet.Cell(1, 4).Value = "Nganh";
-        sheet.Cell(1, 5).Value = "Email";
-        sheet.Cell(1, 6).Value = "SDT";
-        sheet.Cell(1, 7).Value = "Username";
+            sheet.Cell(1, 1).Value = "MSSV";
+            sheet.Cell(1, 2).Value = "HoTen";
+            sheet.Cell(1, 3).Value = "Lop";
+            sheet.Cell(1, 4).Value = "Nganh";
+            sheet.Cell(1, 5).Value = "Email";
+            sheet.Cell(1, 6).Value = "SDT";
+            sheet.Cell(1, 7).Value = "Username";
 
-        sheet.Cell(2, 1).Value = "2421160052";
-        sheet.Cell(2, 2).Value = "Nguyen Van A";
-        sheet.Cell(2, 3).Value = "DH24TIN06";
-        sheet.Cell(2, 4).Value = "Cong nghe thong tin";
-        sheet.Cell(2, 5).Value = "vana@student.edu.vn";
-        sheet.Cell(2, 6).Value = "0901234567";
-        sheet.Cell(2, 7).Value = "2421160052";
+            sheet.Cell(2, 1).Value = "2421160052";
+            sheet.Cell(2, 2).Value = "Nguyen Van A";
+            sheet.Cell(2, 3).Value = "DH24TIN06";
+            sheet.Cell(2, 4).Value = "Cong nghe thong tin";
+            sheet.Cell(2, 5).Value = "vana@student.edu.vn";
+            sheet.Cell(2, 6).Value = "0901234567";
+            sheet.Cell(2, 7).Value = "2421160052";
 
-        sheet.Cell(4, 1).Value = "Ghi chu:";
-        sheet.Cell(4, 2).Value =
-            "Neu co Email hoac Username thi tao tai khoan login (username mac dinh = MSSV, mat khau tam 8 ky tu ngau nhien). " +
-            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau). " +
-            "Lan dang nhap dau tien bat buoc doi mat khau.";
+            sheet.Cell(4, 1).Value = "Ghi chu:";
+            sheet.Cell(4, 2).Value =
+                "Neu co Email hoac Username thi tao tai khoan login (username mac dinh = MSSV, mat khau tam 8 ky tu ngau nhien). " +
+                "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau). " +
+                "Lan dang nhap dau tien bat buoc doi mat khau.";
 
-        sheet.Row(1).Style.Font.Bold = true;
-        sheet.Columns().AdjustToContents();
+            sheet.Row(1).Style.Font.Bold = true;
+            sheet.Columns().AdjustToContents();
 
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        });
     }
 
     public async Task<byte[]> ExportStudentsExcelAsync(Guid? semesterId = null, Guid? lecturerId = null)
@@ -774,6 +792,8 @@ public class StudentService : IStudentService
     {
         StudentCode,
         FullName,
+        Ho,
+        Ten,
         Class,
         Major,
         Email,
@@ -812,6 +832,10 @@ public class StudentService : IStudentService
                 map[StudentColumn.StudentCode] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(StudentColumn.FullName) && FullNameHeaders.Contains(header))
                 map[StudentColumn.FullName] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(StudentColumn.Ho) && HoHeaders.Contains(header))
+                map[StudentColumn.Ho] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(StudentColumn.Ten) && TenHeaders.Contains(header))
+                map[StudentColumn.Ten] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(StudentColumn.Class) && ClassHeaders.Contains(header))
                 map[StudentColumn.Class] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(StudentColumn.Major) && MajorHeaders.Contains(header))

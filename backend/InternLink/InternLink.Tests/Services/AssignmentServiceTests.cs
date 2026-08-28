@@ -293,4 +293,111 @@ public class AssignmentServiceTests
         history[0].StudentCount.Should().Be(2);
         history[0].ClassGroups.Should().Contain("20CNTT1");
     }
+
+    [Fact]
+    public async Task ImportCompanyAllocationsFromExcelAsync_ShouldAssignCompanyByStudentNameAndClass()
+    {
+        var (db, semester) = await GetDbWithSemesterAsync();
+        var company = new Company
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "Công ty Cổ phần Công nghệ RADA360",
+            CreatedAt = DateTime.UtcNow
+        };
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2300001",
+            FullName = "Phạm Duy Văn",
+            Class = "C23A.TH2",
+            CreatedAt = DateTime.UtcNow
+        };
+        await db.Companies.AddAsync(company);
+        await db.Students.AddAsync(student);
+        await db.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Allocations");
+        sheet.Cell(1, 1).Value = "STT";
+        sheet.Cell(1, 2).Value = "HỌ TÊN";
+        sheet.Cell(1, 3).Value = "LỚP";
+        sheet.Cell(1, 4).Value = "CÔNG TY THỰC TẬP";
+
+        sheet.Cell(2, 1).Value = 1;
+        sheet.Cell(2, 2).Value = "Phạm Duy Văn";
+        sheet.Cell(2, 3).Value = "C23A.TH2";
+        sheet.Cell(2, 4).Value = "Công ty Cổ phần Công nghệ RADA360";
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var service = CreateService(db);
+        var result = await service.ImportCompanyAllocationsFromExcelAsync(stream, semester.Id);
+
+        result.SuccessCount.Should().Be(1);
+        result.FailedCount.Should().Be(0);
+
+        var internship = await db.Internships.FirstOrDefaultAsync(i => i.StudentId == student.Id);
+        internship.Should().NotBeNull();
+        internship!.CompanyId.Should().Be(company.Id);
+    }
+
+    [Fact]
+    public async Task ImportCompanyAllocationsFromExcelAsync_WithUnknownCompany_ShouldReportError()
+    {
+        var (db, semester) = await GetDbWithSemesterAsync();
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2300002",
+            FullName = "Lê Văn Thành Đạt",
+            Class = "C23A.TH1",
+            CreatedAt = DateTime.UtcNow
+        };
+        await db.Students.AddAsync(student);
+        await db.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Allocations");
+        sheet.Cell(1, 1).Value = "HỌ TÊN";
+        sheet.Cell(1, 2).Value = "LỚP";
+        sheet.Cell(1, 3).Value = "CÔNG TY THỰC TẬP";
+
+        sheet.Cell(2, 1).Value = "Lê Văn Thành Đạt";
+        sheet.Cell(2, 2).Value = "C23A.TH1";
+        sheet.Cell(2, 3).Value = "Công ty chưa tồn tại XYZ";
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var service = CreateService(db);
+        var result = await service.ImportCompanyAllocationsFromExcelAsync(stream, semester.Id);
+
+        result.SuccessCount.Should().Be(0);
+        result.FailedCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Templates_ShouldLoadFromDisk()
+    {
+        var studentTemplate = TemplateHelper.FindTemplatePath("Mau-danh-sach-SV.xlsx");
+        var lecturerTemplate = TemplateHelper.FindTemplatePath("Mau-danh-sach-GV.xlsx");
+        var companyTemplate = TemplateHelper.FindTemplatePath("Mau-danh-sach-doanh-nghiep.xlsx");
+        var lecturerAssignTemplate = TemplateHelper.FindTemplatePath("Mau-danh-sach-phan-cong-GVHD.xlsx");
+        var companyAllocTemplate = TemplateHelper.FindTemplatePath("Mau-danh-sach-SV-thuc-tap-taiDN.xlsx");
+
+        studentTemplate.Should().NotBeNullOrWhiteSpace();
+        lecturerTemplate.Should().NotBeNullOrWhiteSpace();
+        companyTemplate.Should().NotBeNullOrWhiteSpace();
+        lecturerAssignTemplate.Should().NotBeNullOrWhiteSpace();
+        companyAllocTemplate.Should().NotBeNullOrWhiteSpace();
+
+        var bytes = TemplateHelper.GetTemplateBytes("Mau-danh-sach-SV.xlsx", () => []);
+        bytes.Should().NotBeEmpty();
+    }
 }
+
+
+

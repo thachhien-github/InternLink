@@ -21,7 +21,6 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
-import { USE_MOCK } from "../../../config/env";
 import { apiRequest } from "../../../lib/apiClient";
 import { lecturerExportService } from "../../../services/lecturerExport.service";
 
@@ -43,7 +42,6 @@ export const LecturerAnalytics = () => {
   const [statsData, setStatsData] = useState<DashboardStatsDto | null>(null);
 
   useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     apiRequest<DashboardStatsDto>("/api/Lecturer/stats")
       .then((data) => {
@@ -61,10 +59,6 @@ export const LecturerAnalytics = () => {
   };
 
   const handleExportExcel = async () => {
-    if (USE_MOCK) {
-      showToast("Đang tạo và tải xuống file Excel Thống kê Báo cáo Thực tập (mock)...");
-      return;
-    }
     try {
       showToast("Đang tạo file Excel báo cáo...");
       const { blob, filename } = await lecturerExportService.downloadEndOfTerm();
@@ -90,10 +84,10 @@ export const LecturerAnalytics = () => {
     window.print();
   };
 
-  const totalStudents = statsData ? statsData.totalStudents : 28;
-  const interningStudents = statsData ? statsData.interningCount : 25;
-  const overdueCount = statsData ? statsData.overdueReportsCount : 3;
-  const avgGrade = statsData && statsData.averageGrade > 0 ? statsData.averageGrade : 8.65;
+  const totalStudents = statsData ? statsData.totalStudents : 0;
+  const interningStudents = statsData ? statsData.interningCount : 0;
+  const overdueCount = statsData ? statsData.overdueReportsCount : 0;
+  const avgGrade = statsData ? statsData.averageGrade : 0;
   const complianceRate = totalStudents > 0 ? `${Math.round(((totalStudents - overdueCount) / totalStudents) * 100)}%` : "100%";
 
   return (

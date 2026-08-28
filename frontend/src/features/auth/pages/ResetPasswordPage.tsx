@@ -10,7 +10,6 @@ import {
   Loader2,
   Lock,
 } from "lucide-react";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 
@@ -46,14 +45,10 @@ export function ResetPasswordPage() {
 
     setIsLoading(true);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-      } else {
-        await authService.resetPassword({
-          token: token!,
-          newPassword: password,
-        });
-      }
+      await authService.resetPassword({
+        token: token!,
+        newPassword: password,
+      });
       setSubmitted(true);
     } catch (err) {
       setError(getApiErrorMessage(err));

@@ -39,11 +39,11 @@ public class AdminAssignmentsController : ControllerBase
     }
 
     [HttpGet("by-lecturer/{lecturerId:guid}")]
-    public async Task<IActionResult> GetByLecturer(Guid lecturerId)
+    public async Task<IActionResult> GetByLecturer(Guid lecturerId, [FromQuery] Guid? semesterId = null)
     {
         try
         {
-            var items = await _assignmentService.GetByLecturerAsync(lecturerId);
+            var items = await _assignmentService.GetByLecturerAsync(lecturerId, semesterId);
             return Ok(ApiResponse<IReadOnlyList<LecturerAssignmentItemDto>>.Ok(items));
         }
         catch (InvalidOperationException ex)
@@ -73,10 +73,10 @@ public class AdminAssignmentsController : ControllerBase
     }
 
     [HttpGet("export")]
-    public async Task<IActionResult> ExportExcel()
+    public async Task<IActionResult> ExportExcel([FromQuery] Guid? semesterId = null)
     {
-        var bytes = await _assignmentService.ExportExcelAsync();
-        var fileName = $"phan-cong-huong-dan-{DateTime.UtcNow:yyyyMMdd}.xlsx";
+        var bytes = await _assignmentService.ExportExcelAsync(semesterId);
+        var fileName = $"Danh-sach-phan-cong-GVHD-{DateTime.UtcNow:yyyyMMdd}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 
@@ -91,6 +91,89 @@ public class AdminAssignmentsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    // ==================== COMPANY ALLOCATION ENDPOINTS ====================
+
+    [HttpGet("company-allocation/template")]
+    public IActionResult DownloadCompanyAllocationTemplate()
+    {
+        var bytes = _assignmentService.GetCompanyAllocationImportTemplate();
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Mau-danh-sach-SV-thuc-tap-taiDN.xlsx");
+    }
+
+    [HttpPost("company-allocation/import")]
+    public async Task<IActionResult> ImportCompanyAllocations(IFormFile file, [FromQuery] Guid? semesterId = null)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Vui lòng chọn file Excel để import" }));
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Chỉ chấp nhận định dạng file .xlsx hoặc .xls" }));
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var result = await _assignmentService.ImportCompanyAllocationsFromExcelAsync(stream, semesterId);
+            return Ok(ApiResponse<CompanyAllocationImportResultDto>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Lỗi khi xử lý file import", Detail = ex.Message }));
+        }
+    }
+
+    [HttpGet("company-allocation/export")]
+    public async Task<IActionResult> ExportCompanyAllocations([FromQuery] Guid? semesterId = null)
+    {
+        var bytes = await _assignmentService.ExportCompanyAllocationsExcelAsync(semesterId);
+        var fileName = $"Danh-sach-SV-thuc-tap-taiDN-{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    [HttpGet("company-allocation")]
+    public async Task<IActionResult> GetCompanyAllocations([FromQuery] Guid? semesterId = null)
+    {
+        var items = await _assignmentService.GetCompanyAllocationsAsync(semesterId);
+        return Ok(ApiResponse<IReadOnlyList<CompanyAllocationItemDto>>.Ok(items));
+    }
+
+    // ==================== LECTURER ASSIGNMENT IMPORT ENDPOINTS ====================
+
+    [HttpGet("template")]
+    public IActionResult DownloadLecturerAssignmentTemplate()
+    {
+        var bytes = _assignmentService.GetLecturerAssignmentImportTemplate();
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Mau-danh-sach-phan-cong-GVHD.xlsx");
+    }
+
+    [HttpPost("import")]
+    public async Task<IActionResult> ImportLecturerAssignments(IFormFile file, [FromQuery] Guid? semesterId = null)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Vui lòng chọn file Excel để import" }));
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Chỉ chấp nhận định dạng file .xlsx hoặc .xls" }));
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var result = await _assignmentService.ImportLecturerAssignmentsFromExcelAsync(stream, semesterId);
+            return Ok(ApiResponse<LecturerAssignmentImportResultDto>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Lỗi khi xử lý file import", Detail = ex.Message }));
         }
     }
 }

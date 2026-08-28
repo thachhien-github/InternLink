@@ -18,16 +18,16 @@ public class CompanyService : ICompanyService
     private readonly IExcelService _excelService;
 
     private static readonly string[] CompanyNameHeaders =
-        ["tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name"];
+        ["tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name", "ten cong ty"];
     private static readonly string[] IndustryHeaders = ["nganh", "ngành", "industry", "linh vuc", "lĩnh vực"];
     private static readonly string[] ContactPersonHeaders =
-        ["nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien"];
+        ["nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien", "lien he"];
     private static readonly string[] ContactEmailHeaders = ["email", "e-mail", "contactemail", "contact email"];
     private static readonly string[] ContactPhoneHeaders =
         ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "contactphone", "contact phone", "so dien thoai"];
     private static readonly string[] AddressHeaders = ["diachi", "dia chi", "address"];
     private static readonly string[] WebsiteHeaders = ["website", "web", "trang web"];
-    private static readonly string[] CapacityHeaders = ["succhua", "suc chua", "capacity", "so luong", "so luong sv"];
+    private static readonly string[] CapacityHeaders = ["succhua", "suc chua", "capacity", "so luong", "so luong sv", "so luong tiep nhan", "chi tieu", "so luong tiep nhan sv"];
 
     public CompanyService(AppDbContext db, IMapper mapper, IExcelService excelService)
     {
@@ -223,7 +223,10 @@ public class CompanyService : ICompanyService
         if (usedRange == null)
             throw new InvalidOperationException("Excel file is empty");
 
-        var columnMap = BuildColumnMap(usedRange.FirstRow());
+        var headerRow = TemplateHelper.FindHeaderRow(worksheet, row =>
+            BuildColumnMap(row).ContainsKey(CompanyColumn.CompanyName)) ?? usedRange.FirstRow();
+
+        var columnMap = BuildColumnMap(headerRow);
         if (!columnMap.ContainsKey(CompanyColumn.CompanyName))
             throw new InvalidOperationException("Excel must include TenDN (CompanyName) column");
 
@@ -233,8 +236,11 @@ public class CompanyService : ICompanyService
         var totalRows = 0;
         var skippedDuplicates = 0;
 
-        foreach (var row in usedRange.RowsUsed().Skip(1))
+        foreach (var row in usedRange.RowsUsed())
         {
+            if (row.RowNumber() <= headerRow.RowNumber())
+                continue;
+
             var rowNumber = row.RowNumber();
             var companyName = GetCell(row, columnMap, CompanyColumn.CompanyName);
             var industry = GetCell(row, columnMap, CompanyColumn.Industry);
@@ -366,33 +372,36 @@ public class CompanyService : ICompanyService
 
     public byte[] GetCompanyImportTemplate()
     {
-        using var workbook = new XLWorkbook();
-        var sheet = workbook.Worksheets.Add("Companies");
+        return TemplateHelper.GetTemplateBytes("Mau-danh-sach-doanh-nghiep.xlsx", () =>
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("Companies");
 
-        sheet.Cell(1, 1).Value = "TenDN";
-        sheet.Cell(1, 2).Value = "Nganh";
-        sheet.Cell(1, 3).Value = "NguoiLienHe";
-        sheet.Cell(1, 4).Value = "Email";
-        sheet.Cell(1, 5).Value = "SDT";
-        sheet.Cell(1, 6).Value = "DiaChi";
-        sheet.Cell(1, 7).Value = "Website";
-        sheet.Cell(1, 8).Value = "SucChua";
+            sheet.Cell(1, 1).Value = "TenDN";
+            sheet.Cell(1, 2).Value = "Nganh";
+            sheet.Cell(1, 3).Value = "NguoiLienHe";
+            sheet.Cell(1, 4).Value = "Email";
+            sheet.Cell(1, 5).Value = "SDT";
+            sheet.Cell(1, 6).Value = "DiaChi";
+            sheet.Cell(1, 7).Value = "Website";
+            sheet.Cell(1, 8).Value = "SucChua";
 
-        sheet.Cell(2, 1).Value = "FPT Software";
-        sheet.Cell(2, 2).Value = "Cong nghe thong tin";
-        sheet.Cell(2, 3).Value = "Ms. Linh Tran";
-        sheet.Cell(2, 4).Value = "linh.tran@fptsoftware.com";
-        sheet.Cell(2, 5).Value = "0909123456";
-        sheet.Cell(2, 6).Value = "Phu My Hung, Q7, TP.HCM";
-        sheet.Cell(2, 7).Value = "https://fptsoftware.com";
-        sheet.Cell(2, 8).Value = 10;
+            sheet.Cell(2, 1).Value = "FPT Software";
+            sheet.Cell(2, 2).Value = "Cong nghe thong tin";
+            sheet.Cell(2, 3).Value = "Ms. Linh Tran";
+            sheet.Cell(2, 4).Value = "linh.tran@fptsoftware.com";
+            sheet.Cell(2, 5).Value = "0909123456";
+            sheet.Cell(2, 6).Value = "Phu My Hung, Q7, TP.HCM";
+            sheet.Cell(2, 7).Value = "https://fptsoftware.com";
+            sheet.Cell(2, 8).Value = 10;
 
-        sheet.Row(1).Style.Font.Bold = true;
-        sheet.Columns().AdjustToContents();
+            sheet.Row(1).Style.Font.Bold = true;
+            sheet.Columns().AdjustToContents();
 
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        });
     }
 
     public async Task<byte[]> ExportCompaniesExcelAsync()

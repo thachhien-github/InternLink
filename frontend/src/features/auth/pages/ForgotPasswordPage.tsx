@@ -1,7 +1,6 @@
 import { useState, FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Mail } from "lucide-react";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 
@@ -20,11 +19,7 @@ export function ForgotPasswordPage() {
     }
     setIsLoading(true);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-      } else {
-        await authService.forgotPassword({ email: email.trim() });
-      }
+      await authService.forgotPassword({ email: email.trim() });
       setSubmitted(true);
     } catch (err) {
       setError(getApiErrorMessage(err));

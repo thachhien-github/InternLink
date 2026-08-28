@@ -11,6 +11,8 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { FEATURES } from "../../../config/featureFlags";
+import { useAuth } from "../../../hooks/useAuth";
+import { useLecturerNavStats } from "../../../hooks/useLecturerNavStats";
 
 import type { UserRole } from "../../../types/common";
 
@@ -26,13 +28,24 @@ type NavItem = {
 export const Sidebar = ({
   activeTab,
   onNavigate,
-  currentLecturer = "Thầy Phước",
+  currentLecturer = "Giảng viên",
 }: {
   activeTab: string;
   onNavigate: (id: string) => void;
   currentLecturer?: string;
   onSwitchPortal?: (role: UserRole) => void;
 }) => {
+  const { user } = useAuth();
+  const { stats } = useLecturerNavStats();
+
+  const displayName = user?.name || currentLecturer || "Giảng viên";
+  const userInitials = displayName
+    .split(" ")
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "GV";
+
   const navSections: { title: string; items: NavItem[] }[] = [
     {
       title: "TỔNG QUAN",
@@ -41,24 +54,29 @@ export const Sidebar = ({
     {
       title: "QUẢN LÝ THỰC TẬP",
       items: [
-        { id: "students", label: "Sinh viên", icon: Users, badge: "28" },
+        {
+          id: "students",
+          label: "Sinh viên",
+          icon: Users,
+          badge: stats.studentCount > 0 ? String(stats.studentCount) : undefined,
+        },
         {
           id: "enterprises",
           label: "Doanh nghiệp",
           icon: Building2,
-          badge: "124",
+          badge: stats.enterpriseCount > 0 ? String(stats.enterpriseCount) : undefined,
         },
         {
           id: "reports",
           label: "Báo cáo & Bài nộp",
           icon: FileCheck,
-          badge: "8",
+          badge: stats.pendingReviewCount > 0 ? String(stats.pendingReviewCount) : undefined,
         },
         {
           id: "evaluations",
           label: "Đánh giá & Chấm điểm",
           icon: Award,
-          badge: "8",
+          badge: stats.evaluatedCount > 0 ? String(stats.evaluatedCount) : undefined,
         },
         {
           id: "export",
@@ -81,7 +99,7 @@ export const Sidebar = ({
           id: "notifications",
           label: "Thông báo",
           icon: Bell,
-          badgeAlert: true,
+          badgeAlert: stats.unreadNotificationCount > 0,
         },
         { id: "account", label: "Tài khoản", icon: User },
       ],
@@ -159,18 +177,18 @@ export const Sidebar = ({
           className="il-sidebar-profile"
         >
           <div className="relative shrink-0">
-            <img
-              src={
-                currentLecturer === "Cô Minh An"
-                  ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80"
-                  : currentLecturer === "Thầy Thành"
-                    ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80"
-                    : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80"
-              }
-              alt="Avatar Giảng viên"
-              referrerPolicy="no-referrer"
-              className="w-9 h-9 rounded-full object-cover border border-slate-200"
-            />
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={displayName}
+                referrerPolicy="no-referrer"
+                className="w-9 h-9 rounded-full object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200">
+                {userInitials}
+              </div>
+            )}
             <span
               className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"
               title="Đang hoạt động"
@@ -178,18 +196,12 @@ export const Sidebar = ({
           </div>
 
           <div className="overflow-hidden min-w-0 flex-1">
-            <p className="il-sidebar-profile-name">
-              {currentLecturer === "Thầy Phước"
-                ? "TS. Trần Minh Huy"
-                : currentLecturer === "Thầy Thành"
-                  ? "ThS. Nguyễn Đức Thành"
-                  : currentLecturer === "Thầy Cường"
-                    ? "TS. Phạm Hùng Cường"
-                    : currentLecturer === "Cô Minh An"
-                      ? "PGS.TS. Đặng Minh An"
-                      : "TS. Trần Minh Huy"}
+            <p className="il-sidebar-profile-name truncate">
+              {displayName}
             </p>
-            <p className="il-sidebar-profile-meta">Khoa Công nghệ Thông tin</p>
+            <p className="il-sidebar-profile-meta truncate">
+              {user?.email || "Khoa Công nghệ Thông tin"}
+            </p>
           </div>
         </div>
       </div>

@@ -382,26 +382,20 @@ export const ReviewSubmissionWorkspace = ({
             <div className="p-3 bg-slate-900/90 rounded-md border border-slate-800 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-[11px]">Loại bài:</span>
-                <span className="font-bold text-blue-400 text-[11px]">
-                  Báo cáo tuần 5
+                <span className="font-bold text-blue-400 text-[11px] text-right max-w-[180px] truncate" title={submissionTitle}>
+                  {submissionTitle}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-[11px]">Ngày nộp:</span>
                 <span className="font-mono text-slate-200 text-[11px]">
-                  02/09/2026
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 text-[11px]">Thời gian:</span>
-                <span className="font-mono text-slate-200 text-[11px]">
-                  11:30:45 AM
+                  {new Date().toLocaleDateString("vi-VN")}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-[11px]">Phiên bản:</span>
                 <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-300 font-mono font-bold text-[10px] rounded">
-                  Version 3
+                  {currentVersion.toUpperCase()}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-slate-800">

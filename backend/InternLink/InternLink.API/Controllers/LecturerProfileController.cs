@@ -104,7 +104,7 @@ public class LecturerProfileController : ControllerBase
     public IActionResult DownloadImportTemplate()
     {
         var bytes = _service.GetImportTemplate();
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "lecturer-import-template.xlsx");
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Mau-danh-sach-GV.xlsx");
     }
 
     [HttpPost("import")]
@@ -139,7 +139,7 @@ public class LecturerProfileController : ControllerBase
     public async Task<IActionResult> Export()
     {
         var bytes = await _service.ExportLecturersExcelAsync();
-        var fileName = $"danh-sach-giang-vien-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        var fileName = $"Danh-sach-GV-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }

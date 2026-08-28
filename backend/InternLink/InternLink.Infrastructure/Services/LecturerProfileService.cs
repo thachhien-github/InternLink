@@ -27,11 +27,13 @@ public class LecturerProfileService : ILecturerProfileService
     private readonly IExcelService _excelService;
     private readonly ILogger<LecturerProfileService> _logger;
 
-    private static readonly string[] StaffCodeHeaders = ["magv", "ma gv", "staffcode", "staff code", "code"];
-    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "fullname", "full name", "tengiangvien", "ten giang vien"];
+    private static readonly string[] StaffCodeHeaders = ["magv", "ma gv", "staffcode", "staff code", "code", "ma giang vien", "msgv"];
+    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "ho va ten", "fullname", "full name", "tengiangvien", "ten giang vien", "ho va ten giang vien"];
+    private static readonly string[] HoHeaders = ["ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname"];
+    private static readonly string[] TenHeaders = ["ten", "tên", "first name", "firstname"];
     private static readonly string[] EmailHeaders = ["email", "e-mail"];
-    private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại"];
-    private static readonly string[] DepartmentHeaders = ["bomon", "bo mon", "department", "khoa"];
+    private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại"];
+    private static readonly string[] DepartmentHeaders = ["bomon", "bo mon", "department", "khoa", "bo mon / khoa", "bo mon/khoa"];
     private static readonly string[] UsernameHeaders = ["username", "tendangnhap", "ten dang nhap"];
 
     public LecturerProfileService(
@@ -244,8 +246,17 @@ public class LecturerProfileService : ILecturerProfileService
         if (usedRange == null)
             throw new InvalidOperationException("Excel file is empty");
 
-        var columnMap = BuildColumnMap(usedRange.FirstRow());
-        if (!columnMap.ContainsKey(Col.StaffCode) || !columnMap.ContainsKey(Col.FullName))
+        var headerRow = TemplateHelper.FindHeaderRow(worksheet, row =>
+        {
+            var map = BuildColumnMap(row);
+            return map.ContainsKey(Col.StaffCode) &&
+                   (map.ContainsKey(Col.FullName) || map.ContainsKey(Col.Ten) || map.ContainsKey(Col.Ho));
+        }) ?? usedRange.FirstRow();
+
+        var columnMap = BuildColumnMap(headerRow);
+        var hasValidNameCol = columnMap.ContainsKey(Col.FullName) || columnMap.ContainsKey(Col.Ten) || columnMap.ContainsKey(Col.Ho);
+
+        if (!columnMap.ContainsKey(Col.StaffCode) || !hasValidNameCol)
             throw new InvalidOperationException("Excel must include MaGV (StaffCode) and HoTen (FullName) columns");
 
         var errors = new List<LecturerImportErrorDto>();
@@ -259,11 +270,17 @@ public class LecturerProfileService : ILecturerProfileService
         var emailSentCount = 0;
         var emailFailedCount = 0;
 
-        foreach (var row in usedRange.RowsUsed().Skip(1))
+        foreach (var row in usedRange.RowsUsed())
         {
+            if (row.RowNumber() <= headerRow.RowNumber())
+                continue;
+
             var rowNumber = row.RowNumber();
             var staffCode = GetCell(row, columnMap, Col.StaffCode);
-            var fullName = GetCell(row, columnMap, Col.FullName);
+            var hoTen = GetCell(row, columnMap, Col.FullName);
+            var ho = GetCell(row, columnMap, Col.Ho);
+            var ten = GetCell(row, columnMap, Col.Ten);
+            var fullName = TemplateHelper.CombineFullName(ho, ten, hoTen);
             var email = GetCell(row, columnMap, Col.Email);
             var phone = GetCell(row, columnMap, Col.Phone);
             var department = GetCell(row, columnMap, Col.Department);
@@ -438,35 +455,38 @@ public class LecturerProfileService : ILecturerProfileService
 
     public byte[] GetImportTemplate()
     {
-        using var workbook = new XLWorkbook();
-        var sheet = workbook.Worksheets.Add("Lecturers");
+        return TemplateHelper.GetTemplateBytes("Mau-danh-sach-GV.xlsx", () =>
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("Lecturers");
 
-        sheet.Cell(1, 1).Value = "MaGV";
-        sheet.Cell(1, 2).Value = "HoTen";
-        sheet.Cell(1, 3).Value = "Email";
-        sheet.Cell(1, 4).Value = "SDT";
-        sheet.Cell(1, 5).Value = "BoMon";
-        sheet.Cell(1, 6).Value = "Username";
+            sheet.Cell(1, 1).Value = "MaGV";
+            sheet.Cell(1, 2).Value = "HoTen";
+            sheet.Cell(1, 3).Value = "Email";
+            sheet.Cell(1, 4).Value = "SDT";
+            sheet.Cell(1, 5).Value = "BoMon";
+            sheet.Cell(1, 6).Value = "Username";
 
-        sheet.Cell(2, 1).Value = "GV001";
-        sheet.Cell(2, 2).Value = "Nguyen Van A";
-        sheet.Cell(2, 3).Value = "nguyenvana@university.edu.vn";
-        sheet.Cell(2, 4).Value = "0901234567";
-        sheet.Cell(2, 5).Value = "CNTT";
-        sheet.Cell(2, 6).Value = "GV001";
+            sheet.Cell(2, 1).Value = "GV001";
+            sheet.Cell(2, 2).Value = "Nguyen Van A";
+            sheet.Cell(2, 3).Value = "nguyenvana@university.edu.vn";
+            sheet.Cell(2, 4).Value = "0901234567";
+            sheet.Cell(2, 5).Value = "CNTT";
+            sheet.Cell(2, 6).Value = "GV001";
 
-        sheet.Cell(4, 1).Value = "Ghi chu:";
-        sheet.Cell(4, 2).Value =
-            "Neu co Email hoac Username thi tao tai khoan login (username mac dinh = MaGV, mat khau tam 8 ky tu ngau nhien). " +
-            "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau). " +
-            "Lan dang nhap dau tien bat buoc doi mat khau.";
+            sheet.Cell(4, 1).Value = "Ghi chu:";
+            sheet.Cell(4, 2).Value =
+                "Neu co Email hoac Username thi tao tai khoan login (username mac dinh = MaGV, mat khau tam 8 ky tu ngau nhien). " +
+                "Neu co Email thi he thong gui thu moi tham gia (link + username + mat khau). " +
+                "Lan dang nhap dau tien bat buoc doi mat khau.";
 
-        sheet.Row(1).Style.Font.Bold = true;
-        sheet.Columns().AdjustToContents();
+            sheet.Row(1).Style.Font.Bold = true;
+            sheet.Columns().AdjustToContents();
 
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        });
     }
 
     public async Task<byte[]> ExportLecturersExcelAsync()
@@ -618,7 +638,7 @@ public class LecturerProfileService : ILecturerProfileService
         }
     }
 
-    private enum Col { StaffCode, FullName, Email, Phone, Department, Username }
+    private enum Col { StaffCode, FullName, Ho, Ten, Email, Phone, Department, Username }
 
     private enum InvitationSendStatus { Sent, Failed, SkippedNoEmail }
 
@@ -649,6 +669,10 @@ public class LecturerProfileService : ILecturerProfileService
                 map[Col.StaffCode] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(Col.FullName) && FullNameHeaders.Contains(header))
                 map[Col.FullName] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(Col.Ho) && HoHeaders.Contains(header))
+                map[Col.Ho] = cell.Address.ColumnNumber;
+            else if (!map.ContainsKey(Col.Ten) && TenHeaders.Contains(header))
+                map[Col.Ten] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(Col.Email) && EmailHeaders.Contains(header))
                 map[Col.Email] = cell.Address.ColumnNumber;
             else if (!map.ContainsKey(Col.Phone) && PhoneHeaders.Contains(header))

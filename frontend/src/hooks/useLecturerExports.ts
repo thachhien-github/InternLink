@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { USE_MOCK } from '../config/env';
 import { lecturerExportService } from '../services/lecturerExport.service';
 import { getApiErrorMessage } from '../lib/apiClient';
 
@@ -14,12 +13,6 @@ export const useLecturerExports = (
   const [isExporting, setIsExporting] = useState(false);
 
   const exportEndOfTerm = useCallback(async () => {
-    if (USE_MOCK) {
-      const msg = 'Đang xuất báo cáo cuối kỳ (mock Excel/PDF)';
-      onShowToast?.(msg);
-      return { success: true, filename: 'BaoCao_CuoiKy_Mock.xlsx' };
-    }
-
     setIsExporting(true);
     try {
       const { blob, filename } = await lecturerExportService.downloadEndOfTerm();

@@ -38,7 +38,7 @@ public class ExportController : ControllerBase
         {
             _logger.LogInformation("Admin/Lecturer initiated Excel export for semester: {SemesterId}", semesterId);
             var fileBytes = await _excelExportService.GenerateInternshipExportExcelAsync(semesterId, cancellationToken);
-            var fileName = $"DanhSachThucTap_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Danh-sach-thuc-tap-{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
             return File(
                 fileBytes,
@@ -66,7 +66,7 @@ public class ExportController : ControllerBase
         {
             _logger.LogInformation("Admin initiated summary report export for semester: {SemesterId}", semesterId);
             var fileBytes = await _reportService.ExportC22ASummaryReportAsync(semesterId);
-            var fileName = $"BaoCaoTongKetThucTap_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Bao-cao-tong-ket-thuc-tap-{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
             return File(
                 fileBytes,

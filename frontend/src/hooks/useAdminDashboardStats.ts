@@ -136,6 +136,7 @@ export interface AdminDashboardStats {
 
 export function useAdminDashboardStats(
   enabled: boolean,
+  semesterId?: string | null,
   onError?: (msg: string) => void,
 ) {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
@@ -152,13 +153,17 @@ export function useAdminDashboardStats(
           adminStudentsService.getAll(),
           adminLecturersService.getAll(),
           adminCompaniesService.getAll(),
-          adminDashboardService.getInternshipStats().catch(() => ({ ...EMPTY_INTERNSHIP_STATS })),
+          adminDashboardService
+            .getInternshipStats(semesterId ?? undefined)
+            .catch(() => ({ ...EMPTY_INTERNSHIP_STATS })),
           notificationService.getMine().catch(() => []),
         ]);
 
       const assignmentGroups = await Promise.all(
         lecturers.map((l) =>
-          adminAssignmentsService.getByLecturer(l.id).catch(() => []),
+          adminAssignmentsService
+            .getByLecturer(l.id, semesterId ?? undefined)
+            .catch(() => []),
         ),
       );
 
@@ -224,7 +229,7 @@ export function useAdminDashboardStats(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, onError]);
+  }, [enabled, semesterId, onError]);
 
   useEffect(() => {
     void load();

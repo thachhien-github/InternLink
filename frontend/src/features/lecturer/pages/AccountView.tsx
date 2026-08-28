@@ -1,9 +1,10 @@
 import { useState, useEffect, FormEvent } from "react";
 import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
-import { getApiErrorMessage } from "../../../lib/apiClient";
+import { apiRequest, getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useAuth } from "../../../hooks/useAuth";
+import { useLecturerNavStats } from "../../../hooks/useLecturerNavStats";
 import {
   User,
   Building2,
@@ -52,34 +53,41 @@ interface LecturerProfileData {
 }
 
 const DEFAULT_PROFILE: LecturerProfileData = {
-  fullName: "TS. Trần Minh Huy",
-  lecturerCode: "GV2018042",
-  email: "huy.tm@vlu.edu.vn",
-  phone: "0988 123 456",
-  office: "Phòng 402, Tòa nhà B1, Khoa CNTT",
-  dob: "18/05/1982",
+  fullName: "",
+  lecturerCode: "",
+  email: "",
+  phone: "",
+  office: "",
+  dob: "",
   gender: "Nam",
-  degree: "Tiến sĩ / Giảng viên chính",
-  faculty: "Khoa Công nghệ Thông tin",
-  department: "Bộ môn Kỹ thuật Phần mềm",
-  bio: "Giảng viên chuyên ngành Công nghệ Phần mềm, nghiên cứu chuyên sâu về Kiến trúc Phần mềm, Microservices, Điện toán đám mây và Hệ thống Phân tán.",
+  degree: "",
+  faculty: "",
+  department: "",
+  bio: "",
   avatarUrl: "",
 };
 
+interface LecturerOverviewDto {
+  lecturer: {
+    id: string;
+    staffCode: string;
+    fullName: string;
+    email?: string;
+    phone?: string;
+    department?: string;
+  };
+  totalInternships: number;
+  statusCounts: Record<string, number>;
+}
+
 export const AccountView = () => {
   const { user } = useAuth();
+  const { stats: navStats } = useLecturerNavStats();
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "preferences" | "activity">("profile");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // Profile data
-  const [profile, setProfile] = useState<LecturerProfileData>(() => {
-    try {
-      const saved = localStorage.getItem("internlink_lecturer_profile");
-      if (saved) return { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
-    } catch {
-      // fallback
-    }
-    return DEFAULT_PROFILE;
-  });
+  const [profile, setProfile] = useState<LecturerProfileData>(DEFAULT_PROFILE);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempProfile, setTempProfile] = useState<LecturerProfileData>(profile);
@@ -137,13 +145,60 @@ export const AccountView = () => {
   };
 
   useEffect(() => {
-    if (!user) return;
-    if (user.name) {
-      setProfile((prev) => ({ ...prev, fullName: user.name }));
+    let cancelled = false;
+    async function loadProfile() {
+      setIsLoadingProfile(true);
+      try {
+        const overview = await apiRequest<LecturerOverviewDto>("/api/Lecturer/me");
+        if (cancelled) return;
+        const lec = overview.lecturer;
+        const loaded: LecturerProfileData = {
+          fullName: lec.fullName || user?.name || "",
+          lecturerCode: lec.staffCode || "",
+          email: lec.email || user?.email || "",
+          phone: lec.phone || "",
+          office: "",
+          dob: "",
+          gender: "Nam",
+          degree: "",
+          faculty: "",
+          department: lec.department || "",
+          bio: "",
+          avatarUrl: user?.avatarUrl || "",
+        };
+        // Merge with any locally-saved edits (office, dob, bio, etc.)
+        try {
+          const saved = localStorage.getItem("internlink_lecturer_profile");
+          if (saved) {
+            const parsed = JSON.parse(saved) as Partial<LecturerProfileData>;
+            Object.assign(loaded, {
+              office: parsed.office || loaded.office,
+              dob: parsed.dob || loaded.dob,
+              degree: parsed.degree || loaded.degree,
+              faculty: parsed.faculty || loaded.faculty,
+              bio: parsed.bio || loaded.bio,
+              gender: parsed.gender || loaded.gender,
+            });
+          }
+        } catch { /* ignore */ }
+        setProfile(loaded);
+        setTempProfile(loaded);
+      } catch {
+        // Fallback to auth context
+        if (!cancelled && user) {
+          setProfile((prev) => ({
+            ...prev,
+            fullName: user.name || prev.fullName,
+            email: user.email || prev.email,
+            avatarUrl: user.avatarUrl || prev.avatarUrl,
+          }));
+        }
+      } finally {
+        if (!cancelled) setIsLoadingProfile(false);
+      }
     }
-    if (user.email) {
-      setProfile((prev) => ({ ...prev, email: user.email }));
-    }
+    void loadProfile();
+    return () => { cancelled = true; };
   }, [user]);
 
   // Password strength helper
@@ -1103,54 +1158,10 @@ export const AccountView = () => {
               </div>
 
               <div className="relative border-l-2 border-slate-100 ml-3 space-y-4 pl-4 text-xs font-medium">
-                <div className="relative">
-                  <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-xs" />
-                  <p className="font-bold text-slate-900">
-                    Đăng nhập hệ thống qua Cổng Giảng viên
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    10:15 - Hôm nay • IP: 118.70.12.44 (Chrome Windows 11)
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
-                  <p className="font-bold text-slate-900">
-                    Phê duyệt Báo cáo giữa kỳ cho sinh viên Đinh Quốc Khánh
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    09:30 - Hôm nay • Điểm đánh giá: 8.5 / 10.0
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-white shadow-xs" />
-                  <p className="font-bold text-slate-900">
-                    Phát thông báo nhắc nhở nộp Báo cáo Tuần 6
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    08:45 - Hôm nay • Tiếp nhận: Toàn bộ sinh viên Lớp C24A.TH1 (28 SV)
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white shadow-xs" />
-                  <p className="font-bold text-slate-900">
-                    Xuất danh sách bảng điểm tổng hợp Đợt Học kỳ I - 2026
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    16:00 - Hôm qua • Định dạng bảng tính Excel (.xlsx)
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white" />
-                  <p className="font-bold text-slate-900">
-                    Cập nhật thông tin hồ sơ &amp; văn phòng làm việc
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    25/10/2026 • Đã xác nhận thông tin với Phòng Đào tạo
-                  </p>
+                <div className="py-8 text-center text-slate-400">
+                  <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="font-bold">Chưa có dữ liệu nhật ký</p>
+                  <p className="text-[11px] mt-1">Tính năng nhật ký hoạt động sẽ được cập nhật trong phiên bản tiếp theo.</p>
                 </div>
               </div>
             </div>
@@ -1172,7 +1183,7 @@ export const AccountView = () => {
                     Sinh viên hướng dẫn
                   </span>
                   <span className="text-lg font-bold text-blue-900">
-                    28 Sinh viên
+                    {navStats.studentCount} Sinh viên
                   </span>
                 </div>
                 <span className="px-2.5 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-lg">
@@ -1186,7 +1197,7 @@ export const AccountView = () => {
                     Doanh nghiệp hợp tác
                   </span>
                   <span className="text-lg font-bold text-slate-900">
-                    6 Công ty
+                    {navStats.enterpriseCount} Công ty
                   </span>
                 </div>
                 <Building2 className="w-5 h-5 text-slate-400" />
@@ -1198,12 +1209,14 @@ export const AccountView = () => {
                     Bài nộp chờ chấm
                   </span>
                   <span className="text-lg font-bold text-rose-900">
-                    6 bài nộp
+                    {navStats.pendingReviewCount} bài nộp
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 bg-rose-600 text-white text-[10px] font-bold rounded-full">
-                  Cần xử lý
-                </span>
+                {navStats.pendingReviewCount > 0 && (
+                  <span className="px-2.5 py-0.5 bg-rose-600 text-white text-[10px] font-bold rounded-full">
+                    Cần xử lý
+                  </span>
+                )}
               </div>
 
               <div className="p-3.5 bg-amber-50/80 rounded-md border border-amber-200/80 flex items-center justify-between">
@@ -1212,7 +1225,7 @@ export const AccountView = () => {
                     Thông báo mới
                   </span>
                   <span className="text-lg font-bold text-amber-900">
-                    2 thông báo
+                    {navStats.unreadNotificationCount} thông báo
                   </span>
                 </div>
                 <Bell className="w-5 h-5 text-amber-600" />

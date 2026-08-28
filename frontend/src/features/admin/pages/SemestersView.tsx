@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { CreateSemesterModal } from "../components/modals/CreateSemesterModal";
-import { ImportModal } from "../components/modals/ImportModal";
 import { AssignLecturerModal } from "../components/modals/AssignLecturerModal";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
@@ -775,12 +774,7 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
         }}
       />
 
-      <ImportModal
-        isOpen={importType !== null}
-        type={importType || "students"}
-        onClose={() => setImportType(null)}
-        onShowToast={onShowToast}
-      />
+
 
       <AssignLecturerModal
         isOpen={showAssignModal}

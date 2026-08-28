@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   Clock,
@@ -12,6 +12,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { Student } from "../../../types/student";
+import type { WeeklyReportDto } from "../../../types/api";
+import { weeklyReportService } from "../../../services/weeklyReport.service";
 
 interface StudentProgressWorkspaceProps {
   student: Student;
@@ -27,90 +29,58 @@ export const StudentProgressWorkspace = ({
   const [activeTab, setActiveTab] = useState<
     "timeline" | "logbook" | "history"
   >("timeline");
+  const [reports, setReports] = useState<WeeklyReportDto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Timeline weeks mock data
-  const weeksTimeline = [
-    {
-      week: 1,
-      name: "Tuần 1: Tiếp nhận & Tìm hiểu quy trình",
-      date: "01/09 - 07/09",
-      status: "completed",
-      score: 9.0,
-      note: "Hoàn thành tốt đúng hạn",
-    },
-    {
-      week: 2,
-      name: "Tuần 2: Phân tích yêu cầu & Thiết kế CSDL",
-      date: "08/09 - 14/09",
-      status: "completed",
-      score: 8.5,
-      note: "Cần bổ sung sơ đồ ERD",
-    },
-    {
-      week: 3,
-      name: "Tuần 3: Xây dựng Module Authentication",
-      date: "15/09 - 21/09",
-      status: "completed",
-      score: 8.8,
-      note: "Tốt",
-    },
-    {
-      week: 4,
-      name: "Tuần 4: Phát triển API Gateway & Microservices",
-      date: "22/09 - 28/09",
-      status: "completed",
-      score: 8.5,
-      note: "Tốt",
-    },
-    {
-      week: 5,
-      name: "Tuần 5: Kiểm thử hệ thống & Tối ưu hiệu năng",
-      date: "29/09 - 05/10",
-      status: student.riskFlag ? "overdue" : "completed",
-      score: student.riskFlag ? undefined : 8.0,
-      note: student.riskFlag ? "Trễ hạn nộp báo cáo 4 ngày" : "Đã nộp",
-    },
-    {
-      week: 6,
-      name: "Tuần 6: Hoàn thiện báo cáo, đóng dấu doanh nghiệp & Tổng kết",
-      date: "06/10 - 12/10",
-      status: "completed",
-      score: 9.0,
-      note: "Đã nộp đầy đủ quyển báo cáo & phiếu nhận xét",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    weeklyReportService
+      .getByInternship(student.id)
+      .then((data) => {
+        if (!cancelled) setReports(data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setReports([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [student.id]);
 
-  // Daily task logbook mock data
-  const taskLogs = [
-    {
-      date: "04/10/2026",
-      task: "Tối ưu SQL query cho bảng Transaction",
-      hours: 7,
-      status: "Completed",
-      difficulty: "Cần index bổ sung cho column created_at",
-    },
-    {
-      date: "03/10/2026",
-      task: "Viết Unit Test cho Auth Service",
-      hours: 8,
-      status: "Completed",
-      difficulty: "Không",
-    },
-    {
-      date: "02/10/2026",
-      task: "Fix bug JWT token expiration handler",
-      hours: 6,
-      status: "Completed",
-      difficulty: "Đã giải quyết cùng Mentor",
-    },
-    {
-      date: "01/10/2026",
-      task: "Thiết kế giao diện Dashboard Admin",
-      hours: 8,
-      status: "In Progress",
-      difficulty: "Cần chốt component library",
-    },
-  ];
+  // Derive timeline from real reports if available, else generated standard 8-week schedule
+  const weeksTimeline = Array.from({ length: 8 }, (_, i) => {
+    const weekNum = i + 1;
+    const rep = reports.find((r) => r.weekNumber === weekNum);
+    const isSubmitted = rep && (rep.status === "SUBMITTED" || rep.status === "REVIEWED" || rep.status === "APPROVED");
+    const isReviewed = rep && (rep.status === "REVIEWED" || rep.status === "APPROVED");
+    const isOverdue = !rep && weekNum < 4 && student.riskFlag;
+
+    return {
+      week: weekNum,
+      name: `Tuần ${weekNum}: ${rep?.title || `Báo cáo thực tập Tuần ${weekNum}`}`,
+      date: rep?.submittedAt ? new Date(rep.submittedAt).toLocaleDateString("vi-VN") : `Mốc tuần ${weekNum}`,
+      status: isReviewed ? "completed" : isSubmitted ? "in_progress" : isOverdue ? "overdue" : "upcoming",
+      score: undefined,
+      note: rep?.lecturerComment || (isOverdue ? "Chưa nộp báo cáo tuần" : rep?.contentSummary || ""),
+    };
+  });
+
+  // Daily task logbook from reports
+  const taskLogs = reports.flatMap((r) => {
+    return [
+      {
+        date: r.submittedAt ? new Date(r.submittedAt).toLocaleDateString("vi-VN") : `Tuần ${r.weekNumber}`,
+        task: r.title || `Nội dung công việc Tuần ${r.weekNumber}`,
+        hours: 40,
+        status: r.status === "APPROVED" || r.status === "REVIEWED" ? "Completed" : r.status === "SUBMITTED" ? "Submitted" : "Draft",
+        difficulty: r.contentSummary || "Bình thường",
+      },
+    ];
+  });
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
