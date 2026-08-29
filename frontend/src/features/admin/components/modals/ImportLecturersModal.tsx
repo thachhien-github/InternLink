@@ -166,6 +166,25 @@ export const ImportLecturersModal = ({
                   </p>
                 </div>
               </div>
+
+              {result.errors && result.errors.length > 0 && (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-rose-200 rounded-md p-3 bg-rose-50/50">
+                  <p className="font-bold text-rose-900 text-xs">Chi tiết lỗi ({result.errors.length} dòng):</p>
+                  <div className="space-y-1">
+                    {result.errors.map((err, idx) => (
+                      <div key={idx} className="text-[11px] text-rose-800 bg-white p-2 rounded border border-rose-200/60 flex items-start gap-2">
+                        <span className="font-mono font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px] shrink-0">
+                          Dòng {err.rowNumber}
+                        </span>
+                        <span className="flex-1">
+                          {err.staffCode ? <strong>{err.staffCode}: </strong> : null}
+                          {err.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

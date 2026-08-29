@@ -22,7 +22,10 @@ const DEFAULT_NAV_STATS: AdminNavStats = {
   unreadNotificationCount: 0,
 };
 
-export function useAdminNavStats(enabled = true) {
+export function useAdminNavStats(
+  enabled = true,
+  semesterId?: string | null,
+) {
   const [stats, setStats] = useState<AdminNavStats>(DEFAULT_NAV_STATS);
   const [recentNotifications, setRecentNotifications] = useState<
     NotificationDto[]
@@ -43,7 +46,9 @@ export function useAdminNavStats(enabled = true) {
 
       const assignmentGroups = await Promise.all(
         lecturers.map((l) =>
-          adminAssignmentsService.getByLecturer(l.id).catch(() => []),
+          adminAssignmentsService
+            .getByLecturer(l.id, semesterId ?? undefined)
+            .catch(() => []),
         ),
       );
       const assignedIds = new Set<string>();
@@ -62,7 +67,7 @@ export function useAdminNavStats(enabled = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, semesterId]);
 
   useEffect(() => {
     void load();

@@ -38,7 +38,6 @@ import { SkeletonBox } from "../../../components/common/SkeletonLoader";
 import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
-import { ImportStudentsModal } from "../components/modals/ImportStudentsModal";
 import { adminStudentsService } from "../../../services/adminStudents.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
 import { exportService } from "../../../services/export.service";
@@ -236,9 +235,6 @@ export const StudentsView = ({
     }
   }, [searchParams]);
   const [pageSize, setPageSize] = useState(10);
-  const [importFileName, setImportFileName] = useState(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   const classOptions = useMemo(() => {
     return Array.from(
@@ -249,26 +245,6 @@ export const StudentsView = ({
       ),
     ).sort();
   }, [students]);
-
-  const handleDownloadTemplate = async () => {
-    if (USE_MOCK) {
-      onShowToast("Đã tải xuống file mẫu Danh_sach_Sinh_vien_Template.xlsx");
-      return;
-    }
-    try {
-      const { blob, filename } =
-        await adminStudentsService.downloadImportTemplate();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      onShowToast(`Đã tải xuống ${filename}`);
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    }
-  };
 
   const handleAddStudent = async (payload: CreateStudentFormPayload) => {
     if (USE_MOCK) {
@@ -1014,17 +990,6 @@ export const StudentsView = ({
           </div>
         </div>
       </Panel>
-
-                  disabled={isImporting}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-md shadow-xs cursor-pointer"
-                >
-                  {isImporting ? "Đang import…" : "Xác nhận Import"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* GENERATE ACCOUNTS MODAL */}
       {isGenerateAccountsModalOpen && (

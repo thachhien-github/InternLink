@@ -458,6 +458,15 @@ export interface StudentImportResultDto {
   emailFailedCount: number;
   defaultPassword: string;
   createdStudents: StudentDto[];
+  errors?: StudentImportErrorDto[];
+  emailErrors?: StudentImportErrorDto[];
+}
+
+export interface StudentImportErrorDto {
+  rowNumber: number;
+  studentCode?: string | null;
+  username?: string | null;
+  message: string;
 }
 
 export interface LecturerImportResultDto {
@@ -469,6 +478,15 @@ export interface LecturerImportResultDto {
   emailFailedCount: number;
   defaultPassword: string;
   createdLecturers: LecturerDto[];
+  errors?: LecturerImportErrorDto[];
+  emailErrors?: LecturerImportErrorDto[];
+}
+
+export interface LecturerImportErrorDto {
+  rowNumber: number;
+  staffCode?: string | null;
+  username?: string | null;
+  message: string;
 }
 
 export interface CompanyImportResultDto {
@@ -477,4 +495,11 @@ export interface CompanyImportResultDto {
   failedCount: number;
   skippedDuplicateCount: number;
   createdCompanies: CompanyDto[];
+  errors?: CompanyImportErrorDto[];
+}
+
+export interface CompanyImportErrorDto {
+  rowNumber: number;
+  companyName?: string | null;
+  message: string;
 }

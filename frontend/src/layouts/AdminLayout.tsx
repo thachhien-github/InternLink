@@ -5,6 +5,7 @@ import { Toast } from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
 import { useAdminNavStats } from "../hooks/useAdminNavStats";
+import { useSemester } from "../contexts/SemesterContext";
 
 import type { UserRole } from "../types/common";
 
@@ -25,7 +26,8 @@ export default function AdminLayout({
 }: AdminLayoutProps) {
   const { message, type, clearToast, showToast } = useToast();
   const { user } = useAuth();
-  const { stats, recentNotifications } = useAdminNavStats(true);
+  const { selectedSemesterId } = useSemester();
+  const { stats, recentNotifications } = useAdminNavStats(true, selectedSemesterId);
 
   return (
     <div className="min-h-screen bg-[var(--il-surface-bg)] text-slate-800 font-sans flex antialiased">

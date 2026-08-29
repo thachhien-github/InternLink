@@ -225,9 +225,6 @@ export const LecturersView = ({
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [importFileName, setImportFileName] = useState(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   const fetchLecturerRows = async () => {
     const dtos = await adminLecturersService.getAll();
@@ -940,13 +937,6 @@ export const LecturersView = ({
           </div>
         </div>
       </Panel>
-
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* GENERATE ACCOUNTS MODAL */}
       {isGenerateAccountsModalOpen && (

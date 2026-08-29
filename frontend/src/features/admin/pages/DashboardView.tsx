@@ -33,10 +33,10 @@ export const DashboardView = ({
 }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const { currentSemester } = useSemester();
+  const { selectedSemester } = useSemester();
   const { stats, isLoading, updatedAt, reload } = useAdminDashboardStats(
     true,
-    currentSemester?.id,
+    selectedSemester?.id,
     onShowToast,
   );
 
@@ -49,7 +49,7 @@ export const DashboardView = ({
   const handleExportInternshipList = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadInternshipExcel(currentSemester?.id);
+      await exportService.downloadInternshipExcel(selectedSemester?.id);
       onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast("Xuất danh sách thực tập thất bại. Đang tải báo cáo tổng quan...");
@@ -62,7 +62,7 @@ export const DashboardView = ({
   const handleExportSummaryReport = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadSummaryReport(currentSemester?.id);
+      await exportService.downloadSummaryReport(selectedSemester?.id);
       onShowToast("Đã tải xuống Báo cáo tổng kết thực tập (.xlsx)");
     } catch (err) {
       onShowToast("Xuất báo cáo tổng kết thất bại.");

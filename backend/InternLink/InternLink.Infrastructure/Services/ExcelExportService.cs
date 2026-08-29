@@ -590,23 +590,8 @@ public class ExcelExportService : IExcelExportService
         if (!string.IsNullOrEmpty(customPath) && File.Exists(customPath))
             return customPath;
 
-        var candidates = new[]
-        {
-            Path.Combine(AppContext.BaseDirectory, "Templates", "InternshipExportTemplate.xlsx"),
-            Path.Combine(AppContext.BaseDirectory, "Templates", "DANH SACH THUC TAP C23.xlsx"),
-            Path.Combine(Directory.GetCurrentDirectory(), "Templates", "InternshipExportTemplate.xlsx"),
-            Path.Combine(Directory.GetCurrentDirectory(), "backend", "InternLink", "InternLink.API", "Templates", "InternshipExportTemplate.xlsx"),
-            Path.Combine(Directory.GetCurrentDirectory(), "frontend", "public", "DANH SACH THUC TAP C23.xlsx"),
-            "e:\\Downloads\\internlink\\backend\\InternLink\\InternLink.API\\Templates\\InternshipExportTemplate.xlsx",
-            "e:\\Downloads\\internlink\\frontend\\public\\DANH SACH THUC TAP C23.xlsx"
-        };
-
-        foreach (var c in candidates)
-        {
-            if (File.Exists(c)) return c;
-        }
-
-        return null;
+        return TemplateHelper.FindTemplatePath("InternshipExportTemplate.xlsx")
+            ?? TemplateHelper.FindTemplatePath("DANH SACH THUC TAP C23.xlsx");
     }
 
     private static (string Ho, string Ten) SplitFullName(string fullName)

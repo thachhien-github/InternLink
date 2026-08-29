@@ -1,9 +1,7 @@
 import { downloadAuthenticatedFile } from "../lib/apiClient";
 
 export const exportService = {
-  /**
-   * Downloads the complete institutional multi-sheet internship Excel report (C23 template).
-   */
+  /** Downloads the multi-sheet internship list Excel report for the selected semester. */
   downloadInternshipExcel(semesterId?: string) {
     const query = semesterId ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
@@ -12,9 +10,7 @@ export const exportService = {
     );
   },
 
-  /**
-   * Downloads the official academic summary report (C22A template).
-   */
+  /** Downloads the academic internship summary report for the selected semester. */
   downloadSummaryReport(semesterId?: string) {
     const query = semesterId ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
