@@ -1,46 +1,97 @@
-# InternLink — Onboarding (15 phút)
+# InternLink — Hướng Dẫn Nhập Môn (Onboarding)
 
-Chạy backend + đọc docs đủ để demo API.
+**Phiên bản:** 4.0  
+**Ngày cập nhật:** Tháng 9/2026
 
-## 1. Chạy API
+---
+
+## 1. Yêu cầu Hệ thống
+
+| Thành phần | Phiên bản |
+|:---|:---|
+| .NET SDK | 8.x |
+| Node.js | 20.x |
+| SQL Server | 2022 Express/Developer |
+| Docker Desktop | 4.x (tùy chọn) |
+
+---
+
+## 2. Clone & Setup
 
 ```bash
+# Clone repository
+git clone <repo-url>
+cd internlink
+
+# Backend setup
 cd backend/InternLink
+dotnet restore
 dotnet ef database update --project InternLink.Infrastructure --startup-project InternLink.API
 dotnet run --project InternLink.API
+
+# Frontend setup (terminal mới)
+cd frontend
+npm install
+npm run dev
 ```
 
-Swagger: http://localhost:7109/swagger
+---
 
-## 2. Tài khoản demo
+## 3. Access Points
 
-| User | Password | Role |
-|------|----------|------|
-| `superadmin` | `Password123!` | SuperAdmin |
-| `lecturer1` | `Password123!` | Lecturer |
-| `student1` | `Password123!` | Student |
+| Service | URL |
+|:---|:---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:7109 |
+| Swagger | http://localhost:7109/swagger |
 
-## 3. Thứ tự đọc docs (nếu cần context)
+---
 
-1. [`01-Vision-Scope.md`](01-Vision-Scope.md) → [`02-Software-Requirements-Specification.md`](02-Software-Requirements-Specification.md)  
-2. [`04-Use-Case-Specification.md`](04-Use-Case-Specification.md)  
-3. [`database/README.md`](../database/README.md)  
-4. [`Backend-Plan.md`](Backend-Plan.md) + [`08-API-Specification.md`](08-API-Specification.md)  
-5. Sequences: [`images/sequence/`](images/sequence/)
+## 4. Tài khoản Demo
 
-**Status matrix:** [`DOCS-STATUS.md`](DOCS-STATUS.md)
+| Username | Password | Role |
+|:---|:---|:---|
+| `admin` | `Admin123!` | SuperAdmin |
+| `gv001` | `Password123!` | Lecturer |
+| `sv001` | `Password123!` | Student |
 
-## 4. Smoke nhanh (SuperAdmin)
+---
 
-1. Login `superadmin` → copy JWT  
-2. `GET /api/Admin/students`  
-3. `POST /api/Admin/assignments` (gán SV → lecturer)  
-4. Login `lecturer1` → `GET /api/Lecturer/internships`
+## 5. Thứ Tự Đọc Tài Liệu
 
-Checklist đầy đủ: [`Admin-Smoke-Test-Checklist.md`](Admin-Smoke-Test-Checklist.md)
+1. `01-Vision-Scope.md` — Tổng quan dự án
+2. `06-System-Architecture.md` — Kiến trúc hệ thống
+3. `05a-Domain-Model.md` — Mô hình miền
+4. `08-API-Specification.md` — Đặc tả API
+5. `09-System-DevOps-Guide.md` — Hướng dẫn vận hành
 
-## 5. Email ở Dev
+---
 
-`Email:Enabled=false` → nội dung mail ghi vào Serilog (`InternLink.API/Logs/`).
+## 6. Smoke Test Nhanh
 
-Bật Gmail thật: [`Email-Setup-Gmail.md`](Email-Setup-Gmail.md) (`internlink.cntt@gmail.com` + App Password + user-secrets).
+```bash
+# 1. Login Admin
+curl -X POST http://localhost:7109/api/Auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin123!"}'
+
+# 2. Lấy JWT token từ response, rồi gọi:
+curl http://localhost:7109/api/Admin/students \
+  -H "Authorization: Bearer <token>"
+
+# 3. Login Lecturer
+curl -X POST http://localhost:7109/api/Auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"gv001","password":"Password123!"}'
+
+# 4. Gọi API giảng viên
+curl http://localhost:7109/api/Lecturer/internships \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## 7. Cấu Hình Email (Tùy chọn)
+
+- Mặc định: `Email:Enabled=false` (log ra console)
+- Bật Gmail SMTP: Xem `Email-Setup-Gmail.md`

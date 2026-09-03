@@ -1,60 +1,95 @@
 # InternLink — Thiết Kế Cơ Sở Dữ Liệu SQL Server (Database Design)
 
 **Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
-**Phiên bản:** 3.0  
-**Ngày cập nhật:** Tháng 8/2026
+**Phiên bản:** 4.0  
+**Ngày cập nhật:** Tháng 9/2026
 
 ---
 
-## 1. Công Nghệ & Chiến Lược CSDL (DBMS & Technology Stack)
+## 1. Công Nghệ & Chiến Lược CSDL
 
-- **Hệ quản trị CSDL**: Microsoft SQL Server 2022.
-- **ORM / Data Access**: Entity Framework Core 10 (Code-First Migrations).
+- **Hệ quản trị CSDL**: Microsoft SQL Server 2022
+- **ORM / Data Access**: Entity Framework Core 8 (Code-First Migrations)
 - **Quy ước đặt tên**:
-  - Bảng: Tên tiếng Anh số nhiều, PascalCase (`Users`, `Semesters`, `Internships`, `WeeklyReports`).
-  - Khóa chính (PK): `Id` kiểu `uniqueidentifier` (GUID v4) giúp chống lộ ID tuần tự và tối ưu khi mở rộng phân tán.
-  - Khóa ngoại (FK): `{Entity}Id` (VD: `UserId`, `SemesterId`, `InternshipId`).
-  - Cột thời gian: `CreatedAt`, `UpdatedAt`, `DeletedAt` sử dụng chuẩn `datetime2` và múi giờ UTC.
+  - Bảng: Tên tiếng Anh số nhiều, PascalCase (`Users`, `Semesters`, `Internships`)
+  - Khóa chính (PK): `Id` kiểu `uniqueidentifier` (GUID v4)
+  - Khóa ngoại (FK): `{Entity}Id`
+  - Cột thời gian: `CreatedAt`, `UpdatedAt` — `datetime2` UTC
 
 ---
 
 ## 2. Chiến Lược Đánh Chỉ Mục (Indexing Strategy)
 
-Nhằm tối ưu hóa tốc độ truy vấn cho các tác vụ tìm kiếm, lọc theo học kỳ và tổng hợp báo cáo:
-
-| Bảng | Tên Index | Loại Index | Cột Được Index | Mục Đích Tối Ưu |
-| :--- | :--- | :---: | :--- | :--- |
-| `Users` | `IX_Users_Username` | Unique | `Username` | Đăng nhập tốc độ cao ($O(1)$). |
-| `Semesters` | `IX_Semesters_Code` | Unique | `Code` | Tìm kiếm học kỳ theo mã. |
-| `Semesters` | `IX_Semesters_IsCurrent` | Non-Clustered | `IsCurrent` | Truy vấn học kỳ hiện tại đang chạy. |
-| `Students` | `IX_Students_StudentCode` | Unique | `StudentCode` | Tra cứu hồ sơ theo MSSV. |
-| `Lecturers` | `IX_Lecturers_StaffCode` | Unique | `StaffCode` | Tra cứu hồ sơ theo Mã GV. |
-| `Internships`| `IX_Internships_Semester_Student` | Unique | `(SemesterId, StudentId)` | Bảo đảm 1 SV chỉ có 1 đợt thực tập/kỳ. |
-| `Internships`| `IX_Internships_LecturerId` | Non-Clustered | `LecturerId` | Lọc danh sách SV theo GVHD. |
-| `WeeklyReports`| `IX_WeeklyReports_Internship_Week` | Unique | `(InternshipId, WeekNumber)` | Bảo đảm 1 SV chỉ nộp 1 báo cáo/tuần. |
-| `Evaluations`| `IX_Evaluations_InternshipId` | Unique | `InternshipId` | Quan hệ 1:1 giữa thực tập và điểm số. |
+| Bảng | Tên Index | Loại | Cột | Mục đích |
+|:---|:---|:---:|:---|:---|
+| `Users` | `IX_Users_Username` | Unique | `Username` | Đăng nhập O(1) |
+| `Students` | `IX_Students_StudentCode` | Unique | `StudentCode` | Tra cứu MSSV |
+| `Lecturers` | `IX_Lecturers_StaffCode` | Unique | `StaffCode` | Tra cứu Mã GV |
+| `Internships` | `IX_Internships_Semester_Student` | Unique | `(SemesterId, StudentId)` | 1 SV chỉ 1 đợt/kỳ |
+| `Internships` | `IX_Internships_LecturerId` | NC | `LecturerId` | Lọc SV theo GV |
+| `Internships` | `IX_Internships_SemesterId` | NC | `SemesterId` | Lọc theo học kỳ |
+| `WeeklyReports` | `IX_WeeklyReports_Internship_Week` | Unique | `(InternshipId, WeekNumber)` | 1 SV chỉ 1 báo cáo/tuần |
+| `Evaluations` | `IX_Evaluations_InternshipId` | Unique | `InternshipId` | Quan hệ 1:1 |
+| `Submissions` | `IX_Submissions_InternshipId` | NC | `InternshipId` | Lọc bài nộp theo thực tập |
+| `Feedbacks` | `IX_Feedbacks_SubmissionId` | NC | `SubmissionId` | Lọc feedback theo bài nộp |
+| `Notifications` | `IX_Notifications_UserId` | NC | `UserId` | Lọc thông báo theo user |
 
 ---
 
-## 3. Cơ Chế Xóa Mềm & Toàn Vẹn Lịch Sử (Soft Delete)
+## 3. Cơ Chế Xóa Mềm & Audit
 
-1. **Global Query Filter trong EF Core**:
-   Tất cả các câu lệnh LINQ tự động áp dụng bộ lọc `Where(e => !e.IsDeleted)` trong `AppDbContext.cs`:
-   ```csharp
-   modelBuilder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
-   modelBuilder.Entity<Semester>().HasQueryFilter(s => !s.IsDeleted);
-   modelBuilder.Entity<Internship>().HasQueryFilter(i => !i.IsDeleted);
-   modelBuilder.Entity<WeeklyReport>().HasQueryFilter(w => !w.IsDeleted);
-   modelBuilder.Entity<Evaluation>().HasQueryFilter(e => !e.IsDeleted);
-   ```
-2. **Lợi ích**:
-   - Không làm mất lịch sử thực tập của các khóa trước khi xóa tài khoản sinh viên/học kỳ cũ.
-   - Cho phép khôi phục dữ liệu nhanh chóng khi có thao tác nhầm lẫn từ phía người dùng.
+### 3.1. Soft Delete
+
+Tất cả các entity đều kế thừa `BaseEntity` với:
+- `IsDeleted` (bit): Cờ xóa mềm
+- `CreatedAt` (datetime2): Thời điểm tạo
+- `UpdatedAt` (datetime2): Thời điểm cập nhật
+
+### 3.2. Global Query Filter
+
+```csharp
+// AppDbContext.cs
+modelBuilder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
+modelBuilder.Entity<Semester>().HasQueryFilter(s => !s.IsDeleted);
+modelBuilder.Entity<Student>().HasQueryFilter(s => !s.IsDeleted);
+modelBuilder.Entity<Lecturer>().HasQueryFilter(l => !l.IsDeleted);
+modelBuilder.Entity<Company>().HasQueryFilter(c => !c.IsDeleted);
+modelBuilder.Entity<Internship>().HasQueryFilter(i => !i.IsDeleted);
+modelBuilder.Entity<WeeklyReport>().HasQueryFilter(w => !w.IsDeleted);
+modelBuilder.Entity<Submission>().HasQueryFilter(s => !s.IsDeleted);
+modelBuilder.Entity<Evaluation>().HasQueryFilter(e => !e.IsDeleted);
+modelBuilder.Entity<Document>().HasQueryFilter(d => !d.IsDeleted);
+```
 
 ---
 
 ## 4. Phân Vùng Dữ Liệu Theo Học Kỳ (Semester Scoping)
 
-- Mọi thực thể tiến độ (`WeeklyReport`, `Submission`, `Evaluation`, `Document`) đều liên kết chặt chẽ với `Internship`.
-- `Internship` bắt buộc gắn với `SemesterId`.
-- Nhờ cấu trúc này, khi bước sang học kỳ mới, hệ thống tự động lọc và hiển thị đúng dữ liệu của học kỳ đang kích hoạt (`IsCurrent = true`) mà không làm xáo trộn dữ liệu của các kỳ trước.
+- Mọi thực thể tiến độ đều liên kết với `Internship`
+- `Internship` bắt buộc gắn với `SemesterId`
+- Khi bước sang học kỳ mới, hệ thống lọc đúng dữ liệu theo `SemesterId`
+
+---
+
+## 5. Danh Sách 18 Bảng
+
+| # | Bảng | Mô tả | Soft Delete |
+|:---:|:---|:---|:---:|
+| 1 | `Users` | Tài khoản xác thực | ✅ |
+| 2 | `RefreshTokens` | JWT Refresh Token | ❌ |
+| 3 | `PasswordResetTokens` | Token reset password | ❌ |
+| 4 | `Semesters` | Học kỳ thực tập | ✅ |
+| 5 | `Students` | Hồ sơ sinh viên | ✅ |
+| 6 | `Lecturers` | Hồ sơ giảng viên | ✅ |
+| 7 | `Companies` | Doanh nghiệp | ✅ |
+| 8 | `Internships` | Bản ghi thực tập | ✅ |
+| 9 | `WeeklyReports` | Báo cáo tuần | ✅ |
+| 10 | `Submissions` | Bài nộp | ✅ |
+| 11 | `Feedbacks` | Nhận xét | ❌ (append-only) |
+| 12 | `Evaluations` | Đánh giá | ✅ |
+| 13 | `EvaluationRubrics` | Rubric | ✅ |
+| 14 | `EvaluationRubricCriteria` | Tiêu chí rubric | ❌ |
+| 15 | `Documents` | Tài liệu | ✅ |
+| 16 | `Notifications` | Thông báo | ❌ |
+| 17 | `AccountRequests` | Yêu cầu tài khoản | ✅ |
+| 18 | `SystemSettings` | Cấu hình hệ thống | ❌ |

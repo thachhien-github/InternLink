@@ -1,12 +1,12 @@
-# InternLink — Sơ Đồ Thực Thể Quan Hệ (Entity Relationship Diagram - ERD)
+# InternLink — Sơ Đồ Thực Thể Quan Hệ (Entity Relationship Diagram)
 
 **Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
-**Phiên bản:** 3.0  
-**Ngày cập nhật:** Tháng 8/2026
+**Phiên bản:** 4.0  
+**Ngày cập nhật:** Tháng 9/2026
 
 ---
 
-## 1. Sơ Đồ ERD Chi Tiết (Mermaid Diagram)
+## 1. Sơ Đồ ERD Chi Tiết (18 Bảng)
 
 ```mermaid
 erDiagram
@@ -15,18 +15,24 @@ erDiagram
     Users ||--o{ RefreshTokens : "owns"
     Users ||--o{ PasswordResetTokens : "requests"
     Users ||--o{ Notifications : "receives"
+    Users ||--o{ AccountRequests : "submits"
 
     Semesters ||--o{ Internships : "contains"
+    Semesters ||--o{ EvaluationRubrics : "has"
+
     Students ||--o{ Internships : "participates in"
     Lecturers ||--o{ Internships : "supervises"
     Companies ||--o{ Internships : "hosts"
 
-    Internships ||--o{ WeeklyReports : "has 12 weeks"
-    Internships ||--o{ Submissions : "has final reports"
-    Internships ||--o| Evaluations : "evaluated by rubric"
-    Internships ||--o{ Documents : "contains attachments"
+    Internships ||--o{ WeeklyReports : "has"
+    Internships ||--o{ Submissions : "has"
+    Internships ||--o| Evaluations : "evaluated"
+    Internships ||--o{ Documents : "has"
 
-    Submissions ||--o{ Feedbacks : "reviewed by"
+    Submissions ||--o{ Feedbacks : "receives"
+    Feedbacks }o--o| Lecturers : "created by (nullable)"
+
+    EvaluationRubrics ||--o{ EvaluationRubricCriteria : "contains"
 
     Users {
         uuid Id PK
@@ -44,11 +50,13 @@ erDiagram
 
     Semesters {
         uuid Id PK
-        string Code UK
         string Name
+        string Term
+        string AcademicYear
         datetime StartDate
         datetime EndDate
-        bool IsCurrent
+        int Status
+        int MaxStudentsPerLecturer
         bool IsDeleted
     }
 
@@ -57,11 +65,10 @@ erDiagram
         uuid UserId FK
         string StudentCode UK
         string FullName
+        string Email
+        string Phone
         string Class
         string Major
-        string Phone
-        string Email
-        decimal GPA
         bool IsDeleted
     }
 
@@ -70,20 +77,18 @@ erDiagram
         uuid UserId FK
         string StaffCode UK
         string FullName
-        string Department
-        string AcademicRank
-        string Title
-        string Phone
         string Email
+        string Phone
+        string Department
         bool IsDeleted
     }
 
     Companies {
         uuid Id PK
         string CompanyName
-        string TaxCode
         string Address
         string Industry
+        string Website
         string ContactPerson
         string ContactEmail
         string ContactPhone
@@ -94,15 +99,16 @@ erDiagram
 
     Internships {
         uuid Id PK
-        uuid SemesterId FK
         uuid StudentId FK
-        uuid LecturerId FK
         uuid CompanyId FK
-        string Position
-        string TopicTitle
+        uuid LecturerId FK
+        uuid SemesterId FK
         datetime StartDate
         datetime EndDate
         int Status
+        string Position
+        string SupervisorName
+        string Notes
         bool IsDeleted
     }
 
@@ -110,13 +116,10 @@ erDiagram
         uuid Id PK
         uuid InternshipId FK
         int WeekNumber
+        string Title
         string Content
-        string PlanNextWeek
-        string Obstacles
-        string Attachments
         int Status
-        string ReviewNotes
-        decimal Score
+        string LecturerComment
         datetime SubmittedAt
         bool IsDeleted
     }
@@ -124,12 +127,12 @@ erDiagram
     Submissions {
         uuid Id PK
         uuid InternshipId FK
+        int Type
         string Title
         string Description
-        int Type
         int Version
+        string FileName
         string FileUrl
-        string MimeType
         long FileSize
         int Status
         datetime SubmittedAt
@@ -139,27 +142,46 @@ erDiagram
     Feedbacks {
         uuid Id PK
         uuid SubmissionId FK
-        uuid LecturerId FK
-        string Content
-        int Rating
+        uuid LecturerId FK "nullable"
+        string Comment
+        bool IsPublic
         datetime CreatedAt
     }
 
     Evaluations {
         uuid Id PK
         uuid InternshipId FK
-        uuid LecturerId FK
-        decimal TechnicalScore
-        decimal AttitudeScore
-        decimal SoftSkillsScore
-        decimal FinalReportScore
-        decimal TotalScore
-        string FinalGrade
-        string LecturerComments
-        string EnterpriseComments
+        uuid EvaluatedById FK
+        int TechnicalScore
+        int CommunicationScore
+        int TeamworkScore
+        int InitiativeScore
+        decimal FinalGrade
+        string Comments
         bool IsFinalized
-        datetime FinalizedAt
+        uuid RubricId FK
+        string CriteriaScoresJson
         bool IsDeleted
+    }
+
+    EvaluationRubrics {
+        uuid Id PK
+        uuid SemesterId FK
+        string Name
+        int ApplicationMode
+        int Status
+        string RejectionReason
+        bool IsDeleted
+    }
+
+    EvaluationRubricCriteria {
+        uuid Id PK
+        uuid RubricId FK
+        string Name
+        string Description
+        decimal Weight
+        int MaxScore
+        int OrderIndex
     }
 
     Documents {
@@ -173,7 +195,7 @@ erDiagram
         string MimeType
         long FileSize
         bool IsRequired
-        datetime UploadedAt
+        bool IsArchived
         bool IsDeleted
     }
 
@@ -181,24 +203,57 @@ erDiagram
         uuid Id PK
         uuid UserId FK
         string Title
-        string Message
-        int Type
+        string Content
+        string Link
         bool IsRead
+        datetime ReadAt
+        string SenderName
         datetime CreatedAt
+    }
+
+    AccountRequests {
+        uuid Id PK
+        uuid RequesterUserId FK
+        string RequesterName
+        string RequesterCode
+        string RequesterEmail
+        string RequesterRole
+        string RequestType
+        string Description
+        string Priority
+        string Status
+        string AdminNote
+        bool IsDeleted
+    }
+
+    SystemSettings {
+        uuid Id PK
+        string Key UK
+        string Value
+        string Description
+        datetime UpdatedAt
     }
 ```
 
 ---
 
-## 2. Ràng Buộc Khóa Ngoại & Tính Toàn Vẹn Tham Chiếu (Foreign Key Constraints)
+## 2. Ràng Buộc Khóa Ngoại
 
-1. **`Internships`**:
-   - `FK_Internships_Semesters`: `SemesterId` $\rightarrow$ `Semesters(Id)` (Restricted Delete).
-   - `FK_Internships_Students`: `StudentId` $\rightarrow$ `Students(Id)` (Restricted Delete).
-   - `FK_Internships_Lecturers`: `LecturerId` $\rightarrow$ `Lecturers(Id)` (Null on Delete).
-   - `FK_Internships_Companies`: `CompanyId` $\rightarrow$ `Companies(Id)` (Null on Delete).
-2. **`WeeklyReports`**:
-   - `FK_WeeklyReports_Internships`: `InternshipId` $\rightarrow$ `Internships(Id)` (Cascade Delete / Soft Delete).
-   - Index duy nhất: `(InternshipId, WeekNumber)` để bảo đảm mỗi sinh viên chỉ có 1 báo cáo cho mỗi tuần.
-3. **`Evaluations`**:
-   - `FK_Evaluations_Internships`: `InternshipId` $\rightarrow$ `Internships(Id)` (Unique 1:1).
+| Bảng | Khóa ngoại | REFERENCES | On Delete |
+|:---|:---|:---|:---|
+| `Students` | `UserId` | `Users(Id)` | Set Null |
+| `Lecturers` | `UserId` | `Users(Id)` | Set Null |
+| `Internships` | `StudentId` | `Students(Id)` | Restrict |
+| `Internships` | `LecturerId` | `Lecturers(Id)` | Set Null |
+| `Internships` | `CompanyId` | `Companies(Id)` | Set Null |
+| `Internships` | `SemesterId` | `Semesters(Id)` | Restrict |
+| `WeeklyReports` | `InternshipId` | `Internships(Id)` | Cascade |
+| `Submissions` | `InternshipId` | `Internships(Id)` | Cascade |
+| `Feedbacks` | `SubmissionId` | `Submissions(Id)` | Cascade |
+| `Feedbacks` | `LecturerId` | `Lecturers(Id)` | Set Null |
+| `Evaluations` | `InternshipId` | `Internships(Id)` | Cascade |
+| `EvaluationRubrics` | `SemesterId` | `Semesters(Id)` | Restrict |
+| `EvaluationRubricCriteria` | `RubricId` | `EvaluationRubrics(Id)` | Cascade |
+| `Documents` | `InternshipId` | `Internships(Id)` | Set Null |
+| `Notifications` | `UserId` | `Users(Id)` | Cascade |
+| `AccountRequests` | `RequesterUserId` | `Users(Id)` | Set Null |

@@ -1,74 +1,103 @@
 # InternLink — Tầm Nhìn & Phạm Vi Dự Án (Vision & Scope)
 
 **Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
-**Phiên bản:** 3.0 (Chuẩn Đồ Án Tốt Nghiệp / Nghiệm Thu)  
-**Ngày cập nhật:** Tháng 8/2026  
-**Trạng thái:** Hoàn thiện 100% (Production-Ready)
+**Phiên bản:** 4.0  
+**Ngày cập nhật:** Tháng 9/2026  
+**Trạng thái:** v1.0 Release — Sẵn sàng vận hành học kỳ
 
 ---
 
 ## 1. Giới thiệu Tổng quan (Executive Summary)
 
 **InternLink** là nền tảng quản lý và giám sát thực tập tốt nghiệp toàn diện dành cho Khoa Công nghệ Thông tin, số hóa 100% quy trình kết nối giữa 3 chủ thể:
-1. **Ban Quản trị Khoa / Quản trị viên (SuperAdmin)**: Quản lý học kỳ, danh mục công ty, import hàng loạt danh sách sinh viên & giảng viên bằng Excel, tự động phân công hướng dẫn và gửi email thư mời kích hoạt tài khoản.
-2. **Giảng viên hướng dẫn (Lecturer)**: Theo dõi tiến độ sinh viên được phân công, duyệt báo cáo tuần (12 tuần), phản hồi đồ án/sản phẩm, chấm điểm theo chuẩn Rubric 4 tiêu chí và xuất báo cáo tổng hợp cuối kỳ (Excel & PDF Server-side).
-3. **Sinh viên thực tập (Student)**: Cập nhật thông tin doanh nghiệp, nộp nhật ký tiến độ tuần kèm minh chứng, nộp đồ án tốt nghiệp nhiều phiên bản, tải biểu mẫu chuẩn và theo dõi kết quả đánh giá.
+
+1. **Ban Quản trị Khoa (SuperAdmin)**: Quản lý học kỳ, danh mục doanh nghiệp, import hàng loạt danh sách SV/GV bằng Excel, phân công hướng dẫn, quản lý yêu cầu tài khoản, phê duyệt rubric đánh giá, phát thông báo broadcast.
+2. **Giảng viên hướng dẫn (Lecturer)**: Theo dõi tiến độ sinh viên, duyệt báo cáo tuần, phản hồi bài nộp, chấm điểm rubric, lưu ghi chú SV, gửi thông báo hàng loạt, xuất báo cáo PDF/Excel.
+3. **Sinh viên thực tập (Student)**: Theo dõi tiến độ thực tập, nộp báo cáo tuần, nộp bài nộp sản phẩm, phản hồi 2 chiều với GV, xem điểm đánh giá, tải PDF chứng nhận thực tập.
 
 ---
 
 ## 2. Bối cảnh & Vấn đề Thực tế (Problem Statement)
 
-Trước khi có hệ thống InternLink, công tác tổ chức và quản lý thực tập tốt nghiệp tại các trường đại học gặp nhiều bất cập:
-
 | Vấn đề thực tế (Pain Points) | Hậu quả | Giải pháp của InternLink |
-| :--- | :--- | :--- |
-| **P1. Dữ liệu phân tán** | Danh sách SV lưu trên Excel, nộp bài qua Email/Zalo, lưu trữ trên Google Drive cá nhân. | Tập trung toàn bộ Master Data, hồ sơ SV, GVHD và Doanh nghiệp vào CSDL SQL Server duy nhất. |
-| **P2. Khó theo dõi tiến độ tuần** | GVHD không nắm được sinh viên nào đang thực tập đúng hạn, sinh viên nào nợ báo cáo. | Cung cấp cổng Dashboard tuần: SV nộp nhật ký 12 tuần, GVHD nhận thông báo real-time và phản hồi ngay. |
-| **P3. Quản lý phiên bản nộp bài** | SV gửi nhiều file bài qua email gây thất lạc, khó phân biệt bản nháp và bản hoàn chỉnh. | Tích hợp hệ thống quản lý bài nộp (Submissions) đa phiên bản (v1, v2, v3), lưu trữ an toàn trên Local Volume. |
-| **P4. Tổng hợp điểm cuối kỳ thủ công** | Mất từ 1-2 tuần để Khoa tổng hợp điểm từ phiếu giấy và file Excel của từng giảng viên. | Tự động tính điểm tổng kết theo trọng số Rubric và cung cấp chức năng xuất file Excel/PDF chuẩn Bộ GD&ĐT chỉ với 1 click. |
-| **P5. Khởi tạo tài khoản & phân công nặng nề** | Nhập liệu thủ công hàng trăm tài khoản mỗi học kỳ rất dễ sai sót. | Hỗ trợ Import file Excel danh sách SV/GV, tự động tạo tài khoản, sinh mật khẩu ngẫu nhiên và gửi email kích hoạt tự động. |
+|:---|:---|:---|
+| **P1. Dữ liệu phân tán** | Danh sách SV lưu trên Excel, nộp bài qua Email/Zalo | Tập trung vào CSDL SQL Server duy nhất |
+| **P2. Khó theo dõi tiến độ** | GVHD không nắm SV nào nợ báo cáo | Dashboard tuần + thông báo real-time |
+| **P3. Quản lý phiên bản nộp bài** | SV gửi nhiều file qua email gây thất lạc | Hệ thống Submission đa phiên bản |
+| **P4. Tổng hợp điểm thủ công** | Mất 1-2 tuần tổng hợp điểm từ phiếu giấy | Tự động tính điểm + xuất Excel/PDF |
+| **P5. Khởi tạo tài khoản nặng nề** | Nhập liệu thủ công hàng trăm tài khoản | Import Excel + tự động tạo tài khoản |
+| **P6. Không có hệ thống yêu cầu tài khoản** | SV/GV mới phải chờ Admin tạo thủ công | Account Requests + Provision tự động |
+| **P7. Không có rubric chuẩn hóa** | Mỗi GV chấm theo tiêu chí riêng | Dynamic Rubric Editor + Approval workflow |
 
 ---
 
-## 3. Mục tiêu của Hệ thống (System Goals & Objectives)
+## 3. Mục tiêu của Hệ thống (System Goals)
 
-- **G1. Tự động hóa 90% quy trình hành chính**: Giảm thiểu tối đa việc nhập liệu thủ công thông qua tính năng Import/Export Excel.
-- **G2. Tăng cường tính tương tác 2 chiều (GVHD - Sinh viên)**: Tích hợp thông báo thời gian thực qua SignalR và Email thông báo khi có phản hồi mới.
-- **G3. Đảm bảo tính minh bạch và chuẩn mực học thuật**: Toàn bộ điểm số được cấu trúc theo 4 tiêu chí Rubric rõ ràng (Chuyên môn, Thái độ, Kỹ năng mềm, Báo cáo cuối kỳ).
-- **G4. Bảo mật dữ liệu & Độc lập chi phí (0đ Cloud)**: Hệ thống sử dụng Local Storage gắn Docker Volume, không phát sinh chi phí duy trì dịch vụ lưu trữ đám mây bên ngoài.
-
----
-
-## 4. Phạm vi Sản phẩm (Product Scope)
-
-### 4.1. Phân hệ SuperAdmin (Quản trị Khoa)
-- **Quản lý Học kỳ (Semesters)**: Thiết lập học kỳ hiện tại (`IsCurrent`), quản lý ngày bắt đầu/kết thúc, xem thống kê theo từng đợt thực tập.
-- **Quản lý Người dùng & Tài khoản (Users)**: CRUD tài khoản, kích hoạt/vô hiệu hóa, đặt lại mật khẩu, gửi email kích hoạt.
-- **Import/Export Danh sách (Excel Engine)**: Tải file mẫu, import danh sách hàng trăm sinh viên/giảng viên, xử lý dữ liệu trùng lặp.
-- **Phân công Hướng dẫn (Assignments)**: Phân công SV cho GVHD theo từng học kỳ, tự động tạo bản ghi Internship.
-- **Quản lý Doanh nghiệp (Companies)**: Hồ sơ doanh nghiệp liên kết, lĩnh vực hoạt động, người liên hệ.
-- **Thông báo Toàn hệ thống (Broadcast Notifications)**: Gửi thông báo đến toàn bộ SV hoặc GVHD qua SignalR.
-
-### 4.2. Phân hệ Lecturer (Giảng viên hướng dẫn)
-- **Tổng quan & Danh sách SV phụ trách**: Bộ lọc theo lớp, trạng thái thực tập, tiến độ nộp báo cáo.
-- **Duyệt Báo cáo Tuần (Weekly Reports)**: Xem nhật ký công việc 12 tuần của SV, phê duyệt hoặc yêu cầu chỉnh sửa, chấm điểm tuần.
-- **Đánh giá & Phản hồi Bài nộp (Submissions & Feedbacks)**: Nhận xét đồ án tốt nghiệp, yêu cầu nộp lại phiên bản mới.
-- **Chấm điểm Rubric & Tổng kết**: Chấm điểm theo 4 tiêu chí chuẩn, chốt điểm cuối kỳ (`Finalize Evaluation`).
-- **Xuất Báo cáo & Bảng điểm**: Xuất bảng tổng hợp Excel (.xlsx) và xuất Phiếu đánh giá / Báo cáo tổng hợp PDF Server-side.
-
-### 4.3. Phân hệ Student (Sinh viên thực tập)
-- **Cổng Thông tin Thực tập Cá nhân**: Xem thông tin GVHD được phân công, thông tin học kỳ và trạng thái thực tập.
-- **Cập nhật Nơi thực tập**: Đăng ký thông tin công ty, vị trí thực tập, người hướng dẫn tại doanh nghiệp (Mentor).
-- **Nhật ký Thực tập 12 Tuần**: Nộp báo cáo công việc hàng tuần, đính kèm file minh chứng.
-- **Nộp Đồ án / Báo cáo Cuối kỳ**: Nộp tài liệu nhiều phiên bản, xem lịch sử nhận xét của giảng viên.
-- **Tài liệu & Biểu mẫu**: Tải các mẫu đơn xin thực tập, phiếu tiếp nhận, hướng dẫn viết báo cáo do Khoa ban hành.
+- **G1. Tự động hóa 90% quy trình hành chính**: Import/Export Excel, auto-assign, bulk operations.
+- **G2. Tăng cường tương tác 2 chiều**: SignalR real-time, feedback submission, student reply.
+- **G3. Đảm bảo minh bạch học thuật**: Rubric 4 tiêu chí, approval workflow, audit trail.
+- **G4. Bảo mật & 0đ Cloud**: Local Docker Volume, JWT + Refresh Token, PBKDF2.
 
 ---
 
-## 5. Giới hạn & Định hướng Phát triển Sau này (Future Roadmap)
+## 4. Phạm vi Sản phẩm (Product Scope) — v1.0
 
-- **Giai đoạn hiện tại (Hoàn thành)**: Toàn bộ nghiệp vụ lõi cho 50 - 500 sinh viên, lưu trữ Local Docker Volume an toàn 100% miễn phí.
-- **Giai đoạn tiếp theo (Mở rộng quy mô toàn trường > 2.000 SV)**:
-  - Tích hợp Cổng Doanh nghiệp (Enterprise Portal) để Mentor trực tiếp chấm điểm trên hệ thống.
-  - Tích hợp Cloudflare R2 Storage (Zero Egress Fee) khi lưu trữ dữ liệu dung lượng lớn (> 100 GB).
-  - Tích hợp Single Sign-On (SSO) với hệ thống Cổng thông tin Đào tạo của Nhà trường (OAuth2 / SAML).
+### 4.1. Phân hệ Admin (12 trang)
+- Dashboard thống kê tổng quan với Charts
+- Quản lý Học kỳ (CRUD + Close + Duplicate + Rubric Editor)
+- Phân công Hướng dẫn (Bulk/Auto assign, Company Allocation, Import/Export)
+- Quản lý Sinh viên/Giảng viên/Doanh nghiệp (CRUD + Import/Export Excel)
+- Quản lý Tài khoản (CRUD + Reset password + Lock/Unlock)
+- Yêu cầu & Cấp phát Tài khoản (Request Queue + Provision)
+- Duyệt Rubric (Approve/Reject workflow)
+- Thông báo Broadcast (Campaign history + Delete)
+- Cấu hình Hệ thống
+
+### 4.2. Phân hệ Lecturer (10 trang)
+- Dashboard (Stats, Action Items, Deadlines, Weekly Trends)
+- Danh sách SV (Filter, Comment save, Bulk notify, Bulk export)
+- Danh sách Doanh nghiệp (Read-only)
+- Templates/Tài liệu (Upload, Download, Archive)
+- Đánh giá Rubric (Dynamic rubric evaluation, Scores, Finalize)
+- Xuất file (Excel + PDF)
+- Báo cáo (Duyệt weekly reports + Submission review)
+- Analytics (Thống kê nâng cao)
+- Thông báo (Notification inbox + Reply)
+- Tài khoản cá nhân
+
+### 4.3. Phân hệ Student (9 trang)
+- Dashboard (Progress, Tasks, Feedback, Milestones)
+- Kỳ thực tập (Timeline, Weekly Plan, Company info)
+- Báo cáo tuần (CRUD + Submit + Review)
+- Bài nộp (Upload, Resubmit, Download, Student Reply)
+- Phản hồi (Feedback thread 2 chiều)
+- Templates (Document library)
+- Đánh giá (View scores + Final grade)
+- Thông báo (Real-time via SignalR)
+- Tài khoản cá nhân
+
+---
+
+## 5. Công nghệ Sử dụng (Technology Stack)
+
+| Thành phần | Công nghệ | Phiên bản |
+|:---|:---|:---|
+| Frontend | React + TypeScript + Vite | React 19 |
+| CSS | Tailwind CSS | v4 |
+| Backend | ASP.NET Core Web API | .NET 8 |
+| ORM | Entity Framework Core | 8.x |
+| Database | Microsoft SQL Server | 2022 |
+| PDF | Custom IPdfExportService | — |
+| Excel | ClosedXML | — |
+| Email | MailKit (SMTP Gmail) | — |
+| Auth | JWT Bearer + Refresh Token | — |
+| Real-time | SignalR Core | — |
+| Container | Docker + Docker Compose | — |
+
+---
+
+## 6. Giới hạn & Định hướng Phát triển (Future Roadmap)
+
+- **v1.0 (Hiện tại)**: Nghiệp vụ lõi hoàn chỉnh cho 50-500 SV, vận hành 1 học kỳ.
+- **v1.1 (Post-semester)**: Floating AI Assistant (tóm tắt báo cáo, gợi ý nhận xét).
+- **v2.0 (Mở rộng)**: Enterprise Portal cho Mentor DN, SSO với hệ thống Đào tạo, Cloud Storage.

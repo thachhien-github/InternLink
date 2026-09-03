@@ -1,128 +1,117 @@
 # InternLink — Đặc Tả Use Cases Chi Tiết (Use Case Specification)
 
 **Dự án:** InternLink — Nền tảng Quản lý và Giám sát Thực tập Tốt nghiệp  
-**Phiên bản:** 3.0  
-**Ngày cập nhật:** Tháng 8/2026
+**Phiên bản:** 4.0  
+**Ngày cập nhật:** Tháng 9/2026
 
 ---
 
-## 1. Sơ Đồ Tổng Quan Use Case (Use Case Overview)
+## 1. Tổng Quan Use Cases (37 Use Cases)
 
-Hệ thống bao gồm 3 Tác nhân chính (Actors) với các nhóm Use Case tương ứng:
+### SuperAdmin (15 UC)
 
-```
-                  ┌────────────────────────────────────────────────────────┐
-                  │                 HỆ THỐNG INTERNLINK                    │
-                  ├────────────────────────────────────────────────────────┤
-                  │ [UC-ADM-01] Quản lý Học kỳ thực tập                    │
-                  │ [UC-ADM-02] Quản lý Người dùng & Phân quyền            │
-   [ SuperAdmin ] ┤ [UC-ADM-03] Import Excel Sinh viên / Giảng viên        │
-                  │ [UC-ADM-04] Phân công GVHD cho Sinh viên               │
-                  │ [UC-ADM-05] Gửi Email Kích hoạt tài khoản hàng loạt    │
-                  │ [UC-ADM-06] Phát Thông báo Toàn hệ thống (Broadcast)   │
-                  ├────────────────────────────────────────────────────────┤
-                  │ [UC-LEC-01] Quản lý & Lọc danh sách SV phụ trách       │
-                  │ [UC-LEC-02] Duyệt & Nhận xét Báo cáo tuần (12 tuần)    │
-   [ Lecturer ] ──┤ [UC-LEC-03] Đánh giá Đồ án / Báo cáo cuối kỳ           │
-                  │ [UC-LEC-04] Chấm điểm Rubric 4 tiêu chí & Chốt điểm    │
-                  │ [UC-LEC-05] Xuất Báo cáo tổng hợp Excel & PDF          │
-                  ├────────────────────────────────────────────────────────┤
-                  │ [UC-STU-01] Cập nhật Thông tin Doanh nghiệp thực tập   │
-                  │ [UC-STU-02] Nộp Báo cáo Nhật ký hàng tuần (Tuần 1-12)  │
-   [ Student ] ───┤ [UC-STU-03] Nộp Báo cáo / Đồ án tốt nghiệp             │
-                  │ [UC-STU-04] Xem Nhận xét, Điểm số & Xếp loại           │
-                  │ [UC-STU-05] Tải Biểu mẫu & Tài liệu hướng dẫn          │
-                  └────────────────────────────────────────────────────────┘
-```
+| mã UC | Tên | Mô tả |
+|:---|:---|:---|
+| UC-ADM-01 | Quản lý Học kỳ | CRUD, Close, Duplicate học kỳ |
+| UC-ADM-02 | Quản lý Users | CRUD, Reset password, Lock/Unlock |
+| UC-ADM-03 | Import Sinh viên | Import Excel danh sách SV |
+| UC-ADM-04 | Import Giảng viên | Import Excel danh sách GV |
+| UC-ADM-05 | Import Doanh nghiệp | Import Excel danh sách DN |
+| UC-ADM-06 | Phân công Hướng dẫn | Bulk/Auto assign, Company allocation |
+| UC-ADM-07 | Quản lý Yêu cầu TK | Duyệt/Từ chối/Cấp phát tài khoản |
+| UC-ADM-08 | Tạo Rubric | Tạo/Sửa rubric đánh giá |
+| UC-ADM-09 | Phê duyệt Rubric | Approve/Reject rubric |
+| UC-ADM-10 | Phát Thông báo | Broadcast toàn hệ thống |
+| UC-ADM-11 | Cấu hình Hệ thống | Settings CRUD + Reset |
+| UC-ADM-12 | Dashboard Tổng quan | Thống kê KPI, Charts |
+| UC-ADM-13 | Xuất Danh sách | Export Excel sinh viên/GV/DN |
+| UC-ADM-14 | Xuất Phân công | Export ma trận phân công |
+| UC-ADM-15 | Test Email SMTP | Kiểm tra cấu hình email |
 
----
+### Lecturer (12 UC)
 
-## 2. Đặc Tả Chi Tiết Các Use Cases Trọng Tâm
+| mã UC | Tên | Mô tả |
+|:---|:---|:---|
+| UC-LEC-01 | Dashboard | KPI, Action items, Trends |
+| UC-LEC-02 | Xem Danh sách SV | Filter, Search, Sort |
+| UC-LEC-03 | Lưu Ghi chú SV | Notes qua `PUT /notes` |
+| UC-LEC-04 | Bulk Notify SV | Gửi thông báo hàng loạt |
+| UC-LEC-05 | Duyệt Báo cáo tuần | Approve/Reject + Comment |
+| UC-LEC-06 | Review Submission | Duyệt bài nộp + Feedback |
+| UC-LEC-07 | Chấm điểm Rubric | Dynamic rubric evaluation |
+| UC-LEC-08 | Khóa điểm | Finalize evaluation |
+| UC-LEC-09 | Xuất Excel | Bảng tổng hợp cuối kỳ |
+| UC-LEC-10 | Xuất PDF | Báo cáo + Phiếu đánh giá |
+| UC-LEC-11 | Quản lý Tài liệu | Upload, Download, Archive |
+| UC-LEC-12 | Phản hồi Thông báo | Reply notification |
 
-### 2.1. UC-ADM-03: Import Sinh Viên & Giảng Viên Bằng Excel
+### Student (10 UC)
 
-- **Tác nhân chính**: SuperAdmin
-- **Mục đích**: Nhập danh sách hàng trăm sinh viên/giảng viên cùng lúc từ file Excel của Phòng Đào tạo vào CSDL.
-- **Tiền điều kiện**: Admin đã đăng nhập với quyền `SuperAdmin` và có file Excel theo đúng cấu trúc mẫu.
-- **Luồng sự kiện chính (Main Flow)**:
-  1. Admin chọn mục "Quản lý Sinh viên" hoặc "Quản lý Giảng viên".
-  2. Bấm "Tải file mẫu Excel" nếu chưa có template chuẩn.
-  3. Chọn file Excel từ máy tính và bấm "Tải lên & Xử lý".
-  4. Backend (sử dụng ClosedXML) đọc dữ liệu, kiểm tra tính hợp lệ của từng dòng:
-     - Kiểm tra MSSV / Mã GV bắt buộc.
-     - Kiểm tra định dạng Email.
-     - Kiểm tra trùng lặp với CSDL hiện có.
-  5. Hệ thống tạo tài khoản User tương ứng với mật khẩu ngẫu nhiên an toàn.
-  6. Trả về kết quả: Tổng số dòng import thành công, danh sách các dòng bị lỗi (nếu có).
-- **Luồng phụ / Ngoại lệ (Alternative Flow)**:
-  - Nếu file sai định dạng hoặc không có dữ liệu: Hệ thống báo lỗi và giữ nguyên CSDL.
-
----
-
-### 2.2. UC-ADM-05: Gửi Email Thư Mời & Kích Hoạt Tài Khoản Hàng Loạt
-
-- **Tác nhân chính**: SuperAdmin
-- **Mục đích**: Gửi thư mời tham gia hệ thống kèm tài khoản, mật khẩu khởi tạo cho toàn bộ người dùng mới.
-- **Tiền điều kiện**: Đã cấu hình thông tin SMTP Email trong hệ thống.
-- **Luồng sự kiện chính (Main Flow)**:
-  1. Admin bấm nút "Gửi Email Kích hoạt".
-  2. Hệ thống lọc danh sách người dùng mới được tạo chưa kích hoạt.
-  3. Với mỗi người dùng:
-     - Tạo nội dung email cá nhân hóa (xưng hô theo vai trò: Thầy/Cô hoặc Bạn sinh viên).
-     - Đính kèm URL hệ thống, Tên đăng nhập và Mật khẩu tạm thời.
-     - Gửi email qua SMTP Service.
-  4. Hệ thống cập nhật trạng thái đã gửi thư mời và hiển thị thông báo thành công cho Admin.
+| mã UC | Tên | Mô tả |
+|:---|:---|:---|
+| UC-STU-01 | Xem Dashboard | Tiến độ, Tasks, Feedback |
+| UC-STU-02 | Xem Kỳ thực tập | Timeline, Weekly plan |
+| UC-STU-03 | Nộp Báo cáo tuần | CRUD + Submit |
+| UC-STU-04 | Nộp Bài nộp | Upload + Resubmit |
+| UC-STU-05 | Phản hồi Feedback | Student reply qua `POST /student-reply` |
+| UC-STU-06 | Tải PDF Chứng nhận | `GET /internship-certificate` |
+| UC-STU-07 | Xem Điểm đánh giá | Scores + Final grade |
+| UC-STU-08 | Tải Biểu mẫu | Document library |
+| UC-STU-09 | Quản lý Thông báo | Mark read, Real-time |
+| UC-STU-10 | Đổi mật khẩu | Change password |
 
 ---
 
-### 2.3. UC-LEC-02: Duyệt & Nhận Xét Báo Cáo Tuần (Weekly Reports)
+## 2. Đặc Tả Chi Tiết 5 Use Cases Trọng Tâm
 
-- **Tác nhân chính**: Lecturer (GVHD)
-- **Mục đích**: Kiểm tra tiến độ thực tập hàng tuần của sinh viên và đưa ra phản hồi kịp thời.
-- **Tiền điều kiện**: GVHD đã đăng nhập và được phân công sinh viên trong học kỳ hiện tại.
-- **Luồng sự kiện chính (Main Flow)**:
-  1. GVHD chọn sinh viên từ danh sách hướng dẫn.
-  2. Xem danh sách 12 tuần: tuần nào đã nộp, tuần nào đang chờ duyệt, tuần nào quá hạn.
-  3. Chọn tuần cần duyệt: xem nội dung công việc, kế hoạch và tải file minh chứng.
-  4. Nhập nhận xét góp ý và chọn hành động:
-     - **Duyệt (`Approved`)**: Đánh dấu hoàn thành tuần, nhập điểm tuần nếu cần.
-     - **Yêu cầu sửa (`Rejected`)**: Yêu cầu sinh viên bổ sung tài liệu.
-  5. Hệ thống lưu kết quả và gửi thông báo Real-time cho sinh viên qua SignalR.
+### UC-ADM-07: Quản lý Yêu cầu Tài khoản
 
----
+- **Tác nhân**: SuperAdmin
+- **Tiền điều kiện**: Có yêu cầu từ SV/GV mới
+- **Luồng chính**:
+  1. SV/GV gửi yêu cầu cấp tài khoản qua form
+  2. Admin xem hàng đợi yêu cầu (filter theo role, status, priority)
+  3. Admin duyệt: Reset password / Mở khóa / Kích hoạt
+  4. Hệ thống tự động cấp phát tài khoản + gửi email thông báo
+- **Hậu điều kiện**: Tài khoản được kích hoạt, email gửi thành công
 
-### 2.4. UC-LEC-04: Chấm Điểm Rubric 4 Tiêu Chí & Chốt Điểm
+### UC-ADM-09: Phê duyệt Rubric
 
-- **Tác nhân chính**: Lecturer (GVHD)
-- **Mục đích**: Đánh giá kết quả toàn diện của sinh viên theo chuẩn đầu ra của Khoa.
-- **Tiền điều kiện**: Sinh viên đã hoàn thành đợt thực tập và nộp báo cáo cuối kỳ.
-- **Luồng sự kiện chính (Main Flow)**:
-  1. GVHD mở giao diện "Đánh giá & Chấm điểm".
-  2. Nhập điểm theo thang điểm 10 cho 4 tiêu chí:
-     - Kiến thức chuyên môn (40%).
-     - Thái độ & Kỷ luật (20%).
-     - Kỹ năng mềm & Giao tiếp (20%).
-     - Báo cáo cuối kỳ (20%).
-  3. Hệ thống tự động tính điểm trung bình tổng kết và tự động quy đổi xếp loại:
-     - `≥ 9.0`: Xuất sắc
-     - `8.0 - 8.9`: Giỏi
-     - `6.5 - 7.9`: Khá
-     - `5.0 - 6.4`: Trung bình
-     - `< 5.0`: Không đạt
-  4. GVHD nhập nhận xét tổng kết và nhấn "Lưu & Chốt điểm" (`Finalize`).
-  5. Hệ thống khóa bản ghi điểm, cập nhật trạng thái thực tập sang `Completed`.
+- **Tác nhân**: SuperAdmin (trưởng khoa)
+- **Luồng chính**:
+  1. Admin tạo rubric với các tiêu chí (tên, trọng số, max điểm)
+  2. Admin gửi phê duyệt (status: Draft → PendingApproval)
+  3. Trưởng khoa xem chi tiết rubric → Approve hoặc Reject
+  4. Nếu Approve: Rubric được khóa, GVHD bắt đầu sử dụng
+  5. Nếu Reject: Nhập lý do → Admin chỉnh sửa lại
 
----
+### UC-LEC-04: Bulk Notify Sinh viên
 
-### 2.5. UC-LEC-05: Xuất Báo Cáo Tổng Hợp Excel & PDF Server-Side
+- **Tác nhân**: Lecturer
+- **Bảo mật**: Chỉ gửi được cho SV mình hướng dẫn (scoped by JWT)
+- **Luồng chính**:
+  1. GVHD chọn SV từ danh sách
+  2. Nhập tiêu đề + nội dung thông báo
+  3. Gọi `POST /api/Lecturer/students/notify`
+  4. Backend tạo notification cho từng SV qua `INotificationService`
+  5. SV nhận thông báo real-time qua SignalR
 
-- **Tác nhân chính**: Lecturer (GVHD)
-- **Mục đích**: Xuất bảng điểm chính thức và phiếu đánh giá phục vụ lưu trữ học vụ và nộp về Khoa.
-- **Tiền điều kiện**: Đã có dữ liệu đánh giá sinh viên.
-- **Luồng sự kiện chính (Main Flow)**:
-  1. GVHD vào màn hình "Export cuối kỳ".
-  2. Tùy chọn định dạng xuất:
-     - **Xuất Bảng Điểm (.xlsx)**: Gọi `GET /api/Lecturer/export/end-of-term` tải về bảng tổng hợp điểm 15 cột.
-     - **Xuất Báo Cáo PDF Server-Side**: Gọi `GET /api/Lecturer/export/end-of-term/pdf` tải về bảng tổng hợp A4 có Quốc hiệu và khung chữ ký.
-     - **Xuất Phiếu Đánh Giá Cá Nhân PDF**: Gọi `GET /api/Lecturer/export/evaluation/{internshipId}/pdf` tải phiếu Rubric cá nhân của từng sinh viên.
-  3. Tệp tin được tải trực tiếp về máy tính người dùng.
+### UC-STU-05: Phản hồi Feedback (Student Reply)
+
+- **Tác nhân**: Student
+- **Luồng chính**:
+  1. SV xem feedback từ GVHD trên bài nộp
+  2. Nhập nội dung phản hồi
+  3. Gọi `POST /api/Submission/{id}/student-reply`
+  4. Backend tạo Feedback record với `LecturerId = null`
+  5. Backend gửi notification cho GVHD: "SV vừa phản hồi bài nộp"
+
+### UC-STU-06: Tải PDF Chứng nhận Thực tập
+
+- **Tác nhân**: Student
+- **Luồng chính**:
+  1. SV vào trang "Kỳ thực tập"
+  2. Bấm "Xuất phiếu"
+  3. Gọi `GET /api/StudentPortal/internship-certificate`
+  4. Backend tạo PDF qua `IPdfExportService.GenerateStudentEvaluationPdfAsync()`
+  5. File PDF tải về máy với tên `Phieu-Thuc-Tap-{MSSV}.pdf`
