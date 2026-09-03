@@ -27,7 +27,7 @@ export const CompanyFormWorkspace = ({ initialData, onBack, onSave }) => {
   const [contactPerson, setContactPerson] = useState(
     initialData?.contactPerson || "",
   );
-  const [contactPosition, setContactPosition] = useState("Senior HR Manager");
+  const [contactPosition, setContactPosition] = useState("");
   const [contactEmail, setContactEmail] = useState(
     initialData?.contactEmail || "",
   );
@@ -37,28 +37,16 @@ export const CompanyFormWorkspace = ({ initialData, onBack, onSave }) => {
   const [positions, setPositions] = useState(
     initialData?.openPositions && initialData.openPositions.length > 0
       ? initialData.openPositions
-      : ["Fullstack Developer", "Data Engineer", "DevOps Specialist"],
+      : [],
   );
   const [newPositionInput, setNewPositionInput] = useState("");
-  const [suitableMajors, setSuitableMajors] = useState([
-    "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-    "Khoa h\u1ECDc D\u1EEF li\u1EC7u",
-    "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
-  ]);
-  const [requiredSkills, setRequiredSkills] = useState(
-    "JavaScript, React, Node.js, SQL, Git, Ti\u1EBFng Anh giao ti\u1EBFp",
-  );
+  const [suitableMajors, setSuitableMajors] = useState<string[]>([]);
+  const [requiredSkills, setRequiredSkills] = useState("");
   const [capacity, setCapacity] = useState(initialData?.capacity || 25);
   const [hasStipend, setHasStipend] = useState(initialData?.hasStipend ?? true);
-  const [stipendAmount, setStipendAmount] = useState(
-    "6.000.000 - 9.000.000 VN\u0110 / th\xE1ng",
-  );
-  const [internDuration, setInternDuration] = useState(
-    "3 - 4 th\xE1ng (40h / tu\u1EA7n)",
-  );
-  const [internalNotes, setInternalNotes] = useState(
-    "Doanh nghi\u1EC7p uy t\xEDn, h\u1ED7 tr\u1EE3 Mentor 1-on-1 s\xE1t sao. Khuy\u1EBFn kh\xEDch gi\u1EDBi thi\u1EC7u sinh vi\xEAn c\xF3 GPA > 3.0.",
-  );
+  const [stipendAmount, setStipendAmount] = useState("");
+  const [internDuration, setInternDuration] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [toastMessage, setToastMessage] = useState(null);
   const triggerToast = (msg) => {

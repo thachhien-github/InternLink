@@ -14,32 +14,10 @@ import {
 } from "lucide-react";
 
 export const RubricEvaluation = ({
-  student = {
-    id: "eval-1",
-    name: "Nguyễn Văn An",
-    mssv: "20210001",
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    class: "CNTT-K15A",
-    major: "Kỹ thuật Phần mềm",
-    company: "FPT Software",
-    supervisor: "Nguyễn Văn Hải (Mentor)",
-    progress: 100,
-    enterpriseScore: 9.2,
-    lecturerScore: 9.0,
-    presentationScore: 9.5,
-    totalScore: 9.2,
-    status: "Hoàn thành",
-    weeklyReportCount: "6/6",
-    finalReportSubmitted: true,
-    enterpriseFeedbackSubmitted: true,
-    lecturerComments:
-      "Sinh viên hoàn thành xuất sắc đề tài, sản phẩm hoàn thiện và có tính ứng dụng cao.",
-    gradeClassification: "Xuất sắc",
-  },
+  student = {} as any,
   onBack,
   onSave,
-}: {
+}:
   student?: any;
   onBack?: () => void;
   onSave?: (data: any) => void;

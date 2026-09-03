@@ -26,6 +26,7 @@ import {
 import { UploadDocumentWorkspace } from "../components/UploadDocumentWorkspace";
 import { StudentDocumentLibrary } from "../components/StudentDocumentLibrary";
 import { DocumentDetailWorkspace } from "../components/DocumentDetailWorkspace";
+import { useSemester } from "../../../contexts/SemesterContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToUi } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
@@ -39,7 +40,8 @@ export const TemplatesView = () => {
   const [subView, setSubView] = useState<"list" | "upload" | "detail" | "student_library">("list");
   const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED" | "DRAFT">("CIRCULATING");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-  const [semesterFilter, setSemesterFilter] = useState("HK I - 2026");
+  const { semesters, selectedSemester, selectSemester } = useSemester();
+  const [semesterFilter, setSemesterFilter] = useState("");
   const [majorFilter, setMajorFilter] = useState("Tất cả");
   const [fileTypeFilter, setFileTypeFilter] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
@@ -554,7 +556,7 @@ export const TemplatesView = () => {
 
           <div className="flex items-center gap-3">
             {(selectedCategory !== "Tất cả" ||
-              semesterFilter !== "HK I - 2026" ||
+              semesterFilter !== (selectedSemester?.name || "") ||
               majorFilter !== "Tất cả" ||
               fileTypeFilter !== "Tất cả" ||
               searchQuery) && (
@@ -562,7 +564,7 @@ export const TemplatesView = () => {
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedCategory("Tất cả");
-                  setSemesterFilter("HK I - 2026");
+                  setSemesterFilter(selectedSemester?.name || "");
                   setMajorFilter("Tất cả");
                   setFileTypeFilter("Tất cả");
                 }}
@@ -633,9 +635,9 @@ export const TemplatesView = () => {
               className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
               <option value="Tất cả">Tất cả Đợt thực tập</option>
-              <option value="HK I - 2026">HK I - 2026 (Đang diễn ra)</option>
-              <option value="HK II - 2025">HK II - 2025</option>
-              <option value="HK II - 2024">HK II - 2024</option>
+              {semesters.map((s) => (
+                <option key={s.id} value={s.name}>{s.name} ({s.status === "active" ? "Đang diễn ra" : s.status === "upcoming" ? "Sắp tới" : "Đã đóng"})</option>
+              ))}
             </select>
           </div>
 

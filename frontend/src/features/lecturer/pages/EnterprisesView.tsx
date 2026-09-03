@@ -5,6 +5,7 @@ import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
 import { CompanyDetailWorkspace } from "../components/CompanyDetailWorkspace";
 import { CompanyFormWorkspace } from "../components/CompanyFormWorkspace";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   Building2,
   Plus,
@@ -34,6 +35,7 @@ export const EnterprisesView = ({
   onApproveEnterprise?: (name: string) => void;
   onAddEnterprise?: (enterprise: import("../../../types/enterprise").Enterprise) => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const [search, setSearch] = useState("");
   const [fieldFilter, setFieldFilter] = useState("T\u1EA5t c\u1EA3");
   const [locationFilter, setLocationFilter] = useState("T\u1EA5t c\u1EA3");
@@ -654,7 +656,7 @@ export const EnterprisesView = ({
             DOANH NGHIỆP ĐỐI TÁC TIÊU BIỂU (ĐÁNH GIÁ CAO NHẤT)
           </h3>
           <span className="text-[10px] font-bold text-slate-500">
-            Cập nhật đợt HK I - 2026
+            Cập nhật đợt {selectedSemester?.name || "Chưa chọn kỳ"}
           </span>
         </div>
 
@@ -1023,7 +1025,7 @@ export const EnterprisesView = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between font-bold">
-                  <span>HK I - 2026:</span>
+                  <span>{selectedSemester?.name || "Chưa chọn kỳ"}:</span>
                   <span className="text-blue-600">
                     {statsModalItem.studentCount} Sinh viên
                   </span>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
+import { useAuth } from "../../../contexts/AuthContext";
 import {
   Bell,
   Send,
@@ -131,6 +132,8 @@ Hạn chót nộp bản scan lên hệ thống: 30/10/2026.`,
 ];
 
 export const NotificationsView = () => {
+  const { user } = useAuth();
+
   // Main Tab Navigation
   const [activeTab, setActiveTab] = useState<
     "all" | "system" | "deadline" | "feedback" | "broadcast"
@@ -146,26 +149,7 @@ export const NotificationsView = () => {
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
   // Scheduled broadcasts
-  const [scheduledList, setScheduledList] = useState<ScheduledBroadcast[]>([
-    {
-      id: "s1",
-      title: "Nhắc nhở nộp Báo cáo Tuần 6 đợt HK I - 2026",
-      audience: "Toàn bộ sinh viên hướng dẫn",
-      scheduleTime: "08:00 - 02/11/2026",
-      priority: "Quan trọng",
-      status: "Đã lên lịch",
-      content: "Nhắc nhở nộp báo cáo tuần 6 trước 23:59.",
-    },
-    {
-      id: "s2",
-      title: "Yêu cầu doanh nghiệp xác nhận phiếu đánh giá cuối đợt",
-      audience: "Doanh nghiệp hợp tác",
-      scheduleTime: "09:00 - 05/11/2026",
-      priority: "Khẩn cấp",
-      status: "Đang chờ gửi",
-      content: "Kính gửi quý Doanh nghiệp, đề nghị hoàn tất phiếu đánh giá.",
-    },
-  ]);
+  const [scheduledList, setScheduledList] = useState<ScheduledBroadcast[]>([]);
 
   // Reply state in active notification
   const [replyText, setReplyText] = useState("");
@@ -373,7 +357,7 @@ export const NotificationsView = () => {
     setTimeout(() => {
       const newReply = {
         id: `rep-${Date.now()}`,
-        sender: "Giảng viên Trần Minh Huy",
+        sender: user?.name || "Giảng viên",
         senderRole: "Giảng viên Hướng dẫn",
         content: replyText.trim(),
         time: "Vừa xong",
@@ -446,7 +430,7 @@ export const NotificationsView = () => {
               : "blue",
         isUnread: false,
         time: "Vừa xong",
-        sender: "Giảng viên Trần Minh Huy",
+        sender: user?.name || "Giảng viên",
         receiver: finalAudience,
         content: composeContent.trim(),
         attachments: [...attachedFiles],
@@ -543,7 +527,7 @@ export const NotificationsView = () => {
         <KpiCard
           tone="amber"
           title="Thông báo đã phát cho SV"
-          value={28}
+          value={assignedStudents.length}
           unit="SV tiếp nhận"
           icon={Send}
           footer={`${scheduledList.length} thông báo đã lên lịch`}

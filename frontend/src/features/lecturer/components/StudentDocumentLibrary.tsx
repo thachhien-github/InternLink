@@ -20,10 +20,7 @@ export const StudentDocumentLibrary = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState("T\u1EA5t c\u1EA3");
   const [searchQuery, setSearchQuery] = useState("");
-  const [recentDownloads, setRecentDownloads] = useState([
-    documents[0],
-    documents[1],
-  ]);
+  const [recentDownloads, setRecentDownloads] = useState<any[]>([]);
   const [toastMessage, setToastMessage] = useState(null);
   const triggerToast = (msg) => {
     setToastMessage(msg);

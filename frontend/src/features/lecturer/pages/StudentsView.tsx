@@ -3,6 +3,10 @@ import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
+import { lecturerExportService } from "../../../services/lecturerExport.service";
+import { useSemester } from "../../../contexts/SemesterContext";
 import { StudentDetailWorkspace } from "../components/StudentDetailWorkspace";
 import { StudentProgressWorkspace } from "../components/StudentProgressWorkspace";
 import { ReviewSubmissionWorkspace } from "../components/ReviewSubmissionWorkspace";
@@ -45,8 +49,9 @@ export const StudentsView = ({
   onSendReminder?: (s: import("../../../types/student").Student) => void;
   onAddStudent?: (student: import("../../../types/student").Student) => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const [search, setSearch] = useState("");
-  const [termFilter, setTermFilter] = useState("H\u1ECDc k\u1EF3 I - 2026");
+  const [termFilter, setTermFilter] = useState(selectedSemester?.name || "");
   const [classFilter, setClassFilter] = useState("T\u1EA5t c\u1EA3");
   const [lecturerFilter, setLecturerFilter] = useState("T\u1EA5t c\u1EA3");
   const [companyFilter, setCompanyFilter] = useState("T\u1EA5t c\u1EA3");
@@ -70,20 +75,7 @@ export const StudentsView = ({
   const [commentText, setCommentText] = useState("");
   const [aiDrafting, setAiDrafting] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState([
-    {
-      sender: "L\xEA Minh T\xE2m",
-      text: "Em ch\xE0o Th\u1EA7y/C\xF4 \u1EA1, tu\u1EA7n n\xE0y em v\u1EEBa ho\xE0n th\xE0nh xong module OAuth2 API theo ch\u1EC9 d\u1EABn c\u1EE7a Anh H\u1EA3i mentor.",
-      time: "09:15",
-      role: "student",
-    },
-    {
-      sender: "TS. Ph\u1EA1m Minh Anh",
-      text: "Ch\xE0o T\xE2m, th\u1EA7y \u0111\xE3 xem qua code commit c\u1EE7a em. K\u1EBFt qu\u1EA3 t\u1ED1t, ch\xFA \xFD th\xEAm ph\u1EA7n x\u1EED l\xFD Refresh Token nh\xE9.",
-      time: "10:02",
-      role: "lecturer",
-    },
-  ]);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [newStudent, setNewStudent] = useState({
     name: "",
     mssv: "",
@@ -186,17 +178,26 @@ export const StudentsView = ({
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
-  const handleBulkNotify = () => {
-    showToast(
-      `\u0110\xE3 g\u1EEDi th\xF4ng b\xE1o \u0111\u1EBFn ${selectedIds.length} sinh vi\xEAn \u0111\u01B0\u1EE3c ch\u1ECDn`,
-    );
-    setSelectedIds([]);
+  const handleBulkNotify = async () => {
+    try {
+      const result = await lecturerInternshipsService.bulkNotifyStudents(
+        "Thông báo từ Giảng viên hướng dẫn",
+        `Giảng viên hướng dẫn vừa gửi thông báo tới ${selectedIds.length} sinh viên được chọn.`,
+      );
+      showToast(`\u0110\xE3 g\u1EEDi th\xF4ng b\xE1o th\xE0nh c\xF4ng \u0111\u1EBFn ${result.notifiedCount} sinh vi\xEAn`);
+      setSelectedIds([]);
+    } catch {
+      showToast("L\x1ED7i khi g\u1EEDi th\xF4ng b\xE1o");
+    }
   };
-  const handleBulkExport = () => {
-    showToast(
-      `\u0110\xE3 xu\u1EA5t d\u1EEF li\u1EC7u Excel cho ${selectedIds.length} sinh vi\xEAn`,
-    );
-    setSelectedIds([]);
+  const handleBulkExport = async () => {
+    try {
+      await lecturerExportService.downloadEndOfTerm();
+      showToast("\u0110\xE3 xu\u1EA5t danh s\xE1ch sinh vi\xEAn ra Excel");
+      setSelectedIds([]);
+    } catch {
+      showToast("L\x1ED7i khi xu\u1EA5t file");
+    }
   };
   const handleBulkAssignCompany = () => {
     setShowAssignModal(true);
@@ -251,14 +252,17 @@ export const StudentsView = ({
       setAiDrafting(false);
     }, 800);
   };
-  const handleSendComment = (e) => {
+  const handleSendComment = async (e) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
-    showToast(
-      `\u0110\xE3 l\u01B0u nh\u1EADn x\xE9t cho sinh vi\xEAn ${commentStudent?.name}`,
-    );
-    setCommentStudent(null);
-    setCommentText("");
+    if (!commentText.trim() || !commentStudent) return;
+    try {
+      await lecturerInternshipsService.updateStudentNotes(commentStudent.id, commentText.trim());
+      showToast(`\u0110\xE3 l\u01B0u nh\u1EADn x\xE9t cho sinh vi\xEAn ${commentStudent.name}`);
+      setCommentStudent(null);
+      setCommentText("");
+    } catch {
+      showToast("L\x1ED7i khi l\u01B0u nh\u1EADn x\xE9t");
+    }
   };
   const handleSendChatMessage = (e) => {
     e.preventDefault();
@@ -640,14 +644,15 @@ export const StudentsView = ({
                         {/* SINH VIÊN (AVATAR + NAME + MSSV) */}
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2.5">
-                            <img
-                              src={
-                                s.avatar ||
-                                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                              }
-                              alt={s.name}
-                              className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-2xs"
-                            />
+                            {s.avatar ? (
+                              <img
+                                src={s.avatar}
+                                alt={s.name}
+                                className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-2xs"
+                              />
+                            ) : (
+                              <InitialsAvatar name={s.name} size={32} />
+                            )}
                             <div>
                               <p className="font-bold text-slate-900 leading-snug">
                                 {s.name}
@@ -865,15 +870,14 @@ export const StudentsView = ({
           </div>
         </div>
 
-        {/* FLOATING SUMMARY PANEL */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
+        {/* FLOATING SUMMARY PANEL */}              <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-blue-600" />
               Tổng quan đợt thực tập
             </h3>
             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              HK I - 2026
+              {selectedSemester?.name || "Chưa chọn kỳ"}
             </span>
           </div>
 
@@ -882,7 +886,7 @@ export const StudentsView = ({
               <span className="text-slate-600 font-semibold">
                 Tổng số sinh viên
               </span>
-              <span className="font-bold text-slate-900">28</span>
+              <span className="font-bold text-slate-900">{students.length}</span>
             </div>
 
             <div className="flex justify-between items-center p-2 rounded-md bg-emerald-50/60 text-emerald-900">
@@ -890,15 +894,15 @@ export const StudentsView = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 Đúng tiến độ
               </span>
-              <span className="font-bold">18 SV</span>
+              <span className="font-bold">{students.filter((s) => s.status === "Đúng tiến độ" || s.status === "Đúng hạn").length} SV</span>
             </div>
 
             <div className="flex justify-between items-center p-2 rounded-md bg-amber-50/60 text-amber-900">
               <span className="font-semibold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
-                Chậm tiến độ
+                Chờ phản hồi
               </span>
-              <span className="font-bold">5 SV</span>
+              <span className="font-bold">{students.filter((s) => s.status === "Chờ phản hồi").length} SV</span>
             </div>
 
             <div className="flex justify-between items-center p-2 rounded-md bg-rose-50/60 text-rose-900">
@@ -906,7 +910,7 @@ export const StudentsView = ({
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
                 Quá hạn
               </span>
-              <span className="font-bold">2 SV</span>
+              <span className="font-bold">{students.filter((s) => s.status === "Quá hạn").length} SV</span>
             </div>
 
             <div className="flex justify-between items-center p-2 rounded-md bg-blue-50/60 text-blue-900">
@@ -914,12 +918,12 @@ export const StudentsView = ({
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 Hoàn thành
               </span>
-              <span className="font-bold">3 SV</span>
+              <span className="font-bold">{students.filter((s) => s.status === "Hoàn thành" || s.status === "Đã xong").length} SV</span>
             </div>
 
             <div className="pt-2 border-t border-slate-100 flex justify-between items-center font-bold">
               <span className="text-slate-600">Average GPA:</span>
-              <span className="text-blue-600 text-sm">3.48 / 4.0</span>
+              <span className="text-blue-600 text-sm">{students.length > 0 ? (students.reduce((sum, s) => sum + (s.gpa || 0), 0) / students.length).toFixed(2) : "0.00"} / 4.0</span>
             </div>
           </div>
         </div>
@@ -945,11 +949,15 @@ export const StudentsView = ({
 
             <div className="space-y-4 text-xs">
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                <img
-                  src={detailStudent.avatar}
-                  alt={detailStudent.name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-xs"
-                />
+                {detailStudent.avatar ? (
+                  <img
+                    src={detailStudent.avatar}
+                    alt={detailStudent.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-xs"
+                  />
+                ) : (
+                  <InitialsAvatar name={detailStudent.name} size={64} />
+                )}
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-base text-slate-900">
@@ -1121,11 +1129,15 @@ export const StudentsView = ({
           <div className="bg-white rounded-lg p-5 max-w-lg w-full shadow-md border border-slate-200 animate-in fade-in zoom-in-95 space-y-3 flex flex-col h-[520px]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-3">
-                <img
-                  src={chatStudent.avatar}
-                  alt={chatStudent.name}
-                  className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                />
+                {chatStudent.avatar ? (
+                  <img
+                    src={chatStudent.avatar}
+                    alt={chatStudent.name}
+                    className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                  />
+                ) : (
+                  <InitialsAvatar name={chatStudent.name} size={36} />
+                )}
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm">
                     Kênh trao đổi trực tiếp

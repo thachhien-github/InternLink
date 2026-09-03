@@ -17,16 +17,26 @@ export interface StudentEvaluationItem {
   status: string;
   gradeClassification?: string;
   lecturerComments?: string;
+  /** Optional: criteria scores loaded from DB rubric */
+  criteriaScores?: {
+    criterionName: string;
+    weight: number;
+    maxScore: number;
+    score: number;
+    comment?: string;
+  }[];
 }
 
 interface EvaluationPdfModalProps {
   student: StudentEvaluationItem;
   onClose: () => void;
+  evaluatorName?: string;
 }
 
 export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
   student,
   onClose,
+  evaluatorName,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -34,24 +44,26 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
     window.print();
   };
 
-  const calculateFinal = () => {
-    const ent = student.enterpriseScore ?? 8.5;
-    const lec = student.lecturerScore ?? 8.5;
-    const pre = student.presentationScore ?? 8.5;
-    const total = parseFloat((ent * 0.4 + lec * 0.4 + pre * 0.2).toFixed(1));
-    return { ent, lec, pre, total };
-  };
+  const scores = student.criteriaScores;
+  const hasDynamicRubric = scores && scores.length > 0;
 
-  const scores = calculateFinal();
+  // Fallback: compute from legacy fields
+  const ent = student.enterpriseScore ?? 8.5;
+  const lec = student.lecturerScore ?? 8.5;
+  const pre = student.presentationScore ?? 8.5;
+  const fallbackTotal = parseFloat((ent * 0.4 + lec * 0.4 + pre * 0.2).toFixed(1));
+
+  const displayTotal = student.totalScore ?? fallbackTotal;
+
   const classification =
     student.gradeClassification ||
-    (scores.total >= 9
+    (displayTotal >= 9
       ? "Xuất sắc"
-      : scores.total >= 8
+      : displayTotal >= 8
         ? "Giỏi"
-        : scores.total >= 6.5
+        : displayTotal >= 6.5
           ? "Khá"
-          : scores.total >= 5
+          : displayTotal >= 5
             ? "Trung bình"
             : "Không đạt");
 
@@ -97,7 +109,7 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
           className="p-8 sm:p-12 text-slate-900 font-serif space-y-6 text-sm bg-white print:p-6 print:text-black"
           style={{ minHeight: "800px" }}
         >
-          {/* Header 2 cột chuẩn văn bản hành chính Việt Nam */}
+          {/* Header */}
           <div className="grid grid-cols-2 gap-4 text-center border-b border-slate-200 pb-4">
             <div>
               <p className="text-[11px] font-medium uppercase text-slate-700">
@@ -127,7 +139,7 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
             </div>
           </div>
 
-          {/* Tiêu đề chính */}
+          {/* Title */}
           <div className="text-center space-y-1">
             <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wide text-slate-900">
               PHIẾU ĐÁNH GIÁ KẾT QUẢ THỰC TẬP TỐT NGHIỆP
@@ -138,7 +150,7 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
             </p>
           </div>
 
-          {/* Phần I: Thông tin sinh viên & Đơn vị thực tập */}
+          {/* Section I: Student Info */}
           <div className="space-y-2 text-xs font-sans">
             <h2 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] bg-slate-100 p-1.5 rounded-sm">
               I. THÔNG TIN SINH VIÊN VÀ ĐƠN VỊ THỰC TẬP
@@ -168,17 +180,18 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
                 <span className="font-semibold text-slate-700">Cán bộ hướng dẫn tại DN:</span>{" "}
                 <span>{student.supervisor}</span>
               </p>
-              <p>
-                <span className="font-semibold text-slate-700">Giảng viên hướng dẫn trường:</span>{" "}
-                <span>Thầy Nguyễn Văn Phước</span>
-              </p>
             </div>
           </div>
 
-          {/* Phần II: Ma trận chấm điểm theo Rubric quy định */}
+          {/* Section II: Rubric Table — Dynamic or Fallback */}
           <div className="space-y-2 text-xs font-sans">
             <h2 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] bg-slate-100 p-1.5 rounded-sm">
               II. KẾT QUẢ ĐÁNH GIÁ CHI TIẾT THEO TIÊU CHÍ (RUBRIC)
+              {hasDynamicRubric && (
+                <span className="ml-2 text-blue-600 normal-case">
+                  — {scores.length} tiêu chí từ rubric đã phê duyệt
+                </span>
+              )}
             </h2>
 
             <table className="w-full border-collapse border border-slate-300 text-left text-[11px]">
@@ -194,58 +207,71 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300">
-                <tr>
-                  <td className="border border-slate-300 p-2 text-center font-bold">1</td>
-                  <td className="border border-slate-300 p-2">
-                    <p className="font-bold text-slate-900">Đánh giá từ Đơn vị Thực tập (Doanh nghiệp)</p>
-                    <p className="text-[10px] text-slate-500">
-                      - Ý thức kỷ luật, chấp hành nội quy doanh nghiệp (10đ)<br/>
-                      - Năng lực chuyên môn, giải quyết công việc được giao (10đ)<br/>
-                      - Tinh thần làm việc nhóm và giao tiếp chuyên nghiệp (10đ)
-                    </p>
-                  </td>
-                  <td className="border border-slate-300 p-2 text-center font-bold">40%</td>
-                  <td className="border border-slate-300 p-2 text-center">10.0</td>
-                  <td className="border border-slate-300 p-2 text-center font-bold text-blue-700 bg-blue-50/40">
-                    {student.enterpriseScore ?? scores.ent}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 p-2 text-center font-bold">2</td>
-                  <td className="border border-slate-300 p-2">
-                    <p className="font-bold text-slate-900">Đánh giá Báo cáo từ Giảng viên hướng dẫn</p>
-                    <p className="text-[10px] text-slate-500">
-                      - Nhật ký thực tập & nộp báo cáo tuần đúng hạn ({student.weeklyReportCount || "12/12"} tuần)<br/>
-                      - Chất lượng báo cáo thực tập tốt nghiệp & sản phẩm thực tế
-                    </p>
-                  </td>
-                  <td className="border border-slate-300 p-2 text-center font-bold">40%</td>
-                  <td className="border border-slate-300 p-2 text-center">10.0</td>
-                  <td className="border border-slate-300 p-2 text-center font-bold text-purple-700 bg-purple-50/40">
-                    {student.lecturerScore ?? scores.lec}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 p-2 text-center font-bold">3</td>
-                  <td className="border border-slate-300 p-2">
-                    <p className="font-bold text-slate-900">Đánh giá Bảo vệ trước Hội đồng / Phản biện</p>
-                    <p className="text-[10px] text-slate-500">
-                      - Kỹ năng thuyết trình & bảo vệ kết quả thực tập<br/>
-                      - Trả lời câu hỏi phản biện của hội đồng chấm điểm
-                    </p>
-                  </td>
-                  <td className="border border-slate-300 p-2 text-center font-bold">20%</td>
-                  <td className="border border-slate-300 p-2 text-center">10.0</td>
-                  <td className="border border-slate-300 p-2 text-center font-bold text-emerald-700 bg-emerald-50/40">
-                    {student.presentationScore ?? scores.pre}
-                  </td>
-                </tr>
+                {hasDynamicRubric ? (
+                  // Dynamic rows from DB rubric
+                  scores.map((c, idx) => (
+                    <tr key={idx}>
+                      <td className="border border-slate-300 p-2 text-center font-bold">{idx + 1}</td>
+                      <td className="border border-slate-300 p-2">
+                        <p className="font-bold text-slate-900">{c.criterionName}</p>
+                        {c.comment && (
+                          <p className="text-[10px] text-slate-500 italic mt-0.5">{c.comment}</p>
+                        )}
+                      </td>
+                      <td className="border border-slate-300 p-2 text-center font-bold">{c.weight}%</td>
+                      <td className="border border-slate-300 p-2 text-center">{c.maxScore}.0</td>
+                      <td className="border border-slate-300 p-2 text-center font-bold text-blue-700 bg-blue-50/40">
+                        {c.score}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  // Fallback: hardcoded 3 criteria (legacy)
+                  <>
+                    <tr>
+                      <td className="border border-slate-300 p-2 text-center font-bold">1</td>
+                      <td className="border border-slate-300 p-2">
+                        <p className="font-bold text-slate-900">Đánh giá từ Doanh nghiệp</p>
+                        <p className="text-[10px] text-slate-500">Kỷ luật, chuyên môn, làm việc nhóm</p>
+                      </td>
+                      <td className="border border-slate-300 p-2 text-center font-bold">40%</td>
+                      <td className="border border-slate-300 p-2 text-center">10.0</td>
+                      <td className="border border-slate-300 p-2 text-center font-bold text-blue-700 bg-blue-50/40">
+                        {ent}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 p-2 text-center font-bold">2</td>
+                      <td className="border border-slate-300 p-2">
+                        <p className="font-bold text-slate-900">Đánh giá Báo cáo từ Giảng viên</p>
+                        <p className="text-[10px] text-slate-500">Báo cáo tuần, sản phẩm, source code</p>
+                      </td>
+                      <td className="border border-slate-300 p-2 text-center font-bold">40%</td>
+                      <td className="border border-slate-300 p-2 text-center">10.0</td>
+                      <td className="border border-slate-300 p-2 text-center font-bold text-purple-700 bg-purple-50/40">
+                        {lec}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 p-2 text-center font-bold">3</td>
+                      <td className="border border-slate-300 p-2">
+                        <p className="font-bold text-slate-900">Bảo vệ trước Hội đồng / Phản biện</p>
+                        <p className="text-[10px] text-slate-500">Thuyết trình, trả lời câu hỏi</p>
+                      </td>
+                      <td className="border border-slate-300 p-2 text-center font-bold">20%</td>
+                      <td className="border border-slate-300 p-2 text-center">10.0</td>
+                      <td className="border border-slate-300 p-2 text-center font-bold text-emerald-700 bg-emerald-50/40">
+                        {pre}
+                      </td>
+                    </tr>
+                  </>
+                )}
                 <tr className="bg-slate-100/80 font-bold text-slate-900 text-xs">
                   <td colSpan={4} className="border border-slate-300 p-2.5 text-right uppercase">
                     ĐIỂM TỔNG KẾT HỌC PHẦN (Thang 10):
                   </td>
                   <td className="border border-slate-300 p-2.5 text-center text-sm font-bold text-blue-900 bg-blue-100/60">
-                    {student.totalScore ?? scores.total}
+                    {displayTotal}
                   </td>
                 </tr>
                 <tr className="bg-white font-bold text-slate-800 text-xs">
@@ -260,18 +286,18 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
             </table>
           </div>
 
-          {/* Phần III: Nhận xét chung của GVHD */}
+          {/* Section III: Comments */}
           <div className="space-y-1.5 text-xs font-sans">
             <h2 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] bg-slate-100 p-1.5 rounded-sm">
               III. NHẬN XÉT VÀ KẾT LUẬN CỦA GIẢNG VIÊN HƯỚNG DẪN
             </h2>
             <div className="border border-slate-300 rounded-sm p-3 min-h-[60px] text-slate-800 italic leading-relaxed">
               {student.lecturerComments ||
-                "Sinh viên có tinh thần tự giác, chấp hành tốt các nội quy thực tập của Khoa và Doanh nghiệp. Hoàn thành đầy đủ các nội dung chuyên môn đề ra theo đúng tiến độ và chất lượng yêu cầu."}
+                "Sinh viên có tinh thần tự giác, chấp hành tốt các nội quy thực tập. Hoàn thành đầy đủ các nội dung chuyên môn theo đúng tiến độ và chất lượng yêu cầu."}
             </div>
           </div>
 
-          {/* Chữ ký xác nhận 3 bên */}
+          {/* Signatures */}
           <div className="grid grid-cols-3 gap-4 pt-6 text-center text-xs font-sans">
             <div>
               <p className="font-bold uppercase text-slate-900">SINH VIÊN THỰC TẬP</p>
@@ -279,19 +305,17 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
               <div className="h-16" />
               <p className="font-bold text-slate-900">{student.name}</p>
             </div>
-
             <div>
               <p className="font-bold uppercase text-slate-900">ĐƠN VỊ THỰC TẬP</p>
               <p className="text-[10px] italic text-slate-500">(Ký tên và đóng dấu)</p>
               <div className="h-16" />
               <p className="font-bold text-slate-900">{student.supervisor}</p>
             </div>
-
             <div>
               <p className="font-bold uppercase text-slate-900">GIẢNG VIÊN HƯỚNG DẪN</p>
               <p className="text-[10px] italic text-slate-500">(Ký và ghi rõ họ tên)</p>
               <div className="h-16" />
-              <p className="font-bold text-slate-900">ThS. Nguyễn Văn Phước</p>
+              <p className="font-bold text-slate-900">{evaluatorName || "Giảng viên hướng dẫn"}</p>
             </div>
           </div>
         </div>
@@ -302,7 +326,6 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             Đã đồng bộ điểm số và nhận xét chính thức
           </span>
-
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}

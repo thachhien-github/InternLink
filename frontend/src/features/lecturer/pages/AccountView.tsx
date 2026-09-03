@@ -5,6 +5,7 @@ import { apiRequest, getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLecturerNavStats } from "../../../hooks/useLecturerNavStats";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   User,
   Building2,
@@ -82,6 +83,7 @@ interface LecturerOverviewDto {
 
 export const AccountView = () => {
   const { user } = useAuth();
+  const { selectedSemester } = useSemester();
   const { stats: navStats } = useLecturerNavStats();
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "preferences" | "activity">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -109,26 +111,7 @@ export const AccountView = () => {
 
   // Device logout modal
   const [showLogoutAllModal, setShowLogoutAllModal] = useState(false);
-  const [loggedDevices, setLoggedDevices] = useState([
-    {
-      id: "dev-1",
-      name: "Chrome trên Windows 11",
-      location: "Hà Nội, Việt Nam",
-      ip: "118.70.12.44",
-      time: "Phiên hiện tại",
-      isCurrent: true,
-      type: "laptop",
-    },
-    {
-      id: "dev-2",
-      name: "Safari trên iPhone 15 Pro",
-      location: "Hà Nội, Việt Nam",
-      ip: "118.70.12.44",
-      time: "Đăng nhập 2 giờ trước",
-      isCurrent: false,
-      type: "phone",
-    },
-  ]);
+  const [loggedDevices, setLoggedDevices] = useState<any[]>([]);
 
   // Preferences
   const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">("light");
@@ -428,7 +411,7 @@ export const AccountView = () => {
                   </span>
                   <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
                     <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                    Đợt thực tập: <strong className="text-slate-800">HK I - 2026</strong>
+                    Đợt thực tập: <strong className="text-slate-800">{selectedSemester?.name || "Chưa chọn kỳ"}</strong>
                   </span>
                 </div>
               </div>
@@ -1187,7 +1170,7 @@ export const AccountView = () => {
                   </span>
                 </div>
                 <span className="px-2.5 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-lg">
-                  HK I - 2026
+                  {selectedSemester?.name || "Chưa chọn kỳ"}
                 </span>
               </div>
 

@@ -15,29 +15,11 @@ import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { lecturerExportService } from "../../../services/lecturerExport.service";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   EvaluationPdfModal,
   type StudentEvaluationItem,
 } from "../components/EvaluationPdfModal";
-
-const SAMPLE_STUDENT_FOR_PDF: StudentEvaluationItem = {
-  id: "eval-sample",
-  name: "Nguyễn Văn An",
-  mssv: "20210001",
-  class: "CNTT-K15A",
-  major: "Kỹ thuật Phần mềm",
-  company: "FPT Software",
-  supervisor: "Nguyễn Văn Hải (Mentor)",
-  weeklyReportCount: "12/12",
-  enterpriseScore: 9.2,
-  lecturerScore: 9.0,
-  presentationScore: 9.5,
-  totalScore: 9.2,
-  status: "Hoàn thành",
-  gradeClassification: "Xuất sắc",
-  lecturerComments:
-    "Sinh viên hoàn thành xuất sắc đề tài, có tinh thần trách nhiệm cao và áp dụng tốt kiến thức chuyên ngành vào thực tiễn.",
-};
 
 export const ExportView = ({
   onShowToast,
@@ -46,6 +28,7 @@ export const ExportView = ({
   onShowToast: (msg: string) => void;
   studentCount?: number;
 }) => {
+  const { selectedSemester } = useSemester();
   const [includeGrades, setIncludeGrades] = useState(true);
   const [includeEnterpriseFeedback, setIncludeEnterpriseFeedback] =
     useState(true);
@@ -143,7 +126,7 @@ export const ExportView = ({
           <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-lg">
             <Users className="w-4 h-4 text-blue-600 mb-1.5" />
             <p className="font-bold text-slate-900">{studentCount} sinh viên</p>
-            <p className="text-slate-500">Đợt HK I 2025-2026</p>
+            <p className="text-slate-500">Đợt {selectedSemester?.name || "Chưa chọn kỳ"}</p>
           </div>
           <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-lg">
             <Award className="w-4 h-4 text-emerald-600 mb-1.5" />
@@ -209,7 +192,7 @@ export const ExportView = ({
       {/* PDF Modal */}
       {showPdfModal && (
         <EvaluationPdfModal
-          student={SAMPLE_STUDENT_FOR_PDF}
+          student={{ id: "", name: "", mssv: "", class: "", major: "", company: "", supervisor: "", weeklyReportCount: "", enterpriseScore: 0, lecturerScore: 0, presentationScore: 0, totalScore: 0, status: "", gradeClassification: "" } as StudentEvaluationItem}
           onClose={() => setShowPdfModal(false)}
         />
       )}

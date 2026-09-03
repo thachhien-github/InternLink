@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toast } from "../../../components/common/Toast";
+import { lecturerExportService } from "../../../services/lecturerExport.service";
 import {
   ArrowLeft,
   Printer,
@@ -16,7 +17,7 @@ import {
   FileCheck,
   GraduationCap,
 } from "lucide-react";
-const DEFAULT_STUDENT = {
+const DEFAULT_STUDENT: Record<string, any> = {
   id: "eval-1",
   name: "Nguy\u1EC5n V\u0103n An",
   mssv: "20210001",
@@ -33,6 +34,7 @@ const DEFAULT_STUDENT = {
   totalScore: 9.2,
   status: "Ho\xE0n th\xE0nh",
   weeklyReportCount: "12/12",
+  internshipId: undefined,
   finalReportSubmitted: true,
   enterpriseFeedbackSubmitted: true,
   lecturerComments:
@@ -49,15 +51,37 @@ export const EvaluationDetail = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3e3);
   };
-  const handleExportPDF = () => {
-    showToast(
-      `\u0110\xE3 xu\u1EA5t h\u1ED3 s\u01A1 \u0111\xE1nh gi\xE1 PDF cho sinh vi\xEAn ${student.name}`,
-    );
+  const handleExportPDF = async () => {
+    if (student.internshipId) {
+      try {
+        const { blob, filename } = await lecturerExportService.downloadStudentEvaluationPdf(student.internshipId);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Đã tải PDF đánh giá cho ${student.name}`);
+      } catch {
+        showToast(`Xuất PDF từ server thất bại. Thử lại sau.`);
+      }
+    } else {
+      showToast(`Không có internshipId — không thể xuất PDF từ server.`);
+    }
   };
-  const handleExportExcel = () => {
-    showToast(
-      `\u0110\xE3 xu\u1EA5t d\u1EEF li\u1EC7u \u0111i\u1EC3m Excel cho sinh vi\xEAn ${student.name}`,
-    );
+  const handleExportExcel = async () => {
+    try {
+      const { blob, filename } = await lecturerExportService.downloadEndOfTerm();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`Đã tải bảng điểm Excel tổng hợp`);
+    } catch {
+      showToast(`Xuất Excel từ server thất bại. Thử lại sau.`);
+    }
   };
   const handlePrint = () => {
     window.print();

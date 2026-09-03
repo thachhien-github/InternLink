@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Toast } from "../../../components/common/Toast";
 import { ArrowLeft, CloudUpload, Save, Clock, X, CheckCircle2, Archive } from "lucide-react";
+import { useSemester } from "../../../contexts/SemesterContext";
 import type { DocumentItem, DocumentStatus } from "../../../types/document";
 
 interface UploadDocumentWorkspaceProps {
@@ -19,8 +20,9 @@ export const UploadDocumentWorkspace = ({
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [title, setTitle] = useState(initialData?.title || "");
   const [category, setCategory] = useState(initialData?.category || "Biểu mẫu");
-  const [semester, setSemester] = useState(initialData?.semester || "HK I - 2026");
-  const [major, setMajor] = useState(initialData?.major || "Tất cả ngành");
+  const { semesters } = useSemester();
+  const [semester, setSemester] = useState(initialData?.semester || "");
+  const [major, setMajor] = useState(initialData?.major || "");
   const [description, setDescription] = useState(
     initialData?.description ||
       "Biểu mẫu chuẩn ban hành theo quy định của Khoa Công nghệ Thông tin năm học 2026.",
@@ -39,7 +41,7 @@ export const UploadDocumentWorkspace = ({
       : null,
   );
   const [isDragging, setIsDragging] = useState(false);
-  const [versionNumber, setVersionNumber] = useState(initialData?.version || "v2.0");
+  const [versionNumber, setVersionNumber] = useState(initialData?.version || "");
   const [releaseNote, setReleaseNote] = useState(
     "Bổ sung tiêu chuẩn nhận diện mới, cập nhật ma trận thang điểm 100.",
   );
@@ -376,9 +378,9 @@ export const UploadDocumentWorkspace = ({
                 onChange={(e) => setSemester(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-900 focus:border-blue-500 focus:bg-white"
               >
-                <option value="HK I - 2026">HK I - 2026 (Đang diễn ra)</option>
-                <option value="HK II - 2025">HK II - 2025</option>
-                <option value="HK II - 2024">HK II - 2024</option>
+                {semesters.map((s) => (
+                  <option key={s.id} value={s.name}>{s.name} ({s.status === "active" ? "Đang diễn ra" : s.status === "upcoming" ? "Sắp tới" : "Đã đóng"})</option>
+                ))}
                 <option value="Tất cả học kỳ">Tất cả học kỳ</option>
               </select>
             </div>

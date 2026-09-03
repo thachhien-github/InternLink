@@ -11,18 +11,19 @@ import { StatsCards } from "../components/StatsCards";
 import {
   DashboardDonutChart,
   DashboardTrendChart,
-  LECTURER_WEEKLY_TREND,
   buildLecturerStatusSlices,
 } from "../../../components/common/DashboardCharts";
 import type { ActionItem } from "../../../types/common";
 import type { Deadline } from "../../../types/common";
 import type { Submission } from "../../../types/submission";
+import { useSemester } from "../../../contexts/SemesterContext";
 
 export const DashboardView = ({
   actionItems,
   deadlines,
   submissions,
   stats,
+  weeklyTrendData = [],
   onShowToast,
   onNavigate,
 }: {
@@ -37,9 +38,11 @@ export const DashboardView = ({
     completed: number;
     avgProg: number;
   };
+  weeklyTrendData?: { label: string; value: number; target?: number }[];
   onShowToast: (msg: string) => void;
   onNavigate: (tab: string) => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const statusSlices = buildLecturerStatusSlices(stats);
 
   return (
@@ -47,7 +50,7 @@ export const DashboardView = ({
       <PageHeader
         icon={LayoutDashboard}
         title="Tổng quan"
-        subtitle="Số liệu nhóm hướng dẫn · HK1 2025-2026"
+        subtitle={`Số liệu nhóm hướng dẫn · ${selectedSemester?.name || "Chưa chọn kỳ"}`}
         actions={[
           {
             label: "Làm mới",
@@ -72,7 +75,7 @@ export const DashboardView = ({
           <DashboardTrendChart
             title="Báo cáo tuần — nhóm của bạn"
             subtitle="Số bài nộp / tuần so với chỉ tiêu"
-            data={LECTURER_WEEKLY_TREND}
+            data={weeklyTrendData}
             valueLabel="Đã nộp"
             targetLabel="Chỉ tiêu"
             variant="bar"

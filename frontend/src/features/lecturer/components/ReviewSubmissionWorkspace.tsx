@@ -21,28 +21,8 @@ import {
   Highlighter,
 } from "lucide-react";
 export const ReviewSubmissionWorkspace = ({
-  student = {
-    id: "st-1",
-    name: "Nguy\u1EC5n V\u0103n A",
-    mssv: "20210001",
-    class: "CNTT-K15A",
-    major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-    company: "FPT Software",
-    position: "Backend Intern",
-    lecturer: "TS. Ph\u1EA1m Minh Anh",
-    supervisor: "Nguy\u1EC5n V\u0103n H\u1EA3i (Mentor)",
-    progress: 76,
-    status: "\u0110\xFAng ti\u1EBFn \u0111\u1ED9",
-    score: 8.8,
-    gpa: 3.6,
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    submissionsCount: 5,
-    email: "nguyenvana@st.university.edu.vn",
-    phone: "0988 123 456",
-  },
-  submissionTitle = "B\xE1o c\xE1o tu\u1EA7n 5: L\u1EADp tr\xECnh Microservices & API Integration",
-  onBack,
+  student = {} as any,
+  submissionTitle = "",
   onApprove,
   onRequestRevision,
 }) => {
@@ -53,84 +33,13 @@ export const ReviewSubmissionWorkspace = ({
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [completionProgress, setCompletionProgress] = useState(85);
   const [score, setScore] = useState("8.5");
-  const [selectedTags, setSelectedTags] = useState([
-    "\u0110\xFAng y\xEAu c\u1EA7u",
-    "Vi\u1EBFt t\u1ED1t",
-  ]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState(null);
   const [highlightComment, setHighlightComment] = useState("");
   const [selectedHighlightText, setSelectedHighlightText] = useState(null);
   const [isAiExpanded, setIsAiExpanded] = useState(false);
-  const [aiChecks, setAiChecks] = useState([
-    {
-      id: 1,
-      text: "Thi\u1EBFu s\u01A1 \u0111\u1ED3 l\u1EDBp Class Diagram chi ti\u1EBFt cho Auth Service.",
-      priority: "High",
-      resolved: false,
-    },
-    {
-      id: 2,
-      text: "Thi\u1EBFu nh\u1EADt k\xFD c\xF4ng vi\u1EC7c tu\u1EA7n 5 k\xE8m ch\u1EEF k\xFD Mentor.",
-      priority: "High",
-      resolved: false,
-    },
-    {
-      id: 3,
-      text: "Ki\u1EC3m tra tr\xF9ng l\u1EB7p: Ph\xE1t hi\u1EC7n 18% n\u1ED9i dung kh\u1EDBp v\u1EDBi Kh\xF3a lu\u1EADn 2025.",
-      priority: "Medium",
-      resolved: false,
-    },
-    {
-      id: 4,
-      text: "H\xECnh minh h\u1ECDa ki\u1EBFn tr\xFAc API ch\u01B0a c\xF3 ch\xFA th\xEDch ngu\u1ED3n.",
-      priority: "Low",
-      resolved: true,
-    },
-    {
-      id: 5,
-      text: "Ngu\u1ED3n tham kh\u1EA3o ch\u01B0a chu\u1EA9n h\xF3a theo \u0111\u1ECBnh d\u1EA1ng IEEE.",
-      priority: "Low",
-      resolved: false,
-    },
-  ]);
-  const [comments, setComments] = useState([
-    {
-      id: "c-1",
-      author: "TS. Ph\u1EA1m Minh Anh",
-      role: "Gi\u1EA3ng vi\xEAn h\u01B0\u1EDBng d\u1EABn",
-      avatar:
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80",
-      time: "10:30 H\xF4m nay",
-      paragraphRef:
-        'Trang 4 - M\u1EE5c 2.3: "Ki\u1EBFn tr\xFAc JWT Refresh Token Handler"',
-      content:
-        "Em gi\u1EA3i th\xEDch r\xF5 h\u01A1n v\u1EC1 c\u01A1 ch\u1EBF x\u1EED l\xFD khi Refresh Token b\u1ECB h\u1EBFt h\u1EA1n ho\u1EB7c revoked \u1EDF Client nh\xE9.",
-      resolved: false,
-      replies: [
-        {
-          author: student.name,
-          role: "Sinh vi\xEAn",
-          time: "11:15 H\xF4m nay",
-          content:
-            "D\u1EA1 th\u1EA7y! Em \u0111\xE3 b\u1ED5 sung s\u01A1 \u0111\u1ED3 Sequence Diagram \u1EDF trang 5 c\u1EE7a b\u1EA3n Version 3 r\u1ED3i \u1EA1.",
-        },
-      ],
-    },
-    {
-      id: "c-2",
-      author: "TS. Ph\u1EA1m Minh Anh",
-      role: "Gi\u1EA3ng vi\xEAn h\u01B0\u1EDBng d\u1EABn",
-      avatar:
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80",
-      time: "H\xF4m qua",
-      paragraphRef:
-        'Trang 8 - M\u1EE5c 4.1: "K\u1EBFt qu\u1EA3 ki\u1EC3m th\u1EED Postman API"',
-      content:
-        "C\u1EA7n \u0111\xEDnh k\xE8m h\xECnh \u1EA3nh m\xE0n h\xECnh k\u1EBFt qu\u1EA3 ch\u1EA1y test Coverage > 80%.",
-      resolved: true,
-      replies: [],
-    },
-  ]);
+  const [aiChecks, setAiChecks] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
   const [newCommentInput, setNewCommentInput] = useState("");
   const availableTags = [
     "\u0110\xFAng y\xEAu c\u1EA7u",
@@ -140,66 +49,8 @@ export const ReviewSubmissionWorkspace = ({
     "Thi\u1EBFu h\xECnh \u1EA3nh",
     "Thi\u1EBFu t\xE0i li\u1EC7u",
   ];
-  const studentFiles = [
-    {
-      name: "Bao_Cao_Tuan_5_v3.pdf",
-      size: "2.4 MB",
-      type: "PDF",
-      icon: FileText,
-      primary: true,
-    },
-    {
-      name: "Source_code_Backend_v3.zip",
-      size: "18.5 MB",
-      type: "ZIP",
-      icon: FileArchive,
-      primary: false,
-    },
-    {
-      name: "Slide_Thuyet_Trinh_Tuan_5.pptx",
-      size: "5.1 MB",
-      type: "PPTX",
-      icon: FileText,
-      primary: false,
-    },
-    {
-      name: "Nhat_Ky_Cong_Viec_Week5.docx",
-      size: "420 KB",
-      type: "DOCX",
-      icon: FileSpreadsheet,
-      primary: false,
-    },
-    {
-      name: "Demo_Chuc_Nang_Auth.mp4",
-      size: "45.0 MB",
-      type: "MP4",
-      icon: Video,
-      primary: false,
-    },
-  ];
-  const versionsHistory = [
-    {
-      version: "v3 (Hi\u1EC7n t\u1EA1i)",
-      date: "02/09/2026 - 11:30",
-      status: "Ch\u1EDD duy\u1EC7t",
-      commentsCount: 2,
-      active: currentVersion === "v3",
-    },
-    {
-      version: "v2",
-      date: "01/09/2026 - 16:45",
-      status: "Y\xEAu c\u1EA7u s\u1EEDa",
-      commentsCount: 4,
-      active: currentVersion === "v2",
-    },
-    {
-      version: "v1",
-      date: "30/08/2026 - 09:20",
-      status: "B\u1EA3n th\u1EA3o",
-      commentsCount: 1,
-      active: currentVersion === "v1",
-    },
-  ];
+  const studentFiles: any[] = [];
+  const versionsHistory: any[] = [];
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3e3);
@@ -627,13 +478,9 @@ export const ReviewSubmissionWorkspace = ({
                     </h2>
                     <p className="text-justify">
                       Trong tuần làm việc vừa qua tại doanh nghiệp{" "}
-                      <strong className="font-sans text-slate-900">
-                        FPT Software
-                      </strong>
+                      <strong className="font-sans text-slate-900">{student.company || "—"}</strong>
                       , dưới sự hướng dẫn trực tiếp của Mentor{" "}
-                      <span className="font-sans font-bold">
-                        Nguyễn Văn Hải
-                      </span>
+                      <span className="font-sans font-bold">{student.supervisor || "—"}</span>
                       , em đã hoàn thành thiết kế và cài đặt luồng xác thực
                       người dùng dựa trên mô hình Microservices.
                     </p>
@@ -710,8 +557,8 @@ export const ReviewSubmissionWorkspace = ({
                   <p className="text-blue-700 font-bold">
                     # BÁO CÁO THỰC TẬP TUẦN 5
                   </p>
-                  <p>**Sinh viên:** Nguyễn Văn A - **MSSV:** 20210001</p>
-                  <p>**Mentor:** Nguyễn Văn Hải (FPT Software)</p>
+                  <p>**Sinh viên:** {student.name || "—"} - **MSSV:** {student.mssv || "—"}</p>
+                  <p>**Mentor:** {student.supervisor || "—"}</p>
                   <hr />
                   <p className="font-bold text-slate-900">
                     ## 1. Công việc hoàn thành

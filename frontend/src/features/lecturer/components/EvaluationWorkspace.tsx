@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toast } from "../../../components/common/Toast";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   ArrowLeft,
   Save,
@@ -31,6 +32,7 @@ export const EvaluationWorkspace = ({
   onBack?: () => void;
   onSave: (updatedStudent: any) => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const [activeLeftTab, setActiveLeftTab] = useState("tiendo");
 
   // Điểm 4 Trụ cột Thực tế
@@ -269,7 +271,7 @@ export const EvaluationWorkspace = ({
                 </span>
                 <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1 mt-0.5">
                   <Calendar className="w-3 h-3 text-blue-600" />
-                  12 tuần (HK I - 2026)
+                  12 tuần ({selectedSemester?.name || "Chưa chọn kỳ"})
                 </span>
               </div>
 

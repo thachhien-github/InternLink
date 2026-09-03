@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Toast } from "../../../components/common/Toast";
 import {
   BarChart2,
@@ -23,6 +23,7 @@ import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
 import { apiRequest } from "../../../lib/apiClient";
 import { lecturerExportService } from "../../../services/lecturerExport.service";
+import { useSemester } from "../../../contexts/SemesterContext";
 
 interface DashboardStatsDto {
   totalStudents: number;
@@ -35,23 +36,81 @@ interface DashboardStatsDto {
   statusDistribution: Record<string, number>;
 }
 
+interface WeeklyTrendItem {
+  weekNumber: number;
+  label: string;
+  onTimeCount: number;
+  lateCount: number;
+  missingCount: number;
+  totalStudents: number;
+  complianceRate: number;
+}
+
+interface GradeDistribution {
+  excellentCount: number;
+  goodCount: number;
+  fairCount: number;
+  averageCount: number;
+  failCount: number;
+  notYetGradedCount: number;
+  overallAverage: number;
+  totalStudents: number;
+}
+
+interface CompanyStatItem {
+  companyName: string;
+  studentCount: number;
+  positions: string;
+  averageGrade: number;
+  partnershipLevel: string;
+}
+
+interface ActivityStats {
+  reviewedReportsCount: number;
+  pendingReportsCount: number;
+  completedStudentsCount: number;
+  totalStudentsCount: number;
+  averageResponseDays: number;
+  complianceRate: number;
+}
+
 export const LecturerAnalytics = () => {
-  const [selectedSemester, setSelectedSemester] = useState("HK I - 2026");
+  const { semesters, selectedSemesterId, selectedSemester, selectSemester } = useSemester();
   const [selectedClass, setSelectedClass] = useState("Tất cả lớp");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<DashboardStatsDto | null>(null);
+  const [weeklyTrend, setWeeklyTrend] = useState<WeeklyTrendItem[]>([]);
+  const [gradeDist, setGradeDist] = useState<GradeDistribution | null>(null);
+  const [companyStats, setCompanyStats] = useState<CompanyStatItem[]>([]);
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    const qs = selectedSemesterId ? `?semesterId=${selectedSemesterId}` : "";
+    try {
+      const [stats, trend, grade, company, activity] = await Promise.all([
+        apiRequest<DashboardStatsDto>("/api/Lecturer/stats"),
+        apiRequest<WeeklyTrendItem[]>(`/api/Lecturer/analytics/weekly-trend${qs}`),
+        apiRequest<GradeDistribution>(`/api/Lecturer/analytics/grade-distribution${qs}`),
+        apiRequest<CompanyStatItem[]>(`/api/Lecturer/analytics/company-stats${qs}`),
+        apiRequest<ActivityStats>(`/api/Lecturer/analytics/activity-stats${qs}`),
+      ]);
+      setStatsData(stats);
+      setWeeklyTrend(trend);
+      setGradeDist(grade);
+      setCompanyStats(company);
+      setActivityStats(activity);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedSemesterId]);
 
   useEffect(() => {
-    let cancelled = false;
-    apiRequest<DashboardStatsDto>("/api/Lecturer/stats")
-      .then((data) => {
-        if (!cancelled) setStatsData(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -135,7 +194,7 @@ export const LecturerAnalytics = () => {
           footer="100% Đã phân công giảng viên"
           onClick={() => {
             setSelectedClass("Tất cả lớp");
-            setSelectedSemester("HK I - 2026");
+            if (semesters.length > 0) selectSemester(semesters[0].id);
           }}
         />
         <KpiCard
@@ -174,12 +233,12 @@ export const LecturerAnalytics = () => {
             </h2>
           </div>
 
-          {(selectedSemester !== "HK I - 2026" ||
-            selectedClass !== "T\u1EA5t c\u1EA3 l\u1EDBp") && (
+          {(selectedSemesterId !== "" ||
+            selectedClass !== "Tất cả lớp") && (
             <button
               onClick={() => {
-                setSelectedSemester("HK I - 2026");
-                setSelectedClass("T\u1EA5t c\u1EA3 l\u1EDBp");
+                if (semesters.length > 0) selectSemester(semesters[0].id);
+                setSelectedClass("Tất cả lớp");
               }}
               className="text-xs text-blue-600 hover:text-blue-800 font-bold"
             >
@@ -191,15 +250,19 @@ export const LecturerAnalytics = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
           <div>
             <select
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
+              value={selectedSemesterId}
+              onChange={(e) => selectSemester(e.target.value)}
               className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
-              <option value="HK I - 2026">
-                Học kỳ: HK I - 2026 (Hiện tại)
-              </option>
-              <option value="HK II - 2025">Học kỳ: HK II - 2025</option>
-              <option value="HK I - 2025">Học kỳ: HK I - 2025</option>
+              {semesters.length === 0 ? (
+                <option value="">Chưa có kỳ thực tập</option>
+              ) : (
+                semesters.map((sem) => (
+                  <option key={sem.id} value={sem.id}>
+                    {sem.name} — [{sem.status === "active" ? "Đang chạy" : sem.status === "upcoming" ? "Sắp tới" : "Đã đóng"}]
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -253,64 +316,43 @@ export const LecturerAnalytics = () => {
             </span>
           </div>
 
-          {/* Simulated Visual Bar Chart */}
+          {/* Visual Bar Chart from API */}
           <div className="space-y-3 pt-2">
-            {[
-              {
-                week: "Tu\u1EA7n 1-3 (Kh\u1EDFi \u0111\u1ED9ng & Nh\u1EADn \u0111\u1EC1 t\xE0i)",
-                onTime: 27,
-                late: 1,
-                missing: 0,
-              },
-              {
-                week: "Tu\u1EA7n 4-6 (Ph\xE2n t\xEDch & Thi\u1EBFt k\u1EBF)",
-                onTime: 26,
-                late: 2,
-                missing: 0,
-              },
-              {
-                week: "Tu\u1EA7n 7-9 (L\u1EADp tr\xECnh & Tri\u1EC3n khai)",
-                onTime: 24,
-                late: 3,
-                missing: 1,
-              },
-              {
-                week: "Tu\u1EA7n 10-12 (Ki\u1EC3m th\u1EED & B\xE1o c\xE1o cu\u1ED1i \u0111\u1EE3t)",
-                onTime: 22,
-                late: 4,
-                missing: 2,
-              },
-            ].map((item, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold text-slate-800">
-                  <span>{item.week}</span>
-                  <span className="text-slate-500 text-[11px]">
-                    <strong className="text-emerald-600">{item.onTime}</strong>{" "}
-                    đúng hạn •{" "}
-                    <strong className="text-amber-600">{item.late}</strong> trễ
-                    • <strong className="text-rose-600">{item.missing}</strong>{" "}
-                    thiếu
-                  </span>
+            {weeklyTrend.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">Chưa có dữ liệu báo cáo tuần</p>
+            ) : (
+              weeklyTrend.map((item, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-bold text-slate-800">
+                    <span>{item.label}</span>
+                    <span className="text-slate-500 text-[11px]">
+                      <strong className="text-emerald-600">{item.onTimeCount}</strong>{" "}
+                      đúng hạn •{" "}
+                      <strong className="text-amber-600">{item.lateCount}</strong> trễ
+                      • <strong className="text-rose-600">{item.missingCount}</strong>{" "}
+                      thiếu
+                    </span>
+                  </div>
+                  <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                    <div
+                      style={{ width: `${item.totalStudents > 0 ? (item.onTimeCount / item.totalStudents) * 100 : 0}%` }}
+                      className="bg-emerald-500 h-full transition-all duration-500"
+                      title={`Đúng hạn: ${item.onTimeCount} SV`}
+                    />
+                    <div
+                      style={{ width: `${item.totalStudents > 0 ? (item.lateCount / item.totalStudents) * 100 : 0}%` }}
+                      className="bg-amber-400 h-full transition-all duration-500"
+                      title={`Trễ hạn: ${item.lateCount} SV`}
+                    />
+                    <div
+                      style={{ width: `${item.totalStudents > 0 ? (item.missingCount / item.totalStudents) * 100 : 0}%` }}
+                      className="bg-rose-500 h-full transition-all duration-500"
+                      title={`Thiếu: ${item.missingCount} SV`}
+                    />
+                  </div>
                 </div>
-                <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    style={{ width: `${(item.onTime / 28) * 100}%` }}
-                    className="bg-emerald-500 h-full transition-all duration-500"
-                    title={`\u0110\xFAng h\u1EA1n: ${item.onTime} SV`}
-                  />
-                  <div
-                    style={{ width: `${(item.late / 28) * 100}%` }}
-                    className="bg-amber-400 h-full transition-all duration-500"
-                    title={`Tr\u1EC5 h\u1EA1n: ${item.late} SV`}
-                  />
-                  <div
-                    style={{ width: `${(item.missing / 28) * 100}%` }}
-                    className="bg-rose-500 h-full transition-all duration-500"
-                    title={`Thi\u1EBFu: ${item.missing} SV`}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 text-slate-600">
@@ -348,87 +390,33 @@ export const LecturerAnalytics = () => {
             </div>
 
             <div className="space-y-3 pt-3 text-xs">
-              <div>
-                <div className="flex justify-between font-bold mb-1">
-                  <span className="text-emerald-700 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Xuất sắc (9.0 - 10.0)
-                  </span>
-                  <span className="text-slate-900 font-bold">8 SV (28.6%)</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div
-                    className="bg-emerald-500 h-2.5 rounded-full"
-                    style={{ width: "28.6%" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold mb-1">
-                  <span className="text-blue-700 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    Giỏi (8.0 - 8.9)
-                  </span>
-                  <span className="text-slate-900 font-bold">
-                    12 SV (42.8%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div
-                    className="bg-blue-500 h-2.5 rounded-full"
-                    style={{ width: "42.8%" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold mb-1">
-                  <span className="text-amber-700 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    Khá (7.0 - 7.9)
-                  </span>
-                  <span className="text-slate-900 font-bold">5 SV (17.9%)</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div
-                    className="bg-amber-500 h-2.5 rounded-full"
-                    style={{ width: "17.9%" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold mb-1">
-                  <span className="text-slate-600 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    Trung bình (5.5 - 6.9)
-                  </span>
-                  <span className="text-slate-900 font-bold">2 SV (7.1%)</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div
-                    className="bg-slate-400 h-2.5 rounded-full"
-                    style={{ width: "7.1%" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold mb-1">
-                  <span className="text-rose-600 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Không đạt (&lt; 5.5)
-                  </span>
-                  <span className="text-slate-900 font-bold">1 SV (3.6%)</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div
-                    className="bg-rose-500 h-2.5 rounded-full"
-                    style={{ width: "3.6%" }}
-                  />
-                </div>
-              </div>
+              {gradeDist ? (
+                [
+                  { label: "Xuất sắc (9.0 - 10.0)", count: gradeDist.excellentCount, color: "bg-emerald-500", textColor: "text-emerald-700" },
+                  { label: "Giỏi (8.0 - 8.9)", count: gradeDist.goodCount, color: "bg-blue-500", textColor: "text-blue-700" },
+                  { label: "Khá (7.0 - 7.9)", count: gradeDist.fairCount, color: "bg-amber-500", textColor: "text-amber-700" },
+                  { label: "Trung bình (5.5 - 6.9)", count: gradeDist.averageCount, color: "bg-slate-400", textColor: "text-slate-600" },
+                  { label: "Không đạt (< 5.5)", count: gradeDist.failCount, color: "bg-rose-500", textColor: "text-rose-600" },
+                ].map((item, idx) => {
+                  const pct = gradeDist.totalStudents > 0 ? ((item.count / gradeDist.totalStudents) * 100).toFixed(1) : "0";
+                  return (
+                    <div key={idx}>
+                      <div className="flex justify-between font-bold mb-1">
+                        <span className={`${item.textColor} flex items-center gap-1`}>
+                          <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                          {item.label}
+                        </span>
+                        <span className="text-slate-900 font-bold">{item.count} SV ({pct}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2.5">
+                        <div className={`${item.color} h-2.5 rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-slate-400 text-center py-4">Chưa có dữ liệu đánh giá</p>
+              )}
             </div>
           </div>
 
@@ -457,7 +445,7 @@ export const LecturerAnalytics = () => {
             </div>
           </div>
           <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold rounded-full">
-            GV: Trần Minh Huy
+            Hoạt động hướng dẫn
           </span>
         </div>
 
@@ -467,9 +455,11 @@ export const LecturerAnalytics = () => {
               <span>Báo cáo đã nhận xét</span>
               <FileText className="w-4 h-4 text-emerald-600" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">142 bài</p>
+            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.reviewedReportsCount ?? 0} bài</p>
             <p className="text-[11px] text-emerald-700 font-medium">
-              Đạt 96% tổng số bài nộp
+              {activityStats && activityStats.totalStudentsCount > 0
+                ? `Đạt ${Math.round((activityStats.reviewedReportsCount / (activityStats.reviewedReportsCount + activityStats.pendingReportsCount || 1)) * 100)}% tổng số bài nộp`
+                : "Chưa có dữ liệu"}
             </p>
           </div>
 
@@ -478,7 +468,7 @@ export const LecturerAnalytics = () => {
               <span>Báo cáo chờ phản hồi</span>
               <Clock className="w-4 h-4 text-amber-600" />
             </div>
-            <p className="text-2xl font-bold text-amber-700 il-kpi-val">6 bài</p>
+            <p className="text-2xl font-bold text-amber-700 il-kpi-val">{activityStats?.pendingReportsCount ?? 0} bài</p>
             <p className="text-[11px] text-amber-700 font-medium">
               Cần xử lý trong tuần này
             </p>
@@ -489,7 +479,7 @@ export const LecturerAnalytics = () => {
               <span>SV Hoàn thành đợt</span>
               <GraduationCap className="w-4 h-4 text-sky-600" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">18 / 28 SV</p>
+            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.completedStudentsCount ?? 0} / {activityStats?.totalStudentsCount ?? 0} SV</p>
             <p className="text-[11px] text-sky-700 font-medium">
               Đã chấm điểm &amp; bảo vệ
             </p>
@@ -497,12 +487,12 @@ export const LecturerAnalytics = () => {
 
           <div className="p-4 rounded-md bg-slate-50 border border-slate-200 space-y-1">
             <div className="flex items-center justify-between text-slate-600 text-xs font-semibold">
-              <span>Thời gian phản hồi TB</span>
+              <span>Tỷ lệ tuân thủ</span>
               <TrendingUp className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">1.2 ngày</p>
+            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.complianceRate ?? 100}%</p>
             <p className="text-[11px] text-slate-500 font-medium">
-              Nhanh hơn 85% GV toàn khoa
+              Nộp báo cáo đúng hạn
             </p>
           </div>
         </div>
@@ -538,87 +528,37 @@ export const LecturerAnalytics = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-              {[
-                {
-                  company: "FPT Software (H\xE0 N\u1ED9i)",
-                  count: 6,
-                  positions: "Fullstack Developer, React Frontend",
-                  rating: 4.9,
-                  rank: "H\u1EE3p t\xE1c Xu\u1EA5t s\u1EAFc",
-                  color: "text-emerald-600 bg-emerald-50 border-emerald-200",
-                },
-                {
-                  company: "Viettel Telecom",
-                  count: 5,
-                  positions: "Data Engineer, Python Backend",
-                  rating: 4.8,
-                  rank: "H\u1EE3p t\xE1c Xu\u1EA5t s\u1EAFc",
-                  color: "text-emerald-600 bg-emerald-50 border-emerald-200",
-                },
-                {
-                  company: "VNG Corporation",
-                  count: 4,
-                  positions: "Cloud DevOps, Infrastructure",
-                  rating: 4.7,
-                  rank: "H\u1EE3p t\xE1c T\u1ED1t",
-                  color: "text-blue-600 bg-blue-50 border-blue-200",
-                },
-                {
-                  company: "MISA Joint Stock Company",
-                  count: 3,
-                  positions: "Java Backend, QA/QC Tester",
-                  rating: 4.6,
-                  rank: "H\u1EE3p t\xE1c T\u1ED1t",
-                  color: "text-blue-600 bg-blue-50 border-blue-200",
-                },
-                {
-                  company: "Shopee Vietnam",
-                  count: 3,
-                  positions: "Data Analyst, Mobile React Native",
-                  rating: 4.8,
-                  rank: "H\u1EE3p t\xE1c Xu\u1EA5t s\u1EAFc",
-                  color: "text-emerald-600 bg-emerald-50 border-emerald-200",
-                },
-                {
-                  company: "CMC Global",
-                  count: 2,
-                  positions: "Business Analyst, Web Frontend",
-                  rating: 4.5,
-                  rank: "H\u1EE3p t\xE1c T\u1ED1t",
-                  color: "text-blue-600 bg-blue-50 border-blue-200",
-                },
-              ].map((item, index) => (
-                <tr
-                  key={index}
-                  className="hover:bg-slate-50/80 transition-colors"
-                >
-                  <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-slate-400" />
-                    <span>{item.company}</span>
-                  </td>
-                  <td className="p-3">
-                    <span className="font-bold text-blue-600 px-2 py-0.5 bg-blue-50 rounded-md">
-                      {item.count} sinh viên
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-600 font-normal">
-                    {item.positions}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-1 font-bold text-amber-600">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{item.rating} / 5.0</span>
-                    </div>
-                  </td>
-                  <td className="p-3 text-right">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${item.color}`}
-                    >
-                      {item.rank}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {companyStats.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-slate-400 text-xs">Chưa có dữ liệu doanh nghiệp</td></tr>
+              ) : (
+                companyStats.map((item, index) => (
+                  <tr key={index} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-slate-400" />
+                      <span>{item.companyName}</span>
+                    </td>
+                    <td className="p-3">
+                      <span className="font-bold text-blue-600 px-2 py-0.5 bg-blue-50 rounded-md">
+                        {item.studentCount} sinh viên
+                      </span>
+                    </td>
+                    <td className="p-3 text-slate-600 font-normal">
+                      {item.positions}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1 font-bold text-amber-600">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span>{item.averageGrade} / 10</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${item.partnershipLevel.includes("Xuất") ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-blue-600 bg-blue-50 border-blue-200"}`}>
+                        {item.partnershipLevel}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
