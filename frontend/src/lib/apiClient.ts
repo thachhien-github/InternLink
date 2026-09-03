@@ -50,6 +50,16 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 
 let refreshPromise: Promise<string | null> | null = null;
 
+function dispatchUnauthorized(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("internlink:unauthorized", {
+        detail: { status: 401, message: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ." },
+      }),
+    );
+  }
+}
+
 async function attemptRefreshToken(): Promise<string | null> {
   const currentAccessToken = getStoredToken();
   const currentRefreshToken = getStoredRefreshToken();
@@ -72,6 +82,7 @@ async function attemptRefreshToken(): Promise<string | null> {
 
     if (!res.ok) {
       clearAuthTokens();
+      dispatchUnauthorized();
       return null;
     }
 
@@ -85,9 +96,11 @@ async function attemptRefreshToken(): Promise<string | null> {
     }
 
     clearAuthTokens();
+    dispatchUnauthorized();
     return null;
   } catch {
     clearAuthTokens();
+    dispatchUnauthorized();
     return null;
   }
 }

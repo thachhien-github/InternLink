@@ -9,8 +9,12 @@ import type {
 import type { Student } from "../types/student";
 import type { Submission } from "../types/submission";
 
-const DEFAULT_AVATAR =
-  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
+/** Check if a URL is an external placeholder (Unsplash) or empty. */
+function isPlaceholderAvatar(url: string): boolean {
+  return !url || url.includes("unsplash.com");
+}
+
+const DEFAULT_AVATAR = "";
 
 function formatViDate(iso?: string | null): string {
   if (!iso) return "—";

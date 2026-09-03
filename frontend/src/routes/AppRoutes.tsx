@@ -8,8 +8,8 @@ import {
 } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
-import { USE_MOCK } from "../config/env";
 import { FEATURES } from "../config/featureFlags";
+import { useSemester } from "../contexts/SemesterContext";
 
 // Auth & Layouts
 import { LoginPortal } from "../components/common/LoginPortal";
@@ -55,9 +55,9 @@ import { FeedbackView as StudentFeedbackView } from "../features/student/pages/F
 import { TemplatesView as StudentTemplatesView } from "../features/student/pages/TemplatesView";
 import { NotificationsView as StudentNotificationsView } from "../features/student/pages/NotificationsView";
 import { AccountView as StudentAccountView } from "../features/student/pages/AccountView";
+import { EvaluationView as StudentEvaluationView } from "../features/student/pages/EvaluationView";
 
 // App State hooks
-import { useMockAppState } from "./useMockAppState";
 import { useRealAppState } from "./useRealAppState";
 
 export function AppRoutes() {
@@ -68,9 +68,9 @@ export function AppRoutes() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const mockState = useMockAppState();
-  const realState = useRealAppState(role, isLoggedIn, user, showToast);
-  const appState = USE_MOCK ? mockState : realState;
+  const { selectedSemesterId } = useSemester();
+  const realState = useRealAppState(role, isLoggedIn, user, showToast, selectedSemesterId);
+  const appState = realState;
 
   const currentTabFromPath = location.pathname.split("/").pop() || "dashboard";
 
@@ -259,6 +259,7 @@ export function AppRoutes() {
                       deadlines={appState.deadlines}
                       submissions={appState.assignedSubmissions}
                       stats={appState.stats}
+                      weeklyTrendData={appState.weeklyTrendData}
                       onShowToast={showToast}
                       onNavigate={(tab) => navigate(`/lecturer/${tab}`)}
                     />
@@ -398,6 +399,10 @@ export function AppRoutes() {
                 <Route
                   path="templates"
                   element={<StudentTemplatesView onShowToast={showToast} />}
+                />
+                <Route
+                  path="evaluation"
+                  element={<StudentEvaluationView onShowToast={showToast} />}
                 />
                 <Route
                   path="notifications"

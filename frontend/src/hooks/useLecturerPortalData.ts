@@ -19,6 +19,7 @@ export function useLecturerPortalData(
   enabled: boolean,
   lecturerName: string,
   onError?: (msg: string) => void,
+  semesterId?: string | null,
 ) {
   const [students, setStudents] = useState<Student[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -31,8 +32,8 @@ export function useLecturerPortalData(
     setIsLoading(true);
     try {
       const [internships, companies] = await Promise.all([
-        lecturerInternshipsService.getAll(),
-        lecturerCompaniesService.getAll(),
+        lecturerInternshipsService.getAll(semesterId ?? undefined),
+        lecturerCompaniesService.getAll(semesterId ?? undefined),
       ]);
 
       const studentRows = internships.map((i) =>
@@ -77,7 +78,7 @@ export function useLecturerPortalData(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, lecturerName, onError]);
+  }, [enabled, lecturerName, semesterId, onError]);
 
   useEffect(() => {
     load();

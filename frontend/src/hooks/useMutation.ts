@@ -33,7 +33,7 @@ export const useMutation = <TData, TVariables = any>(
         const url =
           typeof endpoint === 'function' ? endpoint(variables!) : endpoint;
 
-        console.log(`📤 ${method.toUpperCase()}: ${url}`, variables);
+        if (import.meta.env.DEV) console.log(`📤 ${method.toUpperCase()}: ${url}`, variables);
 
         let response;
         if (method === 'delete') {
@@ -45,7 +45,7 @@ export const useMutation = <TData, TVariables = any>(
         }
 
         setState({ data: response.data, loading: false, error: null });
-        console.log(`✅ Success: ${method.toUpperCase()} ${url}`, response.data);
+        if (import.meta.env.DEV) console.log(`✅ Success: ${method.toUpperCase()} ${url}`, response.data);
 
         return response.data;
       } catch (err) {
@@ -61,10 +61,7 @@ export const useMutation = <TData, TVariables = any>(
               : new Error('Unknown error');
 
         setState({ data: null, loading: false, error });
-        console.error(
-          `❌ Error ${method.toUpperCase()}: `,
-          error.message
-        );
+        if (import.meta.env.DEV) console.error(`❌ Error ${method.toUpperCase()}:`, error.message);
 
         throw error;
       }

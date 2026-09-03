@@ -20,11 +20,5 @@ export const ENABLE_REAL_LECTURER_DATA =
 export const ENABLE_REAL_AUTH =
   import.meta.env.VITE_ENABLE_REAL_AUTH !== 'false';
 
-// ===== Mode Configuration =====
-/** When false (default), all portal pages, authentication and CRUD operations communicate directly with real Backend REST APIs. */
-export const USE_MOCK =
-  import.meta.env.VITE_USE_MOCK === 'true' ||
-  import.meta.env.VITE_USE_MOCK === '1';
-
 export const TOKEN_STORAGE_KEY = 'internlink_access_token';
 export const REFRESH_TOKEN_STORAGE_KEY = 'internlink_refresh_token';

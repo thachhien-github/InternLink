@@ -10,12 +10,21 @@ export const exportService = {
     );
   },
 
-  /** Downloads the academic internship summary report for the selected semester. */
+  /** Downloads the academic internship summary report as Excel (.xlsx). */
   downloadSummaryReport(semesterId?: string) {
     const query = semesterId ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
       `/api/Export/summary-report${query}`,
       `BaoCaoTongKetThucTap_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  },
+
+  /** Downloads the academic internship summary report as Word (.docx). */
+  downloadSummaryReportWord(semesterId?: string) {
+    const query = semesterId ? `?semesterId=${semesterId}` : "";
+    return downloadAuthenticatedFile(
+      `/api/Export/summary-report/word${query}`,
+      `BaoCaoTongKetThucTap_${new Date().toISOString().slice(0, 10)}.docx`,
     );
   },
 };

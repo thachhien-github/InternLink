@@ -3,10 +3,10 @@ import {
   useState,
   useCallback,
   useEffect,
+  useContext,
   ReactNode,
 } from "react";
-import { USE_MOCK } from "../config/env";
-import { getStoredToken, setStoredToken } from "../lib/apiClient";
+import { getStoredToken, setStoredToken, clearAuthTokens } from "../lib/apiClient";
 import { mapBackendRole } from "../lib/roleMap";
 import { authService } from "../services/auth.service";
 import type { CurrentUserDto } from "../types/api";
@@ -37,11 +37,17 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
   clearMustChangePassword: () => void;
-  /** Demo-only portal switch when USE_MOCK */
+  /** Portal switch */
   switchRole: (role: UserRole) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+export function useAuth(): AuthContextType {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
 
 function mapMeToAuthUser(me: CurrentUserDto): AuthUser {
   const role = mapBackendRole(me.role);
@@ -58,7 +64,7 @@ function mapMeToAuthUser(me: CurrentUserDto): AuthUser {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isBootstrapping, setIsBootstrapping] = useState(!USE_MOCK);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -77,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    if (!USE_MOCK && getStoredToken()) {
+    if (getStoredToken()) {
       try {
         await authService.logout();
       } catch {
@@ -105,15 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const switchRole = useCallback((newRole: UserRole) => {
-    if (!USE_MOCK) return;
     setUser((prev) => {
       if (!prev) return prev;
-      const roleNames: Record<UserRole, string> = {
-        admin: "Quản trị viên Hệ thống (Super Admin)",
-        lecturer: "ThS. Nguyễn Văn Phước (Giảng viên)",
-        student: "Trần Thị Thu Thảo (Sinh viên)",
+      const roleLabels: Record<UserRole, string> = {
+        admin: "Quản trị viên",
+        lecturer: "Giảng viên",
+        student: "Sinh viên",
       };
-      return { ...prev, role: newRole, name: roleNames[newRole] };
+      return { ...prev, role: newRole, name: roleLabels[newRole] };
     });
   }, []);
 
@@ -132,8 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (USE_MOCK) return;
-
     let cancelled = false;
     (async () => {
       const token = getStoredToken();
@@ -150,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           mustChangePassword: me.mustChangePassword,
         });
       } catch {
-        setStoredToken(null);
+        clearAuthTokens();
       } finally {
         if (!cancelled) setIsBootstrapping(false);
       }

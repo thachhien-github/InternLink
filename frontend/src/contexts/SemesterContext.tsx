@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { USE_MOCK } from "../config/env";
 import { adminSemestersService, type BackendSemesterDto } from "../services/adminSemesters.service";
 import { adminStudentsService } from "../services/adminStudents.service";
 import { adminLecturersService } from "../services/adminLecturers.service";
@@ -22,75 +21,7 @@ export interface Semester {
   description: string;
 }
 
-const DEFAULT_SEMESTERS: Semester[] = [
-  {
-    id: "11111111-1111-1111-1111-111111111111",
-    name: "Thực tập Tốt nghiệp K20 (2025 - 2026)",
-    term: "Học kỳ I",
-    academicYear: "2025 - 2026",
-    startDate: "01/09/2025",
-    endDate: "15/12/2025",
-    lecturersCount: 42,
-    studentsCount: 1280,
-    placedStudents: 1268,
-    companiesCount: 185,
-    status: "active",
-    progressPercent: 66,
-    currentPhase: "Thực tập & Nộp báo cáo giữa kỳ",
-    description:
-      "Đợt thực tập chính thức cho sinh viên Khóa 2020 ngành Công nghệ Thông tin, Kỹ thuật Phần mềm và Mạng máy tính.",
-  },
-  {
-    id: "22222222-2222-2222-2222-222222222222",
-    name: "Thực tập Doanh nghiệp K20 (2025 - 2026)",
-    term: "Học kỳ II",
-    academicYear: "2025 - 2026",
-    startDate: "15/01/2026",
-    endDate: "30/05/2026",
-    lecturersCount: 38,
-    studentsCount: 1150,
-    placedStudents: 0,
-    companiesCount: 140,
-    status: "upcoming",
-    progressPercent: 10,
-    currentPhase: "Tiếp nhận hồ sơ đăng ký & Import Giảng viên",
-    description:
-      "Đợt thực tập Học kỳ II dành cho sinh viên giai đoạn 2 và sinh viên đăng ký bổ sung.",
-  },
-  {
-    id: "33333333-3333-3333-3333-333333333333",
-    name: "Thực tập Tốt nghiệp K19 (2024 - 2025)",
-    term: "Học kỳ I",
-    academicYear: "2024 - 2025",
-    startDate: "01/09/2024",
-    endDate: "15/12/2024",
-    lecturersCount: 40,
-    studentsCount: 1210,
-    placedStudents: 1210,
-    companiesCount: 172,
-    status: "completed",
-    progressPercent: 100,
-    currentPhase: "Đã hoàn thành & Lưu trữ kho dữ liệu",
-    description:
-      "Khóa thực tập đã hoàn tất bảo vệ, chấm điểm và tổng kết dữ liệu Khoa CNTT.",
-  },
-  {
-    id: "44444444-4444-4444-4444-444444444444",
-    name: "Thực tập Hè Doanh nghiệp (2024 - 2025)",
-    term: "Học kỳ Hè",
-    academicYear: "2024 - 2025",
-    startDate: "01/06/2025",
-    endDate: "30/08/2025",
-    lecturersCount: 15,
-    studentsCount: 320,
-    placedStudents: 320,
-    companiesCount: 65,
-    status: "completed",
-    progressPercent: 100,
-    currentPhase: "Đã hoàn thành đợt thực tập Hè",
-    description: "Khóa thực tập hè trải nghiệm doanh nghiệp.",
-  },
-];
+const DEFAULT_SEMESTERS: Semester[] = [];
 
 const mapBackendToFrontend = (dto: BackendSemesterDto): Semester => {
   const statusMap: Record<number, Semester["status"]> = {
@@ -142,26 +73,11 @@ interface SemesterContextType {
 const SemesterContext = createContext<SemesterContextType | undefined>(undefined);
 
 export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [semesters, setSemesters] = useState<Semester[]>(() => {
-    try {
-      const saved = localStorage.getItem("internlink_admin_semesters");
-      return saved ? JSON.parse(saved) : DEFAULT_SEMESTERS;
-    } catch {
-      return DEFAULT_SEMESTERS;
-    }
-  });
+  const [semesters, setSemesters] = useState<Semester[]>(DEFAULT_SEMESTERS);
 
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(() => {
-    try {
-      const savedId = localStorage.getItem("internlink_admin_selected_semester_id");
-      return savedId || DEFAULT_SEMESTERS[0].id;
-    } catch {
-      return DEFAULT_SEMESTERS[0].id;
-    }
-  });
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
 
   const refreshApiCounts = useCallback(async () => {
-    if (USE_MOCK) return;
     try {
       // 1. Try to fetch from real backend Semesters API
       const backendSemesters = await adminSemestersService.getAll().catch(() => null);
@@ -222,7 +138,23 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const selectedSemester =
     semesters.find((s) => s.id === selectedSemesterId) ||
     semesters.find((s) => s.status === "active") ||
-    semesters[0];
+    semesters[0] ||
+    {
+      id: "",
+      name: "Đang tải…",
+      term: "",
+      academicYear: "",
+      startDate: "",
+      endDate: "",
+      lecturersCount: 0,
+      studentsCount: 0,
+      placedStudents: 0,
+      companiesCount: 0,
+      status: "upcoming" as const,
+      progressPercent: 0,
+      currentPhase: "",
+      description: "",
+    };
 
   const selectSemester = (id: string) => {
     setSelectedSemesterId(id);
@@ -231,23 +163,23 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createSemester = async (data: Partial<Semester> & { name: string; term: string; academicYear: string }) => {
     const statusNumber = data.status === "active" ? 1 : data.status === "completed" ? 2 : data.status === "draft" ? 3 : 0;
 
-    if (!USE_MOCK) {
-      try {
-        const res = await adminSemestersService.create({
-          name: data.name,
-          term: data.term,
-          academicYear: data.academicYear,
-          status: statusNumber,
-          description: data.description,
-        });
-        const mapped = mapBackendToFrontend(res);
-        setSemesters((prev) => [mapped, ...prev]);
-        setSelectedSemesterId(mapped.id);
-        return;
-      } catch (err) {
-        console.warn("Backend create semester failed, falling back to local state:", err);
-      }
+
+    try {
+      const res = await adminSemestersService.create({
+        name: data.name,
+        term: data.term,
+        academicYear: data.academicYear,
+        status: statusNumber,
+        description: data.description,
+      });
+      const mapped = mapBackendToFrontend(res);
+      setSemesters((prev) => [mapped, ...prev]);
+      setSelectedSemesterId(mapped.id);
+      return;
+    } catch (err) {
+      console.warn("Backend create semester failed, falling back to local state:", err);
     }
+
 
     const newSem: Semester = {
       id: `sem-${Date.now()}`,
@@ -272,13 +204,13 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const closeSemester = async (id: string, onShowToast?: (msg: string) => void) => {
     let closedName = "";
 
-    if (!USE_MOCK) {
-      try {
-        await adminSemestersService.close(id);
-      } catch (err) {
-        console.warn("Backend close semester call failed, updating local state:", err);
-      }
+
+    try {
+      await adminSemestersService.close(id);
+    } catch (err) {
+      console.warn("Backend close semester call failed, updating local state:", err);
     }
+
 
     const updated = semesters.map((s) => {
       if (s.id === id) {

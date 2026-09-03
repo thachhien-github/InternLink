@@ -1,13 +1,13 @@
 /** MVP feature flags — flip to true when backend/IA ready. */
 export const FEATURES = {
-  /** Admin Kỳ thực tập (backend chưa sẵn) */
+  /** Admin Kỳ thực tập */
   adminSemesters: true,
-  /** Admin Yêu cầu tài khoản — gộp vào UsersView */
-  adminAccountRequests: false,
-  /** Floating AI assistant — out of MVP */
-  floatingAi: false,
-  /** Lecturer Analytics nâng cao — out of MVP */
-  lecturerAnalytics: false,
+  /** Admin Yêu cầu tài khoản */
+  adminAccountRequests: true,
+  /** Lecturer Analytics nâng cao */
+  lecturerAnalytics: true,
+  /** Admin Rubric Approvals page */
+  adminRubricApprovals: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURES;

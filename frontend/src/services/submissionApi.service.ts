@@ -92,6 +92,14 @@ export const submissionApiService = {
     });
   },
 
+  /** Student reply to lecturer feedback. */
+  studentReply(id: string, comment: string): Promise<SubmissionDto> {
+    return apiRequest<SubmissionDto>(`/api/Submission/${id}/student-reply`, {
+      method: "POST",
+      body: { comment },
+    });
+  },
+
   /** Review submission with optional comment (lecturer). */
   async review(
     id: string,

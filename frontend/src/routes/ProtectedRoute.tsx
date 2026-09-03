@@ -1,5 +1,4 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { USE_MOCK } from "../config/env";
 import { useAuth, type UserRole } from "../hooks/useAuth";
 
 interface ProtectedRouteProps {
@@ -9,7 +8,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isLoggedIn, isBootstrapping, role, mustChangePassword } = useAuth();
 
-  if (!USE_MOCK && isBootstrapping) {
+  if (isBootstrapping) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-sm text-slate-600 font-medium">
         Đang tải phiên đăng nhập…

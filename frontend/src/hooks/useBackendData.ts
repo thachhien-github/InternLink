@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api.config';
-import { USE_MOCK } from '../config/env';
 import type { ApiResponse } from '../types/api';
 
 interface UseBackendDataOptions {
@@ -19,7 +18,7 @@ export const useBackendData = <T,>(
   endpoint: string,
   options: UseBackendDataOptions = {}
 ): UseBackendDataState<T> => {
-  const shouldSkip = options.skip ?? USE_MOCK;
+  const shouldSkip = options.skip ?? false;
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!shouldSkip);
   const [error, setError] = useState<Error | null>(null);
