@@ -136,36 +136,42 @@ export const FeedbackView = ({
     onShowToast?.("Đã đánh dấu là Đã xem!");
   };
 
-  const handleSendReply = (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFeedback) return;
     if (!replyText.trim()) {
       onShowToast?.("Vui lòng nhập nội dung trả lời!");
       return;
     }
-    const newReply = {
-      id: `c-${Date.now()}`,
-      sender: "student",
-      senderName: `${profile.name} (Bạn)`,
-      avatar:
-        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
-      time: "Vừa xong",
-      text: replyText,
-      attachments: [] as unknown[],
-    };
-    setFeedbacks((prev) =>
-      prev.map((f) => {
-        if (f.id !== selectedFeedback.id) return f;
-        return {
-          ...f,
-          conversation: [...f.conversation, newReply],
-          status:
-            f.status === "Cần chỉnh sửa" ? "Đã xem" : f.status,
-        };
-      }),
-    );
-    setReplyText("");
-    onShowToast?.("Đã gửi tin nhắn phản hồi tới giảng viên!");
+    try {
+      if (selectedFeedback.submissionId) {
+        await submissionApiService.studentReply(selectedFeedback.submissionId, replyText.trim());
+      }
+      const newReply = {
+        id: `c-${Date.now()}`,
+        sender: "student",
+        senderName: `${profile.name} (Bạn)`,
+        avatar: "",
+        time: "Vừa xong",
+        text: replyText,
+        attachments: [] as unknown[],
+      };
+      setFeedbacks((prev) =>
+        prev.map((f) => {
+          if (f.id !== selectedFeedback.id) return f;
+          return {
+            ...f,
+            conversation: [...f.conversation, newReply],
+            status:
+              f.status === "Cần chỉnh sửa" ? "Đã xem" : f.status,
+          };
+        }),
+      );
+      setReplyText("");
+      onShowToast?.("Đã gửi tin nhắn phản hồi tới giảng viên!");
+    } catch {
+      onShowToast?.("Lỗi khi gửi phản hồi");
+    }
   };
 
   const handleUploadRevisionSubmit = async (e: React.FormEvent) => {

@@ -319,7 +319,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
-    if (!USE_MOCK && !id.startsWith("campaign-")) {
+    if (!id.startsWith("campaign-")) {
       try {
         await notificationService.markRead(id);
       } catch {}
@@ -330,11 +330,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     notifications.forEach((n) => saveReadNotifId(n.id));
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     onShowToast?.("Đã đánh dấu tất cả thông báo là đã đọc!");
-    if (!USE_MOCK) {
-      try {
-        await notificationService.markAllRead();
-      } catch {}
-    }
+
+    try {
+      await notificationService.markAllRead();
+    } catch {}
+
   };
 
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {

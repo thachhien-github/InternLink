@@ -248,31 +248,6 @@ export function buildAssignmentStatusSlices(
   ].filter((s) => s.value > 0);
 }
 
-/** Mock — Admin: nộp báo cáo / phân công theo tuần (legacy demo) */
-export const ADMIN_WEEKLY_TREND: TrendPoint[] = [
-  { label: "T4", value: 820, target: 900 },
-  { label: "T5", value: 945, target: 950 },
-  { label: "T6", value: 1020, target: 1000 },
-  { label: "T7", value: 1150, target: 1100 },
-  { label: "T8", value: 1180, target: 1200 },
-];
-
-export const ADMIN_STATUS_SLICES: ChartSlice[] = [
-  { name: "Đã phân công", value: 1235, tone: "emerald" },
-  { name: "Chưa phân công", value: 45, tone: "amber" },
-  { name: "Đã có DN", value: 980, tone: "blue" },
-  { name: "Hoàn thành", value: 156, tone: "sky" },
-];
-
-/** Mock — Lecturer: bài nộp tuần */
-export const LECTURER_WEEKLY_TREND: TrendPoint[] = [
-  { label: "T4", value: 18, target: 22 },
-  { label: "T5", value: 21, target: 22 },
-  { label: "T6", value: 24, target: 24 },
-  { label: "T7", value: 20, target: 24 },
-  { label: "T8", value: 26, target: 24 },
-];
-
 export function buildLecturerStatusSlices(stats: {
   total: number;
   interning: number;

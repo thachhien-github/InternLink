@@ -23,6 +23,7 @@ import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { INTERNSHIP_WEEKS } from "../../../config/internship";
 import { mapWeeklyReportStatusToUi } from "../../../lib/portalMappers";
+import { studentPortalService } from "../../../services/studentPortal.service";
 import { weeklyReportService } from "../../../services/weeklyReport.service";
 
 function formatDateVi(value?: string | null, style: "short" | "full" = "full") {
@@ -303,8 +304,14 @@ export const InternshipView = ({ onShowToast, onNavigate }) => {
           {
             label: "Xuất phiếu",
             icon: Download,
-            onClick: () =>
-              onShowToast("Xuất phiếu thông tin thực tập (PDF) — sắp có"),
+            onClick: async () => {
+              try {
+                await studentPortalService.downloadCertificate();
+                onShowToast("Đã tải xuống phiếu thực tập (PDF)");
+              } catch {
+                onShowToast("Xuất phiếu PDF thất bại");
+              }
+            },
             variant: "secondary",
           },
         ]}

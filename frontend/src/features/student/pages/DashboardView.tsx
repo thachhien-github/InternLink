@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { useSemester } from "../../../contexts/SemesterContext";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { useWeeklyReports } from "../../../hooks/useWeeklyReports";
 import { useStudentNotifications } from "../../../hooks/useStudentNotifications";
 import { getApiErrorMessage } from "../../../lib/apiClient";
@@ -38,8 +39,7 @@ import { evaluationService } from "../../../services/evaluation.service";
 import { submissionApiService } from "../../../services/submissionApi.service";
 import type { EvaluationDetailDto } from "../../../types/api";
 
-const DEFAULT_AVATAR =
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
+const DEFAULT_AVATAR = "";
 
 export const DashboardView = ({
   onNavigate,
@@ -539,11 +539,15 @@ export const DashboardView = ({
                         className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 -mx-1 px-1 rounded-md transition-colors"
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <img
-                            src={fb.avatar}
-                            alt={fb.senderName}
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                          />
+                            {fb.avatar ? (
+                            <img
+                              src={fb.avatar}
+                              alt={fb.senderName}
+                              className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                            />
+                          ) : (
+                            <InitialsAvatar name={fb.senderName} size={32} />
+                          )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-xs font-bold text-slate-800">
@@ -720,11 +724,15 @@ export const DashboardView = ({
           <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-md border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <img
-                  src={selectedFeedback.avatar}
-                  alt={selectedFeedback.senderName}
-                  className="w-10 h-10 rounded-full border border-slate-200 object-cover"
-                />
+                {selectedFeedback.avatar ? (
+                  <img
+                    src={selectedFeedback.avatar}
+                    alt={selectedFeedback.senderName}
+                    className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                  />
+                ) : (
+                  <InitialsAvatar name={selectedFeedback.senderName} size={40} />
+                )}
                 <div>
                   <h3 className="font-bold text-slate-800 text-sm">
                     {selectedFeedback.senderName}

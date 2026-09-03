@@ -10,7 +10,6 @@ import {
   ArrowRight,
   User,
 } from "lucide-react";
-import { USE_MOCK } from "../../config/env";
 import { getApiErrorMessage } from "../../lib/apiClient";
 import { mapBackendRole } from "../../lib/roleMap";
 import { authService } from "../../services/auth.service";
@@ -97,46 +96,7 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     const trimmedUser = username.trim();
 
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-        if (password === "wrong") {
-          setErrorMessage("Mật khẩu không chính xác. Vui lòng kiểm tra lại.");
-          return;
-        }
-        if (password === "locked") {
-          setErrorMessage(
-            "Tài khoản đã bị tạm khóa. Vui lòng liên hệ Văn phòng Khoa.",
-          );
-          return;
-        }
-        if (password === "inactive") {
-          setErrorMessage(
-            "Tài khoản chưa được kích hoạt trong đợt thực tập này.",
-          );
-          return;
-        }
-        if (rememberMe) {
-          localStorage.setItem("internlink_remembered_username", trimmedUser);
-        } else {
-          localStorage.removeItem("internlink_remembered_username");
-        }
-        const role = determineRole(trimmedUser) as UserRole;
-        let displayName = "Người dùng InternLink";
-        if (role === "admin") {
-          displayName = "Quản trị viên Hệ thống (Super Admin)";
-        } else if (role === "lecturer") {
-          displayName = "ThS. Nguyễn Văn Phước (Giảng viên)";
-        } else {
-          displayName = "Trần Thị Thu Thảo (Sinh viên)";
-        }
-        onLoginSuccess({
-          username: trimmedUser,
-          role,
-          name: displayName,
-          mustChangePassword: password === "changeme",
-        });
-        return;
-      }
+
 
       const loginRes = await authService.login({
         username: trimmedUser,

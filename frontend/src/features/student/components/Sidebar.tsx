@@ -7,7 +7,9 @@ import {
   FileText,
   Bell,
   User,
+  Award,
 } from "lucide-react";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 export const Sidebar = ({
   activeTab,
   onNavigate,
@@ -49,6 +51,11 @@ export const Sidebar = ({
           id: "student-feedback",
           label: "Phản hồi & Chỉnh sửa",
           icon: MessageSquare,
+        },
+        {
+          id: "student-evaluation",
+          label: "Kết quả Đánh giá",
+          icon: Award,
         },
       ],
     },
@@ -136,12 +143,7 @@ export const Sidebar = ({
           className="il-sidebar-profile"
         >
           <div className="relative shrink-0">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"
-              alt="Avatar Sinh viên"
-              referrerPolicy="no-referrer"
-              className="w-9 h-9 rounded-full object-cover border border-slate-200"
-            />
+            <InitialsAvatar name={studentName} size={36} />
             <span
               className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"
               title="Trực tuyến"
