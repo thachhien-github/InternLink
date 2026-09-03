@@ -113,4 +113,33 @@ public static class TemplateHelper
         var text = cell.GetString();
         return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
+
+    public static bool IsValidEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        return Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+    }
+
+    public static string? NormalizePhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return null;
+        var trimmed = phone.Trim().Replace(" ", "").Replace(".", "").Replace("-", "");
+        if (trimmed.Length == 9 && trimmed.All(char.IsDigit))
+            return "0" + trimmed;
+        return trimmed;
+    }
+
+    public static (string? Email, string? Phone) SanitizeEmailAndPhone(string? email, string? phone)
+    {
+        email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+
+        // Auto-detect swapped Email and Phone columns
+        if ((email == null || !IsValidEmail(email)) && phone != null && IsValidEmail(phone))
+        {
+            (email, phone) = (phone, email);
+        }
+
+        return (email, NormalizePhone(phone));
+    }
 }

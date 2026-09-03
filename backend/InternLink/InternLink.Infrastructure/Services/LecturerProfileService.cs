@@ -290,6 +290,8 @@ public class LecturerProfileService : ILecturerProfileService
             var department = GetCell(row, columnMap, Col.Department);
             var username = GetCell(row, columnMap, Col.Username);
 
+            (email, phone) = TemplateHelper.SanitizeEmailAndPhone(email, phone);
+
             if (IsBlankRow(staffCode, fullName, email, phone, department, username))
                 continue;
 
@@ -304,6 +306,12 @@ public class LecturerProfileService : ILecturerProfileService
             if (string.IsNullOrWhiteSpace(fullName))
             {
                 errors.Add(new LecturerImportErrorDto { RowNumber = rowNumber, StaffCode = staffCode, Message = "Full name is required" });
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) && !TemplateHelper.IsValidEmail(email))
+            {
+                errors.Add(new LecturerImportErrorDto { RowNumber = rowNumber, StaffCode = staffCode, Message = "Invalid email format" });
                 continue;
             }
 

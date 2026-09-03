@@ -358,6 +358,8 @@ public class StudentService : IStudentService
             var phone = GetCell(row, columnMap, StudentColumn.Phone);
             var username = GetCell(row, columnMap, StudentColumn.Username);
 
+            (email, phone) = TemplateHelper.SanitizeEmailAndPhone(email, phone);
+
             if (IsBlankRow(studentCode, fullName, className, major, email, phone, username))
                 continue;
 

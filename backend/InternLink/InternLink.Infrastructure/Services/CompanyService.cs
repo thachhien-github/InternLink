@@ -252,6 +252,8 @@ public class CompanyService : ICompanyService
             var website = GetCell(row, columnMap, CompanyColumn.Website);
             var capacityText = GetCell(row, columnMap, CompanyColumn.Capacity);
 
+            (contactEmail, contactPhone) = TemplateHelper.SanitizeEmailAndPhone(contactEmail, contactPhone);
+
             if (IsBlankRow(companyName, industry, contactPerson, contactEmail, contactPhone, address, website, capacityText))
                 continue;
 

@@ -266,7 +266,25 @@ public class LecturerProfileServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
-    private static MemoryStream CreateExcel(params (string Code, string Name, string Email, string Phone, string Dept, string Username)[] rows)
+    [Fact]
+    public async Task ImportFromExcelAsync_WithSwappedEmailAndPhone_ShouldAutoDetectAndSucceed()
+    {
+        var db = GetDb();
+        var service = CreateService(db);
+
+        using var stream = CreateExcel(("GV999", "Lecturer Test", "901234567", "gv999@uni.edu.vn", "CNTT", null));
+        var result = await service.ImportFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var lecturer = await db.Lecturers.FirstOrDefaultAsync(l => l.StaffCode == "GV999");
+        lecturer.Should().NotBeNull();
+        lecturer!.Email.Should().Be("gv999@uni.edu.vn");
+        lecturer.Phone.Should().Be("0901234567");
+    }
+
+    private static MemoryStream CreateExcel(params (string Code, string Name, string? Email, string? Phone, string? Dept, string? Username)[] rows)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
         var sheet = workbook.Worksheets.Add("Lecturers");

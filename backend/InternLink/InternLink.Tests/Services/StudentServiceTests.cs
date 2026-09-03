@@ -505,16 +505,36 @@ public class StudentServiceTests
     }
 
     [Fact]
-    public void GetStudentImportTemplate_ShouldReturnXlsxBytes()
+    public async Task ImportStudentsFromExcelAsync_WithPhysicalTemplate_ShouldWork()
     {
         var db = GetInMemoryDbContext();
         var service = CreateService(db);
 
         var bytes = service.GetStudentImportTemplate();
+        using var stream = new MemoryStream(bytes);
+        var result = await service.ImportStudentsFromExcelAsync(stream);
 
-        bytes.Should().NotBeEmpty();
-        bytes[0].Should().Be(0x50);
-        bytes[1].Should().Be(0x4B);
+        result.Errors.Should().BeEmpty();
+        result.SuccessCount.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithSwappedEmailAndPhone_ShouldAutoDetectAndSucceed()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+
+        using var stream = CreateStudentExcel(
+            ("2421160052", "Thach Hien", "C24A.TH1", "CNTT", "906891704", "thachhien2000@gmail.com", null));
+
+        var result = await service.ImportStudentsFromExcelAsync(stream);
+
+        result.Errors.Should().BeEmpty();
+        result.SuccessCount.Should().Be(1);
+        var student = await db.Students.FirstOrDefaultAsync(s => s.StudentCode == "2421160052");
+        student.Should().NotBeNull();
+        student!.Email.Should().Be("thachhien2000@gmail.com");
+        student.Phone.Should().Be("0906891704");
     }
 
     private static MemoryStream CreateStudentExcel(

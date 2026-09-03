@@ -353,6 +353,26 @@ public class CompanyServiceTests
     }
 
     [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithSwappedEmailAndPhone_ShouldAutoDetectAndSucceed()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        using var stream = CreateCompanyExcel(
+            ("TMA Solutions", "CNTT", "Mr. Nam", "901234567", "contact@tma.com.vn", "Q12 HCMC", null, "20"));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var company = await db.Companies.FirstOrDefaultAsync(c => c.CompanyName == "TMA Solutions");
+        company.Should().NotBeNull();
+        company!.ContactEmail.Should().Be("contact@tma.com.vn");
+        company.ContactPhone.Should().Be("0901234567");
+    }
+
+    [Fact]
     public async Task ImportCompaniesFromExcelAsync_WithDuplicateName_ShouldReportError()
     {
         var db = GetInMemoryDbContext();
