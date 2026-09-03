@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Database,
   HardDrive,
@@ -7,56 +8,20 @@ import {
   Activity,
 } from "lucide-react";
 export const SystemStatusCard = () => {
-  const systemMetrics = [
-    {
-      id: "db",
-      label: "C\u01A1 s\u1EDF d\u1EEF li\u1EC7u (Database)",
-      value: "PostgreSQL 15 \u2022 12ms",
-      status: "Ho\u1EA1t \u0111\u1ED9ng t\u1ED1t",
-      icon: Database,
-      isGood: true,
-    },
-    {
-      id: "storage",
-      label: "Dung l\u01B0\u1EE3ng l\u01B0u tr\u1EEF (Storage)",
-      value: "128 GB / 500 GB (25.6%)",
-      status: "An to\xE0n",
-      icon: HardDrive,
-      isGood: true,
-    },
-    {
-      id: "users",
-      label: "Ng\u01B0\u1EDDi d\xF9ng tr\u1EF1c tuy\u1EBFn",
-      value: "342 \u0111ang truy c\u1EADp",
-      status: "B\xECnh th\u01B0\u1EDDng",
-      icon: Users,
-      isGood: true,
-    },
-    {
-      id: "version",
-      label: "Phi\xEAn b\u1EA3n h\u1EC7 th\u1ED1ng",
-      value: "v2.4.0-enterprise",
-      status: "\u0110\xE3 c\u1EADp nh\u1EADt",
-      icon: Cpu,
-      isGood: true,
-    },
-    {
-      id: "backup",
-      label: "Sao l\u01B0u m\u1EDBi nh\u1EA5t (Backup)",
-      value: "02:00 H\xF4m nay (T\u1EF1 \u0111\u1ED9ng)",
-      status: "\u0110\xE3 l\u01B0u tr\u1EEF",
-      icon: CloudCheck,
-      isGood: true,
-    },
-    {
-      id: "server",
-      label: "M\xE1y ch\u1EE7 Cloud Run",
-      value: "Uptime 99.98%",
-      status: "S\u1EB5n s\xE0ng 100%",
-      icon: Activity,
-      isGood: true,
-    },
-  ];
+  const [systemMetrics, setSystemMetrics] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch actual system health from backend if available
+    fetch("/health/ready")
+      .then((r) => {
+        if (r.ok) {
+          setSystemMetrics([
+            { id: "status", label: "Hệ thống", value: "Online", status: "Hoạt động", icon: Activity, isGood: true },
+          ]);
+        }
+      })
+      .catch(() => {});
+  }, []);
   return (
     <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-xs space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">

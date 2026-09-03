@@ -34,7 +34,6 @@ import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import {
   buildAssignmentMaps,
@@ -50,7 +49,7 @@ export const LecturersView = ({
   onShowToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
 }) => {
-  const [isLoadingApi, setIsLoadingApi] = useState(!USE_MOCK);
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLecturer, setEditingLecturer] = useState<LecturerRowForEdit | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LecturerRowForEdit | null>(null);
@@ -61,164 +60,7 @@ export const LecturersView = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isGenerateAccountsModalOpen, setIsGenerateAccountsModalOpen] =
     useState(false);
-  const [lecturers, setLecturers] = useState([
-    {
-      id: "lec-1",
-      employeeId: "GV001",
-      fullName: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      academicDegree: "TS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "C\xF4ng ngh\u1EC7 Ph\u1EA7n m\u1EC1m",
-      email: "phuoc.nv@fit.edu.vn",
-      phone: "0908 123 456",
-      currentCount: 32,
-      maxCapacity: 40,
-      accountStatus: "active",
-      guidanceStatus: "guiding",
-      lastLogin: "02/08/2026 09:15",
-      assignedStudents: [
-        {
-          studentId: "20110201",
-          name: "Nguy\u1EC5n V\u0103n Minh",
-          classCode: "20CNTT1",
-          company: "FPT Software HCM",
-        },
-        {
-          studentId: "20110202",
-          name: "Tr\u1EA7n Th\u1ECB Thu Th\u1EA3o",
-          classCode: "20CNTT1",
-          company: "VNG Corporation",
-        },
-        {
-          studentId: "20110205",
-          name: "L\xEA Ho\xE0ng Nam",
-          classCode: "20KTPM1",
-          company: "Viettel Telecom",
-        },
-      ],
-    },
-    {
-      id: "lec-2",
-      employeeId: "GV005",
-      fullName: "ThS. Tr\u1EA7n Th\u1ECB Mai Anh",
-      academicDegree: "ThS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "C\xF4ng ngh\u1EC7 Ph\u1EA7n m\u1EC1m",
-      email: "maianh.tt@fit.edu.vn",
-      phone: "0912 345 678",
-      currentCount: 38,
-      maxCapacity: 40,
-      accountStatus: "active",
-      guidanceStatus: "full",
-      lastLogin: "01/08/2026 16:40",
-      assignedStudents: [
-        {
-          studentId: "20110208",
-          name: "Ph\u1EA1m \u0110\u0103ng Khoa",
-          classCode: "20KTPM2",
-          company: "MGM Technology",
-        },
-      ],
-    },
-    {
-      id: "lec-3",
-      employeeId: "GV008",
-      fullName: "PGS.TS. L\xEA Ho\xE0ng Th\xE1i",
-      academicDegree: "PGS.TS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "M\u1EA1ng m\xE1y t\xEDnh & TTTT",
-      email: "thai.lh@fit.edu.vn",
-      phone: "0903 888 999",
-      currentCount: 15,
-      maxCapacity: 35,
-      accountStatus: "active",
-      guidanceStatus: "guiding",
-      lastLogin: "02/08/2026 11:05",
-      assignedStudents: [
-        {
-          studentId: "20110212",
-          name: "V\u0169 Ng\u1ECDc B\u1EA3o Tr\xE2m",
-          classCode: "20MMT1",
-          company: "TMA Solutions",
-        },
-      ],
-    },
-    {
-      id: "lec-4",
-      employeeId: "GV012",
-      fullName: "TS. \u0110\u1EB7ng Minh Ch\xE2u",
-      academicDegree: "TS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
-      email: "chaudm@fit.edu.vn",
-      phone: "0988 777 666",
-      currentCount: 0,
-      maxCapacity: 40,
-      accountStatus: "pending",
-      guidanceStatus: "available",
-      lastLogin: "Ch\u01B0a c\u1EA5p t\xE0i kho\u1EA3n",
-    },
-    {
-      id: "lec-5",
-      employeeId: "GV018",
-      fullName: "ThS. Ph\u1EA1m Qu\u1ED1c B\u1EA3o",
-      academicDegree: "ThS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "C\xF4ng ngh\u1EC7 Ph\u1EA7n m\u1EC1m",
-      email: "baopq@fit.edu.vn",
-      phone: "0977 111 222",
-      currentCount: 10,
-      maxCapacity: 30,
-      accountStatus: "active",
-      guidanceStatus: "guiding",
-      lastLogin: "30/07/2026 14:20",
-    },
-    {
-      id: "lec-6",
-      employeeId: "GV022",
-      fullName: "TS. V\u0169 \u0110\xECnh Khoa",
-      academicDegree: "TS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "M\u1EA1ng m\xE1y t\xEDnh & TTTT",
-      email: "khoavd@fit.edu.vn",
-      phone: "0933 444 555",
-      currentCount: 0,
-      maxCapacity: 40,
-      accountStatus: "pending",
-      guidanceStatus: "available",
-      lastLogin: "Ch\u01B0a c\u1EA5p t\xE0i kho\u1EA3n",
-    },
-    {
-      id: "lec-7",
-      employeeId: "GV025",
-      fullName: "ThS. Ho\xE0ng Th\u1ECB Thanh",
-      academicDegree: "ThS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "Khoa h\u1ECDc M\xE1y t\xEDnh",
-      email: "thanhht@fit.edu.vn",
-      phone: "0918 222 333",
-      currentCount: 0,
-      maxCapacity: 35,
-      accountStatus: "locked",
-      guidanceStatus: "available",
-      lastLogin: "15/05/2026 (\u0110\xE3 kh\xF3a)",
-    },
-    {
-      id: "lec-8",
-      employeeId: "GV029",
-      fullName: "TS. B\xF9i Minh Ti\u1EBFn",
-      academicDegree: "TS",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      department: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
-      email: "tienbm@fit.edu.vn",
-      phone: "0909 555 123",
-      currentCount: 22,
-      maxCapacity: 40,
-      accountStatus: "active",
-      guidanceStatus: "guiding",
-      lastLogin: "02/08/2026 08:30",
-    },
-  ]);
+  const [lecturers, setLecturers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [accountStatusFilter, setAccountStatusFilter] = useState("all");
@@ -245,7 +87,6 @@ export const LecturersView = ({
   };
 
   useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     (async () => {
       setIsLoadingApi(true);
@@ -264,25 +105,7 @@ export const LecturersView = ({
   }, [onShowToast]);
 
   const handleAddLecturer = async (payload: CreateLecturerFormPayload) => {
-    if (USE_MOCK) {
-      const newLec = {
-        id: "lec-" + Date.now(),
-        employeeId: payload.staffCode,
-        fullName: payload.fullName,
-        academicDegree: "—",
-        faculty: payload.department ?? "—",
-        department: payload.department ?? "—",
-        email: payload.email ?? "—",
-        phone: payload.phone ?? "—",
-        currentCount: 0,
-        maxCapacity: 40,
-        accountStatus: payload.grantAccount ? "active" : "pending",
-        guidanceStatus: "available",
-        lastLogin: payload.grantAccount ? "Chưa từng đăng nhập" : "Chưa cấp tài khoản",
-      };
-      setLecturers((prev) => [newLec, ...prev]);
-      return;
-    }
+
     try {
       await adminLecturersService.create({
         staffCode: payload.staffCode,
@@ -306,23 +129,7 @@ export const LecturersView = ({
     const existing = lecturers.find((l) => l.id === id);
     if (!existing) return;
 
-    if (USE_MOCK) {
-      setLecturers((prev) =>
-        prev.map((l) =>
-          l.id === id
-            ? {
-                ...l,
-                fullName: payload.fullName,
-                email: payload.email ?? "—",
-                phone: payload.phone ?? "—",
-                department: payload.department ?? "—",
-                accountStatus: l.accountStatus,
-              }
-            : l,
-        ),
-      );
-      return;
-    }
+
 
     try {
       await adminLecturersService.update(id, {
@@ -339,11 +146,7 @@ export const LecturersView = ({
   };
 
   const handleDeleteLecturer = async (lec: LecturerRowForEdit) => {
-    if (USE_MOCK) {
-      setLecturers((prev) => prev.filter((l) => l.id !== lec.id));
-      onShowToast(`Đã xóa ${lec.fullName}`);
-      return;
-    }
+
 
     try {
       await adminLecturersService.delete(lec.id);
@@ -414,23 +217,7 @@ export const LecturersView = ({
     );
   };
   const handleQuickGrantSingle = async (lec) => {
-    if (USE_MOCK) {
-      setLecturers((prev) =>
-        prev.map((l) =>
-          l.id === lec.id
-            ? {
-                ...l,
-                accountStatus: "active",
-                lastLogin: "Vừa cấp tài khoản",
-              }
-            : l,
-        ),
-      );
-      onShowToast(
-        `Đã cấp tài khoản nhanh cho giảng viên ${lec.fullName} (${lec.employeeId})`,
-      );
-      return;
-    }
+
     try {
       await adminLecturersService.update(lec.id, {
         fullName: lec.fullName,
@@ -456,26 +243,7 @@ export const LecturersView = ({
         : lecturers
             .filter((l) => l.accountStatus === "pending")
             .map((l) => l.id);
-    if (USE_MOCK) {
-      setLecturers((prev) =>
-        prev.map((l) => {
-          if (targetIds.includes(l.id)) {
-            return {
-              ...l,
-              accountStatus: "active",
-              lastLogin: "Vừa cấp tài khoản",
-            };
-          }
-          return l;
-        }),
-      );
-      onShowToast(
-        `Đã cấp tài khoản thành công cho ${targetIds.length} giảng viên`,
-      );
-      setIsGenerateAccountsModalOpen(false);
-      setSelectedIds([]);
-      return;
-    }
+
     let ok = 0;
     let fail = 0;
     for (const id of targetIds) {
@@ -504,12 +272,7 @@ export const LecturersView = ({
     setSelectedIds([]);
   };
   const handleResetPassword = async (lec) => {
-    if (USE_MOCK) {
-      onShowToast(
-        `Đã reset mật khẩu tạm (8 ký tự ngẫu nhiên) cho ${lec.fullName}`,
-      );
-      return;
-    }
+
     const userId = (lec as { userId?: string | null }).userId;
     if (!userId) {
       onShowToast("Giảng viên chưa có tài khoản đăng nhập");
@@ -530,20 +293,7 @@ export const LecturersView = ({
     const lec = lecturers.find((l) => l.id === id);
     if (!lec) return;
     const newStatus = lec.accountStatus === "locked" ? "active" : "locked";
-    if (USE_MOCK) {
-      setLecturers((prev) =>
-        prev.map((l) => {
-          if (l.id === id) {
-            onShowToast(
-              `Đã ${newStatus === "locked" ? "khóa" : "mở khóa"} tài khoản của ${l.fullName}`,
-            );
-            return { ...l, accountStatus: newStatus };
-          }
-          return l;
-        }),
-      );
-      return;
-    }
+
     const userId = (lec as { userId?: string | null }).userId;
     if (!userId) {
       onShowToast("Giảng viên chưa có tài khoản đăng nhập");
@@ -567,10 +317,7 @@ export const LecturersView = ({
   };
 
   const handleExportLecturers = async () => {
-    if (USE_MOCK) {
-      onShowToast("Đã xuất danh sách giảng viên (.xlsx)");
-      return;
-    }
+
     try {
       await adminLecturersService.downloadExport();
       onShowToast("Đã tải xuống danh sách giảng viên (.xlsx)");

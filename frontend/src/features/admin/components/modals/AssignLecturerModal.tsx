@@ -8,7 +8,6 @@ import {
   Square,
   Loader2,
 } from "lucide-react";
-import { USE_MOCK } from "../../../../config/env";
 import { getApiErrorMessage } from "../../../../lib/apiClient";
 import { adminAssignmentsService } from "../../../../services/adminAssignments.service";
 import { adminLecturersService } from "../../../../services/adminLecturers.service";
@@ -42,40 +41,7 @@ export const AssignLecturerModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (USE_MOCK) {
-      const mockStudents: StudentDto[] = [
-        {
-          id: "st-101",
-          studentCode: "20110201",
-          fullName: "Nguyễn Văn Minh",
-          class: "20CNTT1",
-          major: "Công nghệ Thông tin",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "st-102",
-          studentCode: "20110202",
-          fullName: "Trần Thị Thu Thảo",
-          class: "20CNTT1",
-          major: "Công nghệ Thông tin",
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      setStudents(mockStudents);
-      setLecturers([
-        {
-          id: "lec-1",
-          staffCode: "GV001",
-          fullName: "TS. Nguyễn Văn Phước",
-          department: "Công nghệ Phần mềm",
-          createdAt: new Date().toISOString(),
-          assignedCount: 1,
-        },
-      ]);
-      setAssignedStudentIds(new Set(["st-102"]));
-      setSelectedLecturerId("lec-1");
-      return;
-    }
+
 
     setIsLoading(true);
     try {
@@ -170,14 +136,7 @@ export const AssignLecturerModal = ({
     const lecturer = lecturers.find((l) => l.id === selectedLecturerId);
     if (!lecturer) return;
 
-    if (USE_MOCK) {
-      onShowToast(
-        `Đã phân công ${selectedStudentIds.length} sinh viên cho ${lecturer.fullName}!`,
-      );
-      onClose();
-      await onSuccess?.();
-      return;
-    }
+
 
     setIsSubmitting(true);
     try {

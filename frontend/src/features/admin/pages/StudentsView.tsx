@@ -35,7 +35,6 @@ import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { EmptyState } from "../../../components/common/EmptyState";
 import { SkeletonBox } from "../../../components/common/SkeletonLoader";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
 import { adminStudentsService } from "../../../services/adminStudents.service";
@@ -61,163 +60,9 @@ export const StudentsView = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isGenerateAccountsModalOpen, setIsGenerateAccountsModalOpen] =
     useState(false);
-  const [mockStudents, setMockStudents] = useState([
-    {
-      id: "st-1",
-      mssv: "20110201",
-      fullName: "Nguy\u1EC5n V\u0103n Minh",
-      gender: "Nam",
-      dateOfBirth: "15/04/2002",
-      classCode: "20CNTT1",
-      major: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110201@student.hcmute.edu.vn",
-      phone: "0912 345 678",
-      assignedLecturer: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      companyName: "FPT Software HCM",
-      accountStatus: "active",
-      internshipStatus: "interning",
-      lastLogin: "02/08/2026 08:45",
-      gpa: 3.42,
-    },
-    {
-      id: "st-2",
-      mssv: "20110202",
-      fullName: "Tr\u1EA7n Th\u1ECB Thu Th\u1EA3o",
-      gender: "N\u1EEF",
-      dateOfBirth: "22/09/2002",
-      classCode: "20CNTT1",
-      major: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110202@student.hcmute.edu.vn",
-      phone: "0908 765 432",
-      assignedLecturer: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      companyName: "VNG Corporation",
-      accountStatus: "active",
-      internshipStatus: "interning",
-      lastLogin: "01/08/2026 19:20",
-      gpa: 3.65,
-    },
-    {
-      id: "st-3",
-      mssv: "20110205",
-      fullName: "L\xEA Ho\xE0ng Nam",
-      gender: "Nam",
-      dateOfBirth: "10/11/2002",
-      classCode: "20KTPM1",
-      major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110205@student.hcmute.edu.vn",
-      phone: "0933 111 222",
-      assignedLecturer: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      companyName: "Viettel Telecom",
-      accountStatus: "active",
-      internshipStatus: "interning",
-      lastLogin: "02/08/2026 10:12",
-      gpa: 3.18,
-    },
-    {
-      id: "st-4",
-      mssv: "20110208",
-      fullName: "Ph\u1EA1m \u0110\u0103ng Khoa",
-      gender: "Nam",
-      dateOfBirth: "05/02/2002",
-      classCode: "20KTPM2",
-      major: "K\u1EF9 thu\u1EADt Ph\u1EA7n m\u1EC1m",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110208@student.hcmute.edu.vn",
-      phone: "0977 888 999",
-      assignedLecturer: "ThS. Tr\u1EA7n Th\u1ECB Mai Anh",
-      companyName: "MGM Technology",
-      accountStatus: "active",
-      internshipStatus: "interning",
-      lastLogin: "31/07/2026 15:30",
-      gpa: 3.25,
-    },
-    {
-      id: "st-5",
-      mssv: "20110212",
-      fullName: "V\u0169 Ng\u1ECDc B\u1EA3o Tr\xE2m",
-      gender: "N\u1EEF",
-      dateOfBirth: "18/06/2002",
-      classCode: "20MMT1",
-      major: "M\u1EA1ng m\xE1y t\xEDnh",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110212@student.hcmute.edu.vn",
-      phone: "0988 222 333",
-      assignedLecturer: "PGS.TS. L\xEA Ho\xE0ng Th\xE1i",
-      companyName: "TMA Solutions",
-      accountStatus: "pending",
-      internshipStatus: "preparing",
-      lastLogin: "Ch\u01B0a c\u1EA5p t\xE0i kho\u1EA3n",
-      gpa: 3.5,
-    },
-    {
-      id: "st-6",
-      mssv: "20110218",
-      fullName: "Ng\xF4 Qu\u1ED1c Huy",
-      gender: "Nam",
-      dateOfBirth: "30/01/2002",
-      classCode: "20HTTT1",
-      major: "H\u1EC7 th\u1ED1ng Th\xF4ng tin",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110218@student.hcmute.edu.vn",
-      phone: "0918 555 666",
-      assignedLecturer: "Ch\u01B0a ph\xE2n c\xF4ng",
-      companyName: "KMS Technology",
-      accountStatus: "pending",
-      internshipStatus: "preparing",
-      lastLogin: "Ch\u01B0a c\u1EA5p t\xE0i kho\u1EA3n",
-      gpa: 2.95,
-    },
-    {
-      id: "st-7",
-      mssv: "20110224",
-      fullName: "Ho\xE0ng Minh Tu\u1EA5n",
-      gender: "Nam",
-      dateOfBirth: "12/08/2002",
-      classCode: "20CNTT2",
-      major: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110224@student.hcmute.edu.vn",
-      phone: "0903 444 777",
-      assignedLecturer: "TS. B\xF9i Minh Ti\u1EBFn",
-      companyName: "Bosch Global Software",
-      accountStatus: "locked",
-      internshipStatus: "paused",
-      lastLogin: "20/06/2026 (\u0110\xE3 kh\xF3a)",
-      gpa: 2.7,
-    },
-    {
-      id: "st-8",
-      mssv: "20110230",
-      fullName: "\u0110\u1EB7ng Th\xF9y D\u01B0\u01A1ng",
-      gender: "N\u1EEF",
-      dateOfBirth: "03/03/2002",
-      classCode: "20CNTT1",
-      major: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      faculty: "C\xF4ng ngh\u1EC7 Th\xF4ng tin",
-      cohort: "K20",
-      email: "20110230@student.hcmute.edu.vn",
-      phone: "0912 999 000",
-      assignedLecturer: "ThS. Ph\u1EA1m Qu\u1ED1c B\u1EA3o",
-      companyName: "Shopee Vietnam",
-      accountStatus: "active",
-      internshipStatus: "completed",
-      lastLogin: "02/08/2026 07:15",
-      gpa: 3.8,
-    },
-  ]);
-  const students = USE_MOCK ? mockStudents : apiPage.students;
-  const setStudents = USE_MOCK ? setMockStudents : apiPage.setStudents;
-  const isLoadingApi = USE_MOCK ? false : apiPage.isLoading;
+  const students = apiPage.students;
+  const setStudents = apiPage.setStudents;
+  const isLoadingApi = apiPage.isLoading;
   const reloadStudents = apiPage.reload;
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get("q") ?? "",
@@ -247,33 +92,7 @@ export const StudentsView = ({
   }, [students]);
 
   const handleAddStudent = async (payload: CreateStudentFormPayload) => {
-    if (USE_MOCK) {
-      const newSt = {
-        id: "std-" + Date.now(),
-        userId: payload.grantAccount ? "mock-user" : null,
-        mssv: payload.studentCode,
-        fullName: payload.fullName,
-        gender: "—",
-        dateOfBirth: "—",
-        classCode: payload.class ?? "—",
-        major: payload.major ?? "—",
-        faculty: "—",
-        cohort: "—",
-        email: payload.email ?? "—",
-        phone: payload.phone ?? "—",
-        assignedLecturer: "Chưa phân công",
-        companyName: "Chưa có DN",
-        accountStatus: (payload.grantAccount ? "active" : "pending") as
-          | "active"
-          | "pending"
-          | "locked",
-        internshipStatus: "registered",
-        lastLogin: payload.grantAccount ? "Vừa tạo" : "Chưa cấp tài khoản",
-        gpa: 0,
-      };
-      setStudents((prev) => [newSt, ...prev]);
-      return;
-    }
+
     try {
       await adminStudentsService.create({
         studentCode: payload.studentCode,
@@ -298,24 +117,7 @@ export const StudentsView = ({
     const existing = students.find((s) => s.id === id);
     if (!existing) return;
 
-    if (USE_MOCK) {
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === id
-            ? {
-                ...s,
-                fullName: payload.fullName,
-                classCode: payload.class ?? "—",
-                major: payload.major ?? "—",
-                email: payload.email ?? "—",
-                phone: payload.phone ?? "—",
-                accountStatus: s.accountStatus,
-              }
-            : s,
-        ),
-      );
-      return;
-    }
+
 
     try {
       await adminStudentsService.update(id, {
@@ -333,11 +135,7 @@ export const StudentsView = ({
   };
 
   const handleDeleteStudent = async (st: AdminStudentRow) => {
-    if (USE_MOCK) {
-      setStudents((prev) => prev.filter((s) => s.id !== st.id));
-      onShowToast(`Đã xóa ${st.fullName}`);
-      return;
-    }
+
 
     try {
       await adminStudentsService.delete(st.id);
@@ -421,25 +219,7 @@ export const StudentsView = ({
     );
   };
   const handleQuickGrantSingle = async (st) => {
-    if (USE_MOCK) {
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === st.id
-            ? {
-                ...s,
-                accountStatus: "active",
-                lastLogin: "Vừa cấp tài khoản",
-              }
-            : s,
-        ),
-      );
-      onShowToast(
-        st.email !== "—"
-          ? `Đã cấp tài khoản ${st.mssv} — email mời đã gửi (nếu SMTP bật)`
-          : `Đã cấp tài khoản ${st.mssv} — chưa có email để gửi mật khẩu`,
-      );
-      return;
-    }
+
     try {
       await adminStudentsService.update(st.id, {
         fullName: st.fullName,
@@ -466,26 +246,7 @@ export const StudentsView = ({
         : students
             .filter((s) => s.accountStatus === "pending")
             .map((s) => s.id);
-    if (USE_MOCK) {
-      setStudents((prev) =>
-        prev.map((s) => {
-          if (targetIds.includes(s.id)) {
-            return {
-              ...s,
-              accountStatus: "active",
-              lastLogin: "Vừa cấp tài khoản",
-            };
-          }
-          return s;
-        }),
-      );
-      onShowToast(
-        `Đã cấp tài khoản thành công cho ${targetIds.length} sinh viên`,
-      );
-      setIsGenerateAccountsModalOpen(false);
-      setSelectedIds([]);
-      return;
-    }
+
     let ok = 0;
     let fail = 0;
     for (const id of targetIds) {
@@ -500,11 +261,7 @@ export const StudentsView = ({
           phone: st.phone !== "—" ? st.phone : undefined,
           grantAccount: true,
         });
-        if (USE_MOCK) {
-          setStudents((prev) =>
-            prev.map((s) => (s.id === st.id ? mapStudentDtoToRow(dto) : s)),
-          );
-        }
+
         ok++;
       } catch {
         fail++;
@@ -515,17 +272,12 @@ export const StudentsView = ({
         ? `Cấp tài khoản: ${ok} thành công, ${fail} lỗi`
         : `Đã cấp tài khoản thành công cho ${ok} sinh viên`,
     );
-    if (!USE_MOCK && ok > 0) await reloadStudents();
+    if (ok > 0) await reloadStudents();
     setIsGenerateAccountsModalOpen(false);
     setSelectedIds([]);
   };
   const handleResetPassword = async (st) => {
-    if (USE_MOCK) {
-      onShowToast(
-        `Đã reset mật khẩu tạm (8 ký tự ngẫu nhiên) cho sinh viên ${st.fullName}`,
-      );
-      return;
-    }
+
     const userId = (st as { userId?: string | null }).userId;
     if (!userId) {
       onShowToast("Sinh viên chưa có tài khoản đăng nhập");
@@ -546,20 +298,7 @@ export const StudentsView = ({
     const st = students.find((s) => s.id === id);
     if (!st) return;
     const newStatus = st.accountStatus === "locked" ? "active" : "locked";
-    if (USE_MOCK) {
-      setStudents((prev) =>
-        prev.map((s) => {
-          if (s.id === id) {
-            onShowToast(
-              `Đã ${newStatus === "locked" ? "khóa" : "mở khóa"} tài khoản của ${s.fullName}`,
-            );
-            return { ...s, accountStatus: newStatus };
-          }
-          return s;
-        }),
-      );
-      return;
-    }
+
     const userId = (st as { userId?: string | null }).userId;
     if (!userId) {
       onShowToast("Sinh viên chưa có tài khoản đăng nhập");
@@ -571,13 +310,9 @@ export const StudentsView = ({
         email: st.email !== "—" ? st.email : undefined,
         isActive: newStatus === "active",
       });
-      if (USE_MOCK) {
-        setStudents((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, accountStatus: newStatus } : s)),
-        );
-      } else {
-        await reloadStudents();
-      }
+
+      await reloadStudents();
+
       onShowToast(
         `Đã ${newStatus === "locked" ? "khóa" : "mở khóa"} tài khoản của ${st.fullName}`,
       );

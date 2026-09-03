@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronRight,
 } from "lucide-react";
+import { useSemester } from "../../../../contexts/SemesterContext";
 
 export const InternshipOverviewCard = ({
   onViewDetails,
@@ -13,18 +14,19 @@ export const InternshipOverviewCard = ({
   onViewDetails?: () => void;
   onEditSemester?: () => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const semesterData = {
-    name: "Thực tập Tốt nghiệp K20 (2025 - 2026)",
-    term: "Học kỳ I",
-    academicYear: "2025 - 2026",
-    startDate: "01/09/2025",
-    endDate: "15/12/2025",
-    status: "Đang diễn ra",
-    currentWeek: "Tuần 10 / 15",
-    progress: 66,
-    totalStudents: 1280,
-    placedStudents: 1268,
-    partnerCompanies: 185,
+    name: selectedSemester.name,
+    term: selectedSemester.term,
+    academicYear: selectedSemester.academicYear,
+    startDate: selectedSemester.startDate,
+    endDate: selectedSemester.endDate,
+    status: selectedSemester.status === "active" ? "Đang diễn ra" : selectedSemester.status === "upcoming" ? "Sắp tới" : selectedSemester.status === "completed" ? "Đã hoàn thành" : "Bản nháp",
+    currentWeek: `Tiến độ ${selectedSemester.progressPercent}%`,
+    progress: selectedSemester.progressPercent,
+    totalStudents: selectedSemester.studentsCount,
+    placedStudents: selectedSemester.placedStudents,
+    partnerCompanies: selectedSemester.companiesCount,
   };
 
   return (

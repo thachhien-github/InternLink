@@ -1,7 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
 import { useAuth } from "../../../hooks/useAuth";
@@ -52,16 +51,16 @@ interface AdminProfileData {
 }
 
 const DEFAULT_ADMIN_PROFILE: AdminProfileData = {
-  fullName: "ThS. Nguyễn Hoàng Anh",
-  adminCode: "AD2026-001",
-  roleTitle: "Quản trị viên Trưởng (Super Admin)",
-  department: "Ban Quản lý Thực tập & Hợp tác Doanh nghiệp",
+  fullName: "",
+  adminCode: "",
+  roleTitle: "Quản trị viên",
+  department: "",
   faculty: "Khoa Công nghệ Thông tin",
-  email: "admin.cntt@vlu.edu.vn",
-  phone: "0906 891 704",
-  office: "Phòng A.102, Tòa nhà A, 227 Nguyễn Văn Cừ, Q.5, TP.HCM",
-  address: "Cơ sở 1, Trường Đại học Khoa học Tự nhiên / Văn Lang",
-  bio: "Chịu trách nhiệm điều phối toàn diện chương trình Thực tập Tốt nghiệp và Thực tập Doanh nghiệp cho sinh viên Khoa CNTT; phụ trách phân công giảng viên và liên kết doanh nghiệp đối tác.",
+  email: "",
+  phone: "",
+  office: "",
+  address: "",
+  bio: "",
   avatarUrl: "",
 };
 
@@ -123,72 +122,12 @@ export const AccountView = ({
   const [prefWeeklyDigest, setPrefWeeklyDigest] = useState(false);
 
   // Active Sessions
-  const [activeSessions, setActiveSessions] = useState([
-    {
-      id: "sess-1",
-      device: 'MacBook Pro 16" (macOS Sequoia)',
-      browser: "Google Chrome 127.0",
-      ip: "118.69.182.45",
-      location: "TP. Hồ Chí Minh, Việt Nam",
-      lastActive: "Đang hoạt động (Phiên này)",
-      isCurrent: true,
-    },
-    {
-      id: "sess-2",
-      device: "iPhone 15 Pro Max (iOS 17.5)",
-      browser: "Safari Mobile",
-      ip: "27.72.102.18",
-      location: "TP. Hồ Chí Minh, Việt Nam",
-      lastActive: "18 giờ trước",
-      isCurrent: false,
-    },
-  ]);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
 
   const [showLogoutOtherModal, setShowLogoutOtherModal] = useState(false);
 
   // Activity Logs
-  const activityLogs = [
-    {
-      id: "log-1",
-      action: "Phát hành thông báo khẩn nộp Báo cáo Tuần 6",
-      module: "Thông báo",
-      time: "15/08/2026 08:30",
-      ip: "118.69.182.45",
-      badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
-    },
-    {
-      id: "log-2",
-      action: "Phê duyệt 15 yêu cầu cấp tài khoản Sinh viên K20",
-      module: "Tài khoản",
-      time: "14/08/2026 15:45",
-      ip: "118.69.182.45",
-      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    },
-    {
-      id: "log-3",
-      action: "Cập nhật thông tin cấu hình Đợt Thực tập HK I",
-      module: "Học kỳ",
-      time: "12/08/2026 10:20",
-      ip: "118.69.182.45",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    {
-      id: "log-4",
-      action: "Phân công 42 Giảng viên phụ trách hướng dẫn sinh viên",
-      module: "Phân công",
-      time: "08/08/2026 14:00",
-      ip: "118.69.182.45",
-      badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
-    },
-    {
-      id: "log-5",
-      action: "Đăng nhập hệ thống thành công",
-      module: "Xác thực",
-      time: "01/08/2026 08:00",
-      ip: "118.69.182.45",
-      badgeColor: "bg-slate-50 text-slate-700 border-slate-200",
-    },
-  ];
+  const activityLogs: any[] = [];
 
   // Sync with user auth if available
   useEffect(() => {
@@ -203,7 +142,6 @@ export const AccountView = ({
 
   // Load from backend me endpoint if in live mode
   useEffect(() => {
-    if (USE_MOCK) return;
     authService
       .getMe()
       .then((me) => {
@@ -271,12 +209,11 @@ export const AccountView = ({
 
     setIsChangingPass(true);
     try {
-      if (!USE_MOCK) {
-        await authService.changePassword({
-          currentPassword,
-          newPassword,
-        });
-      }
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+      });
+
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -1093,7 +1030,7 @@ export const AccountView = ({
                   <span className="font-medium text-slate-700">Tổng sinh viên quản lý</span>
                 </div>
                 <span className="font-bold text-emerald-900">
-                  {navStats?.studentCount ? navStats.studentCount.toLocaleString("vi-VN") : "1.280"} SV
+                  {navStats?.studentCount?.toLocaleString("vi-VN") || "0"} SV
                 </span>
               </div>
 
@@ -1103,7 +1040,7 @@ export const AccountView = ({
                   <span className="font-medium text-slate-700">Giảng viên hướng dẫn</span>
                 </div>
                 <span className="font-bold text-purple-900">
-                  {navStats?.lecturerCount || 42} Giảng viên
+                  {navStats?.lecturerCount || 0} Giảng viên
                 </span>
               </div>
 

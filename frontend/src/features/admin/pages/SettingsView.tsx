@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { USE_MOCK } from "../../../config/env";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { adminEmailService } from "../../../services/adminEmail.service";
 import {
@@ -31,7 +30,7 @@ const DEFAULT_FACULTY_SETTINGS: FacultySettings = {
   departmentName: "Khoa Công nghệ Thông tin",
   supportEmail: "internlink.cntt@gmail.com",
   phone: "0906891704",
-  address: "Tòa nhà A, 227 Nguyễn Văn Cừ, Q.5, TP.HCM",
+  address: "",
   maxStudentsPerLecturer: 30,
   defaultReportDeadlineDay: "Chủ Nhật (23:59)",
   maxFileSizeMb: 25,
@@ -64,7 +63,6 @@ export const SettingsView = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
-    if (USE_MOCK) return;
     let cancelled = false;
     (async () => {
       try {
@@ -95,13 +93,10 @@ export const SettingsView = ({
 
     setIsSaving(true);
     try {
-      if (!USE_MOCK) {
+      
         const updated = await adminSettingsService.updateSettings(settings);
         setSettings(updated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      }
       onShowToast("Đã lưu các thiết lập cài đặt thành công!");
     } catch (err) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -114,14 +109,10 @@ export const SettingsView = ({
   const handleResetDefaults = async () => {
     setIsSaving(true);
     try {
-      if (!USE_MOCK) {
+      
         const res = await adminSettingsService.resetSettings();
         setSettings(res);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(res));
-      } else {
-        setSettings(DEFAULT_FACULTY_SETTINGS);
-        localStorage.removeItem(STORAGE_KEY);
-      }
       onShowToast("Đã khôi phục tất cả cài đặt về giá trị mặc định của Khoa.");
     } catch (err) {
       setSettings(DEFAULT_FACULTY_SETTINGS);
@@ -139,10 +130,7 @@ export const SettingsView = ({
       onShowToast("Vui lòng nhập email hỗ trợ trước khi gửi thử.");
       return;
     }
-    if (USE_MOCK) {
-      onShowToast(`[Thử nghiệm] Đã gửi thông báo kiểm tra tới ${toEmail}`);
-      return;
-    }
+    
     setIsTestingEmail(true);
     try {
       await adminEmailService.testEmail({

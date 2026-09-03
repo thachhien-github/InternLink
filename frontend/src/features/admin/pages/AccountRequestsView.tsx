@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { accountRequestService, type AccountRequestDto } from "../../../services/accountRequest.service";
+import { adminUsersService } from "../../../services/adminUsers.service";
 import {
   KeyRound,
   Search,
@@ -43,322 +45,42 @@ export const AccountRequestsView = ({
   onNavigateTab?: (tab: string) => void;
 }) => {
   const [activeMainTab, setActiveMainTab] = useState("requests");
-  const [requests, setRequests] = useState([
-    {
-      id: "YC-2026-0891",
-      requesterCode: "20110201",
-      requesterName: "Nguy\u1EC5n V\u0103n Minh",
-      role: "student",
-      departmentOrClass: "L\u1EDBp 20CNTT1 \u2022 Khoa CNTT",
-      email: "minh.nv20110201@student.hcmute.edu.vn",
-      phone: "0908123456",
-      requestType: "Qu\xEAn m\u1EADt kh\u1EA9u",
-      description:
-        "Em b\u1ECB qu\xEAn m\u1EADt kh\u1EA9u \u0111\u0103ng nh\u1EADp c\u1ED5ng InternLink v\xE0 kh\xF4ng nh\u1EADn \u0111\u01B0\u1EE3c OTP qua email c\xE1 nh\xE2n c\u0169. Nh\u1EDD Th\u1EA7y/C\xF4 c\u1EA5p l\u1EA1i m\u1EADt kh\u1EA9u t\u1EA1m.",
-      createdAt: "02/08/2026 09:15",
-      priority: "high",
-      status: "pending",
-      attachmentName: "Scan_The_Sinh_Vien_20110201.pdf",
-      requestedChanges: [
-        {
-          field: "M\u1EADt kh\u1EA9u",
-          oldValue: "********",
-          newValue:
-            "Y\xEAu c\u1EA7u \u0111\u1EB7t l\u1EA1i m\u1EADt kh\u1EA9u m\u1EDBi",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0890",
-      requesterCode: "GV001",
-      requesterName: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      role: "lecturer",
-      departmentOrClass: "B\u1ED9 m\xF4n CNPM \u2022 Khoa CNTT",
-      email: "phuocnv@hcmute.edu.vn",
-      phone: "0913888999",
-      requestType: "M\u1EDF kh\xF3a t\xE0i kho\u1EA3n",
-      description:
-        "T\xE0i kho\u1EA3n gi\u1EA3ng vi\xEAn b\u1ECB kh\xF3a t\u1EF1 \u0111\u1ED9ng do nh\u1EADp sai m\u1EADt kh\u1EA9u qu\xE1 5 l\u1EA7n khi truy c\u1EADp t\u1EEB thi\u1EBFt b\u1ECB m\u1EDBi t\u1EA1i doanh nghi\u1EC7p.",
-      createdAt: "02/08/2026 08:30",
-      priority: "urgent",
-      status: "pending",
-      attachmentName: "Xac_Nhan_Giang_Vien_GV001.pdf",
-      requestedChanges: [
-        {
-          field: "Tr\u1EA1ng th\xE1i t\xE0i kho\u1EA3n",
-          oldValue: "\u0110ang b\u1ECB kh\xF3a (Locked)",
-          newValue: "Ho\u1EA1t \u0111\u1ED9ng (Active)",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0889",
-      requesterCode: "DN-FPT-02",
-      requesterName: "L\xEA Kim Y\u1EBFn",
-      role: "enterprise",
-      departmentOrClass:
-        "FPT Software \u2022 Tr\u01B0\u1EDFng ph\xF2ng Nh\xE2n s\u1EF1",
-      email: "yenlk@fpt.com",
-      phone: "0988111222",
-      requestType: "Y\xEAu c\u1EA7u c\u1EA5p m\u1EDBi",
-      description:
-        "C\u1EA7n c\u1EA5p t\xE0i kho\u1EA3n Mentor Doanh nghi\u1EC7p m\u1EDBi \u0111\u1EC3 \u0111\xE1nh gi\xE1 15 sinh vi\xEAn th\u1EF1c t\u1EADp kh\xF3a K20 t\u1EA1i FPT Software H\u1ED3 Ch\xED Minh.",
-      createdAt: "02/08/2026 08:00",
-      priority: "high",
-      status: "pending",
-      attachmentName: "Cong_Van_FPT_Mentor.pdf",
-      requestedChanges: [
-        {
-          field: "T\xE0i kho\u1EA3n m\u1EDBi",
-          oldValue: "Ch\u01B0a c\xF3",
-          newValue: "T\u1EA1o t\xE0i kho\u1EA3n Mentor Doanh nghi\u1EC7p",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0888",
-      requesterCode: "20110205",
-      requesterName: "Tr\u1EA7n Th\u1ECB Thu Th\u1EA3o",
-      role: "student",
-      departmentOrClass: "L\u1EDBp 20CNTT1 \u2022 Khoa CNTT",
-      email: "thao.ttt20110205@student.hcmute.edu.vn",
-      phone: "0977222333",
-      requestType: "\u0110\u1ED5i Email",
-      description:
-        "Em v\u1EEBa \u0111\u1ED5i sang email sinh vi\xEAn ch\xEDnh th\u1EE9c m\u1EDBi theo quy \u0111\u1ECBnh nh\xE0 tr\u01B0\u1EDDng. Xin c\u1EADp nh\u1EADt l\u1EA1i \u0111\u1ECBa ch\u1EC9 email nh\u1EADn th\xF4ng b\xE1o th\u1EF1c t\u1EADp.",
-      createdAt: "01/08/2026 16:40",
-      priority: "medium",
-      status: "approved",
-      processorName: "V\u0103n ph\xF2ng Khoa (L\xEA V\u0103n An)",
-      processedAt: "01/08/2026 17:10",
-      adminNote:
-        "\u0110\xE3 x\xE1c minh tr\xF9ng kh\u1EDBp v\u1EDBi danh s\xE1ch sinh vi\xEAn Khoa CNTT K20.",
-      attachmentName: "Thong_Bao_Doi_Email_HCMUTE.pdf",
-      requestedChanges: [
-        {
-          field: "Email ch\xEDnh th\u1EE9c",
-          oldValue: "thaotran99@gmail.com",
-          newValue: "thao.ttt20110205@student.hcmute.edu.vn",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0887",
-      requesterCode: "20110212",
-      requesterName: "L\xEA Ho\xE0ng Nam",
-      role: "student",
-      departmentOrClass: "L\u1EDBp 20KTPM1 \u2022 Khoa CNTT",
-      email: "nam.lh20110212@student.hcmute.edu.vn",
-      phone: "0988333444",
-      requestType: "K\xEDch ho\u1EA1t t\xE0i kho\u1EA3n",
-      description:
-        "Em m\u1EDBi b\u1ED5 sung xong th\u1EE7 t\u1EE5c h\u1ECDc ph\xED k\u1EF3 th\u1EF1c t\u1EADp v\xE0 c\u1EA7n k\xEDch ho\u1EA1t l\u1EA1i t\xE0i kho\u1EA3n \u0111\u1EC3 n\u1ED9p b\xE1o c\xE1o tu\u1EA7n.",
-      createdAt: "01/08/2026 14:20",
-      priority: "high",
-      status: "pending",
-      attachmentName: "Bien_Lai_Hoc_Phi_Xac_Nhan.pdf",
-      requestedChanges: [
-        {
-          field: "Tr\u1EA1ng th\xE1i k\xEDch ho\u1EA1t",
-          oldValue: "Ch\u01B0a k\xEDch ho\u1EA1t",
-          newValue: "\u0110\xE3 k\xEDch ho\u1EA1t",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0886",
-      requesterCode: "GV004",
-      requesterName: "TS. \u0110\u1EB7ng Minh Ch\xE2u",
-      role: "lecturer",
-      departmentOrClass: "B\u1ED9 m\xF4n HTTT \u2022 Khoa CNTT",
-      email: "chaudm@hcmute.edu.vn",
-      phone: "0903111222",
-      requestType: "\u0110\u1ED5i s\u1ED1 \u0111i\u1EC7n tho\u1EA1i",
-      description:
-        "T\xF4i thay \u0111\u1ED5i s\u1ED1 \u0111i\u1EC7n tho\u1EA1i li\xEAn l\u1EA1c c\xF4ng t\xE1c ch\xEDnh th\u1EE9c \u0111\u1EC3 nh\u1EADn tin nh\u1EAFn SMS b\u1EA3o m\u1EADt OTP h\u1EC7 th\u1ED1ng.",
-      createdAt: "01/08/2026 10:15",
-      priority: "low",
-      status: "approved",
-      processorName: "Super Admin (\u0110\u1ED7 Ho\xE0ng Y\u1EBFn)",
-      processedAt: "01/08/2026 11:00",
-      adminNote:
-        "\u0110\xE3 g\u1ECDi \u0111i\u1EC7n x\xE1c nh\u1EADn ch\xEDnh ch\u1EE7 s\u1ED1 \u0111i\u1EC7n tho\u1EA1i m\u1EDBi.",
-      requestedChanges: [
-        {
-          field: "S\u1ED1 \u0111i\u1EC7n tho\u1EA1i",
-          oldValue: "0903111000",
-          newValue: "0903111222",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0885",
-      requesterCode: "20110218",
-      requesterName: "Ph\u1EA1m \u0110\u0103ng Khoa",
-      role: "student",
-      departmentOrClass: "L\u1EDBp 20KTPM2 \u2022 Khoa CNTT",
-      email: "khoa.pd20110218@gmail.com",
-      phone: "0933444555",
-      requestType: "C\u1EADp nh\u1EADt th\xF4ng tin c\xE1 nh\xE2n",
-      description:
-        "Y\xEAu c\u1EA7u thay \u0111\u1ED5i h\u1ECD t\xEAn do b\u1ECB sai k\xFD t\u1EF1 d\xEDnh l\xF3t tr\xEAn b\u1EB1ng t\u1ED1t nghi\u1EC7p v\xE0 t\xE0i kho\u1EA3n th\u1EF1c t\u1EADp.",
-      createdAt: "31/07/2026 15:30",
-      priority: "medium",
-      status: "need_info",
-      processorName: "V\u0103n ph\xF2ng Khoa (L\xEA V\u0103n An)",
-      processedAt: "31/07/2026 16:00",
-      adminNote:
-        "Vui l\xF2ng n\u1ED9p k\xE8m b\u1EA3n ch\u1EE5p Tr\xEDch l\u1EE5c khai sinh ho\u1EB7c CCCD b\u1EA3n g\u1ED1c \u0111\u1EC3 x\xE1c minh.",
-      attachmentName: "CCCD_Scan_Chua_Ro_Nets.jpg",
-      requestedChanges: [
-        {
-          field: "H\u1ECD v\xE0 t\xEAn",
-          oldValue: "Ph\u1EA1m \u0110\u0103ng Kho",
-          newValue: "Ph\u1EA1m \u0110\u0103ng Khoa",
-        },
-      ],
-    },
-    {
-      id: "YC-2026-0884",
-      requesterCode: "20110225",
-      requesterName: "V\xF5 Minh Ch\xE2u",
-      role: "student",
-      departmentOrClass: "L\u1EDBp 20HTTT1 \u2022 Khoa CNTT",
-      email: "chau.vm20110225@student.hcmute.edu.vn",
-      phone: "0912555666",
-      requestType: "Qu\xEAn m\u1EADt kh\u1EA9u",
-      description:
-        "Em kh\xF4ng \u0111\u0103ng nh\u1EADp \u0111\u01B0\u1EE3c \u1EE9ng d\u1EE5ng di \u0111\u1ED9ng InternLink.",
-      createdAt: "31/07/2026 11:20",
-      priority: "low",
-      status: "rejected",
-      processorName: "Super Admin (\u0110\u1ED7 Ho\xE0ng Y\u1EBFn)",
-      processedAt: "31/07/2026 11:45",
-      adminNote:
-        "T\u1EEB ch\u1ED1i: \u0110\u1ECBa ch\u1EC9 IP g\u1EEDi y\xEAu c\u1EA7u t\u1EEB n\u01B0\u1EDBc ngo\xE0i kh\xF4ng h\u1EE3p l\u1EC7 v\xE0 kh\xF4ng c\xF3 minh ch\u1EE9ng sinh vi\xEAn.",
-    },
-  ]);
-  const [userAccounts, setUserAccounts] = useState([
-    {
-      id: "ACC-1001",
-      code: "20110201",
-      fullName: "Nguy\u1EC5n V\u0103n Minh",
-      email: "minh.nv20110201@student.hcmute.edu.vn",
-      phone: "0908123456",
-      role: "student",
-      departmentOrOrg: "L\u1EDBp 20CNTT1 \u2022 Khoa CNTT",
-      status: "active",
-      createdAt: "15/08/2023",
-      lastLogin: "02/08/2026 09:10",
-    },
-    {
-      id: "ACC-1002",
-      code: "GV001",
-      fullName: "TS. Nguy\u1EC5n V\u0103n Ph\u01B0\u1EDBc",
-      email: "phuocnv@hcmute.edu.vn",
-      phone: "0913888999",
-      role: "lecturer",
-      departmentOrOrg: "B\u1ED9 m\xF4n CNPM \u2022 Khoa CNTT",
-      status: "locked",
-      createdAt: "01/09/2018",
-      lastLogin: "02/08/2026 08:25",
-    },
-    {
-      id: "ACC-1003",
-      code: "GV002",
-      fullName: "ThS. Tr\u1EA7n Th\u1ECB Mai Anh",
-      email: "maianhtt@hcmute.edu.vn",
-      phone: "0909777888",
-      role: "lecturer",
-      departmentOrOrg: "B\u1ED9 m\xF4n CNPM \u2022 Khoa CNTT",
-      status: "active",
-      createdAt: "10/01/2020",
-      lastLogin: "01/08/2026 18:30",
-    },
-    {
-      id: "ACC-1004",
-      code: "DN-FPT-01",
-      fullName: "Nguy\u1EC5n Ti\u1EBFn D\u0169ng",
-      email: "dungnt@fpt.com",
-      phone: "0903999111",
-      role: "enterprise",
-      departmentOrOrg: "FPT Software HCM",
-      status: "active",
-      createdAt: "01/06/2025",
-      lastLogin: "02/08/2026 07:45",
-    },
-    {
-      id: "ACC-1005",
-      code: "20110205",
-      fullName: "Tr\u1EA7n Th\u1ECB Thu Th\u1EA3o",
-      email: "thao.ttt20110205@student.hcmute.edu.vn",
-      phone: "0977222333",
-      role: "student",
-      departmentOrOrg: "L\u1EDBp 20CNTT1 \u2022 Khoa CNTT",
-      status: "active",
-      createdAt: "15/08/2023",
-      lastLogin: "01/08/2026 17:15",
-    },
-    {
-      id: "ACC-1006",
-      code: "ADM-001",
-      fullName: "\u0110\u1ED7 Ho\xE0ng Y\u1EBFn",
-      email: "yendh@hcmute.edu.vn",
-      phone: "0908888999",
-      role: "admin",
-      departmentOrOrg: "Ph\xF2ng Qu\u1EA3n l\xFD Khoa CNTT",
-      status: "active",
-      createdAt: "01/01/2021",
-      lastLogin: "02/08/2026 09:20",
-    },
-  ]);
-  const [activityLogs, setActivityLogs] = useState([
-    {
-      id: "log-1",
-      requestId: "YC-2026-0889",
-      user: "Tr\u1EA7n Th\u1ECB Thu Th\u1EA3o (SV)",
-      action:
-        "Y\xEAu c\u1EA7u \u0110\u1ED5i Email \u0111\u01B0\u1EE3c ph\xEA duy\u1EC7t b\u1EDFi L\xEA V\u0103n An",
-      timestamp: "01/08/2026 17:10",
-      type: "approved",
-    },
-    {
-      id: "log-2",
-      requestId: "YC-2026-0886",
-      user: "TS. \u0110\u1EB7ng Minh Ch\xE2u (GV)",
-      action:
-        "\u0110\xE3 x\xE1c nh\u1EADn v\xE0 \u0111\u1ED5i s\u1ED1 \u0111i\u1EC7n tho\u1EA1i m\u1EDBi th\xE0nh c\xF4ng",
-      timestamp: "01/08/2026 11:00",
-      type: "approved",
-    },
-    {
-      id: "log-3",
-      requestId: "YC-2026-0885",
-      user: "Ph\u1EA1m \u0110\u0103ng Khoa (SV)",
-      action:
-        "Y\xEAu c\u1EA7u b\u1ED5 sung th\xEAm b\u1EA3n scan CCCD r\xF5 n\xE9t",
-      timestamp: "31/07/2026 16:00",
-      type: "need_info",
-    },
-    {
-      id: "log-4",
-      requestId: "YC-2026-0884",
-      user: "V\xF5 Minh Ch\xE2u (SV)",
-      action:
-        "T\u1EEB ch\u1ED1i y\xEAu c\u1EA7u do kh\xF4ng \u0111\u1EE7 minh ch\u1EE9ng x\xE1c minh",
-      timestamp: "31/07/2026 11:45",
-      type: "rejected",
-    },
-    {
-      id: "log-5",
-      requestId: "YC-2026-0891",
-      user: "Nguy\u1EC5n V\u0103n Minh (SV)",
-      action:
-        "G\u1EEDi y\xEAu c\u1EA7u Qu\xEAn m\u1EADt kh\u1EA9u k\xE8m b\u1EA3n scan Th\u1EBB sinh vi\xEAn",
-      timestamp: "02/08/2026 09:15",
-      type: "pending",
-    },
-  ]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [userAccounts, setUserAccounts] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+
+  // Map API DTO to local UI format
+  const mapDtoToRequest = useCallback((dto: AccountRequestDto) => ({
+    id: dto.id,
+    requesterName: dto.requesterName,
+    requesterCode: dto.requesterCode,
+    email: dto.requesterEmail ?? "",
+    role: dto.requesterRole,
+    requestType: dto.requestType,
+    description: dto.description ?? "",
+    priority: dto.priority,
+    status: dto.status,
+    processorName: dto.processorName,
+    processedAt: dto.processedAt,
+    adminNote: dto.adminNote,
+    createdAt: dto.createdAt,
+  }), []);
+
+  const loadRequests = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const dtos = await accountRequestService.getAll();
+      setRequests(dtos.map(mapDtoToRequest));
+    } catch {
+      onShowToast("Không thể tải danh sách yêu cầu tài khoản");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mapDtoToRequest, onShowToast]);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -431,8 +153,9 @@ export const AccountRequestsView = ({
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const approvedCount = requests.filter((r) => r.status === "approved").length;
   const rejectedCount = requests.filter((r) => r.status === "rejected").length;
+  const todayStr = new Date().toLocaleDateString("vi-VN");
   const todayCount = requests.filter((r) =>
-    r.createdAt.startsWith("02/08/2026"),
+    r.createdAt.startsWith(todayStr),
   ).length;
   const totalAccountsCount = userAccounts.length;
   const categoryCounts = useMemo(() => {
@@ -538,12 +261,10 @@ export const AccountRequestsView = ({
     }
     setShowProcessModal(true);
   };
-  const handleExecuteProcess = () => {
+  const handleExecuteProcess = async () => {
     if (!selectedRequest || !processActionType) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowProcessModal(false);
+    try {
       let updatedStatus = "approved";
       let actionText = "";
       if (processActionType === "reject") {
@@ -565,42 +286,23 @@ export const AccountRequestsView = ({
         updatedStatus = "approved";
         actionText = `Ph\xEA duy\u1EC7t y\xEAu c\u1EA7u ${selectedRequest.id}`;
       }
-      setRequests((prev) =>
-        prev.map((r) => {
-          if (r.id === selectedRequest.id) {
-            return {
-              ...r,
-              status: updatedStatus,
-              processorName: "Super Admin (\u0110\u1ED7 Ho\xE0ng Y\u1EBFn)",
-              processedAt: /* @__PURE__ */ new Date().toLocaleString("vi-VN"),
-              adminNote:
-                adminNoteInput ||
-                (processActionType === "reset_pass"
-                  ? `M\u1EADt kh\u1EA9u m\u1EDBi: ${generatedTempPass}`
-                  : "\u0110\xE3 x\xE1c th\u1EF1c v\xE0 ph\xEA duy\u1EC7t."),
-            };
-          }
-          return r;
-        }),
-      );
-      setActivityLogs((prev) => [
-        {
-          id: `log-${Date.now()}`,
-          requestId: selectedRequest.id,
-          user: `${selectedRequest.requesterName} (${selectedRequest.role === "student" ? "SV" : selectedRequest.role === "lecturer" ? "GV" : "DN"})`,
-          action: actionText,
-          timestamp: "V\u1EEBa xong",
-          type: updatedStatus,
-        },
-        ...prev,
-      ]);
+      await accountRequestService.process(selectedRequest.id, {
+        status: updatedStatus,
+        adminNote: adminNoteInput || (processActionType === "reset_pass" ? `M\u1EADt kh\u1EA9u m\u1EDBi: ${generatedTempPass}` : undefined),
+      });
+      await loadRequests();
       onShowToast(
         `\u0110\xE3 x\u1EED l\xFD y\xEAu c\u1EA7u ${selectedRequest.id} th\xE0nh c\xF4ng!`,
       );
       setIsDetailOpen(false);
-    }, 500);
+    } catch {
+      onShowToast("Lỗi khi xử lý yêu cầu");
+    } finally {
+      setIsLoading(false);
+      setShowProcessModal(false);
+    }
   };
-  const handleProvisionNewAccount = (e) => {
+  const handleProvisionNewAccount = async (e) => {
     e.preventDefault();
     if (!newAccCode.trim() || !newAccName.trim() || !newAccEmail.trim()) {
       onShowToast(
@@ -609,8 +311,19 @@ export const AccountRequestsView = ({
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await fetch("/api/Admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: newAccCode.trim(),
+          fullName: newAccName.trim(),
+          email: newAccEmail.trim(),
+          phone: newAccPhone.trim() || undefined,
+          role: newAccRole,
+        }),
+      });
+      if (!response.ok) throw new Error("Tạo tài khoản thất bại");
       const newAcc = {
         id: `ACC-${1e3 + userAccounts.length + 1}`,
         code: newAccCode.trim(),
@@ -650,32 +363,39 @@ export const AccountRequestsView = ({
       setNewAccEmail("");
       setNewAccPhone("");
       setNewAccOrg("");
-    }, 500);
+    } catch {
+      onShowToast("Lỗi khi tạo tài khoản mới");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  const handleToggleAccountLock = (account) => {
+  const handleToggleAccountLock = async (account) => {
     const isLocking = account.status === "active";
-    const newStatus = isLocking ? "locked" : "active";
-    setUserAccounts((prev) =>
-      prev.map((a) => (a.id === account.id ? { ...a, status: newStatus } : a)),
-    );
-    setActivityLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        requestId: account.code,
-        user: `${account.fullName} (${account.code})`,
-        action: isLocking
-          ? `Kh\xF3a t\xE0i kho\u1EA3n h\u1EC7 th\u1ED1ng`
-          : `M\u1EDF kh\xF3a t\xE0i kho\u1EA3n h\u1EC7 th\u1ED1ng`,
-        timestamp: "V\u1EEBa xong",
-        type: isLocking ? "locked" : "unlocked",
-      },
-      ...prev,
-    ]);
-    onShowToast(
-      `\u0110\xE3 ${isLocking ? "kh\xF3a" : "m\u1EDF kh\xF3a"} t\xE0i kho\u1EA3n ${account.fullName} th\xE0nh c\xF4ng!`,
-    );
+    const newIsActive = !isLocking;
+    try {
+      setIsLoading(true);
+      await adminUsersService.update(account.id, {
+        fullName: account.fullName,
+        email: account.email,
+        isActive: newIsActive,
+      });
+      setUserAccounts((prev) =>
+        prev.map((a) =>
+          a.id === account.id
+            ? { ...a, status: newIsActive ? "active" : "locked" }
+            : a,
+        ),
+      );
+      onShowToast(
+        `\u0110\xE3 ${isLocking ? "kh\xF3a" : "m\u1EDF kh\xF3a"} t\xE0i kho\u1EA3n ${account.fullName} th\xE0nh c\xF4ng!`,
+      );
+    } catch {
+      onShowToast("L\x1ED7i khi thay \x0111\x1ED5i tr\x1EA1ng th\xE1i t\xE0i kho\u1EA3n");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  const handleBatchApprove = () => {
+  const handleBatchApprove = async () => {
     if (selectedIds.length === 0) {
       onShowToast(
         "Vui l\xF2ng ch\u1ECDn \xEDt nh\u1EA5t 01 y\xEAu c\u1EA7u \u0111\u1EC3 x\u1EED l\xFD \u0111\u1ED3ng lo\u1EA1t.",
@@ -683,28 +403,25 @@ export const AccountRequestsView = ({
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setRequests((prev) =>
-        prev.map((r) => {
-          if (selectedIds.includes(r.id)) {
-            return {
-              ...r,
-              status: "approved",
-              processorName: "Super Admin (X\u1EED l\xFD h\xE0ng lo\u1EA1t)",
-              processedAt: /* @__PURE__ */ new Date().toLocaleString("vi-VN"),
-              adminNote:
-                "Ph\xEA duy\u1EC7t h\xE0ng lo\u1EA1t t\u1EF1 \u0111\u1ED9ng b\u1EDFi Super Admin.",
-            };
-          }
-          return r;
-        }),
+    try {
+      await Promise.all(
+        selectedIds.map((id) =>
+          accountRequestService.process(id, {
+            status: "approved",
+            adminNote: "Ph\xEA duy\u1EC7t h\xE0ng lo\u1EA1t.",
+          })
+        )
       );
+      await loadRequests();
       onShowToast(
         `\u0110\xE3 ph\xEA duy\u1EC7t h\xE0ng lo\u1EA1t ${selectedIds.length} y\xEAu c\u1EA7u t\xE0i kho\u1EA3n!`,
       );
       setSelectedIds([]);
-    }, 600);
+    } catch {
+      onShowToast("Lỗi khi phê duyệt hàng loạt");
+    } finally {
+      setIsLoading(false);
+    }
   };
   const handleExportExcel = () => {
     onShowToast(
@@ -717,13 +434,7 @@ export const AccountRequestsView = ({
     );
   };
   const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onShowToast(
-        "\u0110\xE3 l\xE0m m\u1EDBi d\u1EEF li\u1EC7u t\xE0i kho\u1EA3n v\xE0 y\xEAu c\u1EA7u m\u1EDBi nh\u1EA5t!",
-      );
-    }, 400);
+    loadRequests();
   };
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto min-w-0 max-w-full overflow-hidden">
@@ -1292,7 +1003,7 @@ export const AccountRequestsView = ({
                     <span>Nhập sai mật khẩu liên tiếp</span>
                   </div>
                   <p className="text-[11px] text-rose-700 font-medium leading-relaxed">
-                    Tài khoản GV001 (TS. Nguyễn Văn Phước) đã bị khóa tự động do
+                    Tài khoản đã bị khóa tự động do
                     5 lần nhập sai từ địa chỉ IP lạ.
                   </p>
                 </div>

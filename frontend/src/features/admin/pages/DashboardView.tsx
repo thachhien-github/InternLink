@@ -62,10 +62,10 @@ export const DashboardView = ({
   const handleExportSummaryReport = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadSummaryReport(selectedSemester?.id);
-      onShowToast("Đã tải xuống Báo cáo tổng kết thực tập (.xlsx)");
+      await exportService.downloadSummaryReportWord(selectedSemester?.id);
+      onShowToast("Đã tải xuống Báo cáo tổng kết thực tập (.docx)");
     } catch (err) {
-      onShowToast("Xuất báo cáo tổng kết thất bại.");
+      onShowToast("Xuất báo cáo tổng kết Word thất bại.");
     } finally {
       setIsExporting(false);
     }
@@ -112,11 +112,12 @@ export const DashboardView = ({
             loading: isExporting,
           },
           {
-            label: "Xuất báo cáo tổng kết",
+            label: isExporting ? "Đang xuất…" : "Xuất báo cáo tổng kết (.docx)",
             icon: Download,
             onClick: () => void handleExportSummaryReport(),
             variant: "secondary",
             disabled: isExporting || isLoading,
+            loading: isExporting,
           },
           {
             label: "Phân công nhanh",

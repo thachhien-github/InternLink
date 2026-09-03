@@ -8,45 +8,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 export const TaskCenterCard = ({ onHandleTask }) => {
-  const pendingTasks = [
-    {
-      id: "unassigned-students",
-      title: "12 sinh vi\xEAn ch\u01B0a \u0111\u01B0\u1EE3c ph\xE2n c\xF4ng",
-      desc: "Khoa CNTT - \u0110\u1EE3t th\u1EF1c t\u1EADp HK1 (2025-2026)",
-      icon: UserX,
-      color: "rose",
-      urgency: "Cao",
-      actionText: "Ph\xE2n c\xF4ng ngay",
-    },
-    {
-      id: "unactivated-lecturers",
-      title:
-        "3 gi\u1EA3ng vi\xEAn ch\u01B0a k\xEDch ho\u1EA1t t\xE0i kho\u1EA3n",
-      desc: "Gi\u1EA3ng vi\xEAn th\u1EC9nh gi\u1EA3ng m\u1EDBi b\u1ED5 sung k\u1EF3 n\xE0y",
-      icon: UserX2,
-      color: "amber",
-      urgency: "Trung b\xECnh",
-      actionText: "G\u1EEDi k\xEDch ho\u1EA1t",
-    },
-    {
-      id: "password-resets",
-      title: "15 y\xEAu c\u1EA7u \u0111\u1EB7t l\u1EA1i m\u1EADt kh\u1EA9u",
-      desc: "Y\xEAu c\u1EA7u x\xE1c minh t\u1EEB email sinh vi\xEAn v\xE0 GV",
-      icon: KeyRound,
-      color: "slate",
-      urgency: "Trung b\xECnh",
-      actionText: "Duy\u1EC7t c\u1EA5p l\u1EA1i",
-    },
-    {
-      id: "final-reports-pending",
-      title: "25 b\xE1o c\xE1o cu\u1ED1i k\u1EF3 \u0111ang ch\u1EDD thu",
-      desc: "H\u1ED9i \u0111\u1ED3ng b\u1EA3o v\u1EC7 \u0111\u1EE3t 1 c\u1EA7n thu th\u1EADp \u0111\u1EE7 file PDF",
-      icon: FileCheck,
-      color: "blue",
-      urgency: "B\xECnh th\u01B0\u1EDDng",
-      actionText: "Thu nh\u1EADn ngay",
-    },
-  ];
+  const pendingTasks: any[] = [];
   return (
     <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-xs space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
