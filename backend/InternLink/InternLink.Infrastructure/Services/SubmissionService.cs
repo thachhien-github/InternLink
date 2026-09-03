@@ -511,4 +511,50 @@ public class SubmissionService : ISubmissionService
         ".sql" => "application/sql",
         _ => "application/octet-stream",
     };
+
+    public async Task<FeedbackDto?> AddStudentReplyAsync(Guid submissionId, Guid studentUserId, string comment)
+    {
+        var submission = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && !s.IsDeleted);
+
+        if (submission == null)
+            return null;
+
+        // Verify the student owns this submission
+        if (submission.Internship?.Student?.UserId != studentUserId)
+            throw new UnauthorizedAccessException("You can only reply to your own submissions");
+
+        var feedback = new Feedback
+        {
+            Id = Guid.NewGuid(),
+            SubmissionId = submissionId,
+            LecturerId = null,
+            Comment = comment,
+            IsPublic = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Feedbacks.Add(feedback);
+        await _db.SaveChangesAsync();
+
+        // Notify the lecturer
+        var lecturerUserId = submission.Internship?.Lecturer?.UserId;
+        if (lecturerUserId.HasValue)
+        {
+            var studentName = submission.Internship?.Student?.FullName ?? "Sinh viên";
+            await _notificationService.CreateAsync(new CreateNotificationRequest
+            {
+                UserId = lecturerUserId.Value,
+                Title = "Sinh viên phản hồi về bài nộp",
+                Content = $"{studentName} vừa gửi phản hồi về bài nộp \"{submission.Title ?? submission.Type.ToString()}\".",
+                Link = $"/submissions/{submission.Id}"
+            });
+        }
+
+        return _mapper.Map<FeedbackDto>(feedback);
+    }
 }

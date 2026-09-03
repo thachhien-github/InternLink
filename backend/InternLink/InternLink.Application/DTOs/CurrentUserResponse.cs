@@ -6,6 +6,7 @@ public sealed class CurrentUserResponse
     public string Username { get; set; } = null!;
     public string? FullName { get; set; }
     public string? Email { get; set; }
+    public string? AvatarUrl { get; set; }
     public string Role { get; set; } = null!;
     public bool IsActive { get; set; }
     public bool MustChangePassword { get; set; }

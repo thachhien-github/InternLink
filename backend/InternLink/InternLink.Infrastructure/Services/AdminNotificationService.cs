@@ -88,6 +88,8 @@ public class AdminNotificationService : IAdminNotificationService
             Title = title,
             Content = content,
             Link = link,
+            AttachmentUrl = request.AttachmentUrl,
+            AttachmentName = request.AttachmentName,
             IsRead = false,
             CreatedAt = sentAt,
         }).ToList();

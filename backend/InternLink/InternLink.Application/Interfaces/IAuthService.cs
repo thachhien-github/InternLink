@@ -13,4 +13,5 @@ public interface IAuthService
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task ForgotPasswordAsync(string email);
     Task ResetPasswordAsync(string token, string newPassword);
+    Task UpdateAvatarAsync(Guid userId, string avatarUrl);
 }

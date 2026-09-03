@@ -27,15 +27,19 @@ public class StudentService : IStudentService
     private readonly IExcelService _excelService;
     private readonly ILogger<StudentService> _logger;
 
-    private static readonly string[] StudentCodeHeaders = ["mssv", "studentCode", "student number", "studentcode", "ma sv", "masv", "ma sinh vien"];
-    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "ho va ten", "fullname", "full name", "student name", "ten sinh vien"];
-    private static readonly string[] HoHeaders = ["ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname"];
-    private static readonly string[] TenHeaders = ["ten", "tên", "first name", "firstname"];
-    private static readonly string[] ClassHeaders = ["lop", "class", "classname", "lop hoc"];
-    private static readonly string[] MajorHeaders = ["nganh", "ngành", "chuyen nganh", "chuyên ngành", "major"];
-    private static readonly string[] EmailHeaders = ["email", "e-mail"];
-    private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại"];
-    private static readonly string[] UsernameHeaders = ["username", "tendangnhap", "ten dang nhap"];
+    // Fuzzy matching definitions: each column has multiple accepted aliases
+    private static readonly Dictionary<string, ColumnDefinition> StudentColumns = new()
+    {
+        [nameof(StudentColumn.StudentCode)] = new("mssv", "studentCode", "student number", "studentcode", "ma sv", "masv", "ma sinh vien", "ma so sinh vien", "student id", "studentid"),
+        [nameof(StudentColumn.FullName)] = new("hoten", "ho ten", "ho va ten", "fullname", "full name", "student name", "ten sinh vien", "ho va ten sinh vien", "tên", "họ tên", "full name"),
+        [nameof(StudentColumn.Ho)] = new("ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname", "họ và đệm"),
+        [nameof(StudentColumn.Ten)] = new("ten", "tên", "first name", "firstname", "ten goi", "tên gọi"),
+        [nameof(StudentColumn.Class)] = new("lop", "class", "classname", "lop hoc", "class name", "lop sv", "lop sinh vien", "ma lop"),
+        [nameof(StudentColumn.Major)] = new("nganh", "ngành", "chuyen nganh", "chuyên ngành", "major", "nganh hoc", "ngành học", "major name", "chuyen nganh hoc"),
+        [nameof(StudentColumn.Email)] = new("email", "e-mail", "thu dien tu", "thư điện tử", "email address", "email sinh vien"),
+        [nameof(StudentColumn.Phone)] = new("phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại", "phone number", "sdt lien he", "so dt"),
+        [nameof(StudentColumn.Username)] = new("username", "tendangnhap", "ten dang nhap", "tai khoan", "tài khoản", "user name", "login"),
+    };
 
     public StudentService(
         AppDbContext db,
@@ -820,64 +824,24 @@ public class StudentService : IStudentService
 
     private static Dictionary<StudentColumn, int> BuildColumnMap(IXLRangeRow headerRow)
     {
+        // Use fuzzy column matcher with expanded aliases
+        var fuzzyResult = FuzzyColumnMatcher.Match(headerRow, StudentColumns, minScore: 50);
+
+        // Map string keys back to enum
         var map = new Dictionary<StudentColumn, int>();
-
-        foreach (var cell in headerRow.CellsUsed())
+        foreach (var kvp in fuzzyResult)
         {
-            var header = NormalizeHeader(cell.GetString());
-            if (string.IsNullOrEmpty(header))
-                continue;
-
-            if (!map.ContainsKey(StudentColumn.StudentCode) && StudentCodeHeaders.Contains(header))
-                map[StudentColumn.StudentCode] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.FullName) && FullNameHeaders.Contains(header))
-                map[StudentColumn.FullName] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Ho) && HoHeaders.Contains(header))
-                map[StudentColumn.Ho] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Ten) && TenHeaders.Contains(header))
-                map[StudentColumn.Ten] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Class) && ClassHeaders.Contains(header))
-                map[StudentColumn.Class] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Major) && MajorHeaders.Contains(header))
-                map[StudentColumn.Major] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Email) && EmailHeaders.Contains(header))
-                map[StudentColumn.Email] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Phone) && PhoneHeaders.Contains(header))
-                map[StudentColumn.Phone] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(StudentColumn.Username) && UsernameHeaders.Contains(header))
-                map[StudentColumn.Username] = cell.Address.ColumnNumber;
+            if (Enum.TryParse<StudentColumn>(kvp.Key, out var col))
+                map[col] = kvp.Value;
         }
-
         return map;
     }
 
-    private static string NormalizeHeader(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
+    private static string NormalizeHeader(string value) =>
+        FuzzyColumnMatcher.NormalizeHeader(value);
 
-        var normalized = value.Trim().ToLowerInvariant();
-        normalized = RemoveDiacritics(normalized);
-        normalized = Regex.Replace(normalized, @"\s+", " ");
-        return normalized;
-    }
-
-    private static string RemoveDiacritics(string text)
-    {
-        var formD = text.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(formD.Length);
-        foreach (var ch in formD)
-        {
-            var category = CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (category != UnicodeCategory.NonSpacingMark)
-                sb.Append(ch);
-        }
-
-        return sb.ToString()
-            .Normalize(NormalizationForm.FormC)
-            .Replace('đ', 'd')
-            .Replace('Đ', 'D');
-    }
+    private static string RemoveDiacritics(string text) =>
+        FuzzyColumnMatcher.NormalizeHeader(text);
 
     private static string? GetCell(IXLRangeRow row, Dictionary<StudentColumn, int> map, StudentColumn column)
     {

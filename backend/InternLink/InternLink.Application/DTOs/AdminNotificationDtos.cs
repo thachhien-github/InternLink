@@ -7,6 +7,10 @@ public sealed class AdminBroadcastNotificationRequest
     public string? Link { get; set; }
     /// <summary>all | student | lecturer</summary>
     public string Audience { get; set; } = "all";
+    /// <summary>Optional attachment file URL (e.g., uploaded document)</summary>
+    public string? AttachmentUrl { get; set; }
+    /// <summary>Optional display name for the attachment</summary>
+    public string? AttachmentName { get; set; }
 }
 
 public sealed class AdminBroadcastNotificationResultDto

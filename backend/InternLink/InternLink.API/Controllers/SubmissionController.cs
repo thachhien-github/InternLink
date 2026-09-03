@@ -316,4 +316,30 @@ public class SubmissionController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
     }
+
+    [HttpPost("{id:guid}/student-reply")]
+    [Authorize(Policy = "RequireStudent")]
+    public async Task<IActionResult> AddStudentReply(Guid id, [FromBody] StudentReplyRequest request)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var feedback = await _submissionService.AddStudentReplyAsync(id, userId.Value, request.Comment);
+            if (feedback == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+
+            return Ok(ApiResponse<FeedbackDto>.Ok(feedback));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
 }

@@ -414,4 +414,14 @@ public class AuthService : IAuthService
         var path = _emailSettings.PasswordResetPath.TrimStart('/');
         return $"{baseUrl}/{path}?token={Uri.EscapeDataString(rawToken)}";
     }
+
+    public async Task UpdateAvatarAsync(Guid userId, string avatarUrl)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+        if (user == null) throw new KeyNotFoundException("User not found");
+        user.AvatarUrl = avatarUrl;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("User {UserId} updated avatar", userId);
+    }
 }

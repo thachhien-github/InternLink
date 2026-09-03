@@ -30,6 +30,11 @@ public sealed class UpdateFeedbackRequest
     public string Comment { get; set; } = null!;
 }
 
+public sealed class StudentReplyRequest
+{
+    public string Comment { get; set; } = null!;
+}
+
 /// <summary>Multipart form for student product submission with file.</summary>
 public sealed class UploadSubmissionFormRequest
 {

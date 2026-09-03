@@ -147,6 +147,17 @@ public sealed class CreateFeedbackRequest
     public string? NewStatus { get; set; }
 }
 
+public sealed class UpdateStudentNotesRequest
+{
+    public string Notes { get; set; } = null!;
+}
+
+public sealed class NotifyStudentsRequest
+{
+    public string Title { get; set; } = null!;
+    public string Message { get; set; } = null!;
+}
+
 public sealed class LecturerStudentListItemDto
 {
     public Guid StudentId { get; set; }
@@ -194,6 +205,60 @@ public sealed class LecturerDashboardStatsDto
     public decimal AverageGrade { get; set; }
     public int EvaluatedCount { get; set; }
     public Dictionary<string, int> StatusDistribution { get; set; } = new();
+}
+
+/// <summary>
+/// Weekly submission trend for analytics charts.
+/// </summary>
+public sealed class WeeklyTrendDto
+{
+    public int WeekNumber { get; set; }
+    public string Label { get; set; } = null!;
+    public int OnTimeCount { get; set; }
+    public int LateCount { get; set; }
+    public int MissingCount { get; set; }
+    public int TotalStudents { get; set; }
+    public decimal ComplianceRate { get; set; }
+}
+
+/// <summary>
+/// Grade distribution for analytics charts.
+/// </summary>
+public sealed class GradeDistributionDto
+{
+    public int ExcellentCount { get; set; }  // 9.0 - 10.0
+    public int GoodCount { get; set; }       // 8.0 - 8.9
+    public int FairCount { get; set; }       // 7.0 - 7.9
+    public int AverageCount { get; set; }    // 5.5 - 6.9
+    public int FailCount { get; set; }       // < 5.5
+    public int NotYetGradedCount { get; set; }
+    public decimal OverallAverage { get; set; }
+    public int TotalStudents { get; set; }
+}
+
+/// <summary>
+/// Company statistics for analytics.
+/// </summary>
+public sealed class CompanyStatsDto
+{
+    public string CompanyName { get; set; } = null!;
+    public int StudentCount { get; set; }
+    public string Positions { get; set; } = null!;
+    public decimal AverageGrade { get; set; }
+    public string PartnershipLevel { get; set; } = null!;
+}
+
+/// <summary>
+/// Lecturer activity statistics.
+/// </summary>
+public sealed class LecturerActivityStatsDto
+{
+    public int ReviewedReportsCount { get; set; }
+    public int PendingReportsCount { get; set; }
+    public int CompletedStudentsCount { get; set; }
+    public int TotalStudentsCount { get; set; }
+    public decimal AverageResponseDays { get; set; }
+    public decimal ComplianceRate { get; set; }
 }
 
 

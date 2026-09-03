@@ -82,14 +82,70 @@ public class LecturerController : ControllerBase
     /// </summary>
     [HttpGet("dashboard")]
     [HttpGet("stats")]
-    public async Task<IActionResult> GetDashboardStats()
+    public async Task<IActionResult> GetDashboardStats([FromQuery] Guid? semesterId = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var stats = await _lecturerService.GetDashboardStatsAsync(userId.Value);
+        var stats = await _lecturerService.GetDashboardStatsAsync(userId.Value, semesterId);
         return Ok(ApiResponse<LecturerDashboardStatsDto>.Ok(stats));
+    }
+
+    /// <summary>
+    /// Get weekly submission trend for analytics charts
+    /// </summary>
+    [HttpGet("analytics/weekly-trend")]
+    public async Task<IActionResult> GetWeeklyTrend([FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var trend = await _lecturerService.GetWeeklyTrendAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<List<WeeklyTrendDto>>.Ok(trend));
+    }
+
+    /// <summary>
+    /// Get grade distribution for analytics charts
+    /// </summary>
+    [HttpGet("analytics/grade-distribution")]
+    public async Task<IActionResult> GetGradeDistribution([FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var distribution = await _lecturerService.GetGradeDistributionAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<GradeDistributionDto>.Ok(distribution));
+    }
+
+    /// <summary>
+    /// Get company statistics for analytics
+    /// </summary>
+    [HttpGet("analytics/company-stats")]
+    public async Task<IActionResult> GetCompanyStats([FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var stats = await _lecturerService.GetCompanyStatsAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<List<CompanyStatsDto>>.Ok(stats));
+    }
+
+    /// <summary>
+    /// Get lecturer activity statistics
+    /// </summary>
+    [HttpGet("analytics/activity-stats")]
+    public async Task<IActionResult> GetActivityStats([FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var stats = await _lecturerService.GetActivityStatsAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<LecturerActivityStatsDto>.Ok(stats));
     }
 
     // ==========================================
@@ -100,13 +156,13 @@ public class LecturerController : ControllerBase
     /// Get all students assigned to the current lecturer
     /// </summary>
     [HttpGet("students")]
-    public async Task<IActionResult> GetStudents([FromQuery] string? search = null, [FromQuery] string? status = null)
+    public async Task<IActionResult> GetStudents([FromQuery] string? search = null, [FromQuery] string? status = null, [FromQuery] Guid? semesterId = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var students = await _lecturerService.GetAssignedStudentsAsync(userId.Value, search, status);
+        var students = await _lecturerService.GetAssignedStudentsAsync(userId.Value, search, status, semesterId);
         return Ok(ApiResponse<IEnumerable<LecturerStudentListItemDto>>.Ok(students));
     }
 
@@ -114,13 +170,13 @@ public class LecturerController : ControllerBase
     /// Get companies of assigned students
     /// </summary>
     [HttpGet("companies")]
-    public async Task<IActionResult> GetCompanies()
+    public async Task<IActionResult> GetCompanies([FromQuery] Guid? semesterId = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var companies = await _lecturerService.GetAssignedCompaniesAsync(userId.Value);
+        var companies = await _lecturerService.GetAssignedCompaniesAsync(userId.Value, semesterId);
         return Ok(ApiResponse<IEnumerable<LecturerCompanySummaryDto>>.Ok(companies));
     }
 
@@ -132,13 +188,13 @@ public class LecturerController : ControllerBase
     /// Get all active internships assigned to current lecturer
     /// </summary>
     [HttpGet("internships")]
-    public async Task<IActionResult> GetInternships()
+    public async Task<IActionResult> GetInternships([FromQuery] Guid? semesterId = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var internships = await _lecturerService.GetInternshipsAsync(userId.Value);
+        var internships = await _lecturerService.GetInternshipsAsync(userId.Value, semesterId);
         return Ok(ApiResponse<IEnumerable<InternshipDto>>.Ok(internships));
     }
 
@@ -157,6 +213,51 @@ public class LecturerController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Internship not found" }));
 
         return Ok(ApiResponse<InternshipDetailDto>.Ok(internship));
+    }
+
+    /// <summary>
+    /// Update lecturer notes for a student's internship
+    /// </summary>
+    [HttpPut("internships/{id:guid}/notes")]
+    public async Task<IActionResult> UpdateStudentNotes(Guid id, [FromBody] UpdateStudentNotesRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var updated = await _lecturerService.UpdateStudentNotesAsync(userId.Value, id, request.Notes);
+            if (!updated)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Internship not found or access denied" }));
+
+            return Ok(ApiResponse<object>.Ok(new { message = "Notes updated successfully" }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    /// <summary>
+    /// Notify all assigned students
+    /// </summary>
+    [HttpPost("students/notify")]
+    public async Task<IActionResult> NotifyStudents([FromBody] NotifyStudentsRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var count = await _lecturerService.NotifyAssignedStudentsAsync(userId.Value, request.Title, request.Message);
+            return Ok(ApiResponse<object>.Ok(new { notifiedCount = count }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     /// <summary>
@@ -545,6 +646,54 @@ public class LecturerController : ControllerBase
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
+    }
+
+    // ==========================================
+    // 8. AI COMMENT GENERATION
+    // ==========================================
+
+    /// <summary>
+    /// Generate AI-assisted comment for a student based on their progress data.
+    /// </summary>
+    [HttpPost("ai/generate-comment")]
+    public async Task<IActionResult> GenerateAiComment([FromBody] AiCommentRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        // AI comment generation using template-based approach
+        var comment = GenerateCommentFromTemplate(request);
+        return Ok(ApiResponse<object>.Ok(new { comment }));
+    }
+
+    private static string GenerateCommentFromTemplate(AiCommentRequest req)
+    {
+        var progress = req.ProgressPercent;
+        var status = progress >= 100 ? "hoàn thành" : progress >= 70 ? "đang tiến triển tốt" : progress >= 40 ? "cần đẩy nhanh tiến độ" : "chậm tiến độ";
+
+        var parts = new List<string>();
+        parts.Add($"Sinh viên {req.StudentName} ({req.StudentCode}) đã {status} với {progress}% khối lượng thực tập tại {(req.CompanyName ?? "doanh nghiệp")}.");
+
+        if (req.WeeksReported > 0)
+        {
+            parts.Add($"Đã nộp {req.WeeksReported} báo cáo tuần, thể hiện sự {(req.WeeksReported >= 5 ? "chuyên cần và chủ động" : "cần duy trì đều đặn hơn")}.");
+        }
+
+        if (progress >= 80)
+        {
+            parts.Add("Đề xuất tiếp tục duy trì nhịp độ và hoàn thiện báo cáo tổng kết cuối kỳ.");
+        }
+        else if (progress >= 50)
+        {
+            parts.Add("Đề xuất sinh viên tập trung hoàn thành các phần còn lại đúng hạn.");
+        }
+        else
+        {
+            parts.Add("Cần nhắc nhở sinh viên tăng cường báo cáo và hoàn thành nhiệm vụ thực tập.");
+        }
+
+        return string.Join(" ", parts);
     }
 }
 

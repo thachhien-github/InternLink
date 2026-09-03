@@ -13,10 +13,12 @@ namespace InternLink.API.Controllers;
 public class StudentPortalController : ControllerBase
 {
     private readonly IStudentService _studentService;
+    private readonly IPdfExportService _pdfExportService;
 
-    public StudentPortalController(IStudentService studentService)
+    public StudentPortalController(IStudentService studentService, IPdfExportService pdfExportService)
     {
         _studentService = studentService;
+        _pdfExportService = pdfExportService;
     }
 
     /// <summary>
@@ -34,5 +36,32 @@ public class StudentPortalController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student profile not found" }));
 
         return Ok(ApiResponse<StudentPortalProfileDto>.Ok(profile));
+    }
+
+    /// <summary>
+    /// Download internship certificate/evaluation sheet as PDF.
+    /// </summary>
+    [HttpGet("internship-certificate")]
+    public async Task<IActionResult> DownloadCertificate()
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var profile = await _studentService.GetPortalProfileByUserIdAsync(userId.Value);
+        if (profile?.Internship == null)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Ch\u00F4ng c\xF3 th\xF4ng tin th\u1EF1c t\u1EADp." }));
+
+        try
+        {
+            var pdfBytes = await _pdfExportService.GenerateStudentEvaluationPdfAsync(
+                profile.Internship.Id, userId.Value);
+            var fileName = $"Phieu-Thuc-Tap-{profile.Student.StudentCode}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 }

@@ -20,4 +20,5 @@ public interface ISubmissionService
     Task<IEnumerable<FeedbackDto>> GetFeedbacksAsync(Guid submissionId, Guid userId, bool isLecturer);
     Task<FeedbackDto?> AddFeedbackAsync(Guid submissionId, Guid authorId, CreateFeedbackRequest request);
     Task<FeedbackDto?> UpdateFeedbackAsync(Guid feedbackId, Guid authorId, UpdateFeedbackRequest request);
+    Task<FeedbackDto?> AddStudentReplyAsync(Guid submissionId, Guid studentUserId, string comment);
 }

@@ -49,6 +49,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<InternLink.Application.Interfaces.IRealtimeNotificationService, InternLink.Infrastructure.Services.RealtimeNotificationService<NotificationHub>>();
@@ -95,8 +96,13 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
+// CORS must come before HTTPS redirection to avoid 307 on OPTIONS preflight
 app.UseCors("Frontend");
+// Skip HTTPS redirect in development to allow HTTP frontend → HTTP API calls
+if (app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 

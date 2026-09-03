@@ -17,17 +17,18 @@ public class CompanyService : ICompanyService
     private readonly IMapper _mapper;
     private readonly IExcelService _excelService;
 
-    private static readonly string[] CompanyNameHeaders =
-        ["tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name", "ten cong ty"];
-    private static readonly string[] IndustryHeaders = ["nganh", "ngành", "industry", "linh vuc", "lĩnh vực"];
-    private static readonly string[] ContactPersonHeaders =
-        ["nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien", "lien he"];
-    private static readonly string[] ContactEmailHeaders = ["email", "e-mail", "contactemail", "contact email"];
-    private static readonly string[] ContactPhoneHeaders =
-        ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "contactphone", "contact phone", "so dien thoai"];
-    private static readonly string[] AddressHeaders = ["diachi", "dia chi", "address"];
-    private static readonly string[] WebsiteHeaders = ["website", "web", "trang web"];
-    private static readonly string[] CapacityHeaders = ["succhua", "suc chua", "capacity", "so luong", "so luong sv", "so luong tiep nhan", "chi tieu", "so luong tiep nhan sv"];
+    // Fuzzy matching definitions for company columns
+    private static readonly Dictionary<string, ColumnDefinition> CompanyColumns = new()
+    {
+        [nameof(CompanyColumn.CompanyName)] = new("tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name", "ten cong ty", "cong ty", "ten don vi", "don vi", "organization"),
+        [nameof(CompanyColumn.Industry)] = new("nganh", "ngành", "industry", "linh vuc", "lĩnh vực", "linh vuc hoat dong", "nganh nghe", "sector"),
+        [nameof(CompanyColumn.ContactPerson)] = new("nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien", "lien he", "ho ten nguoi lien he", "representative"),
+        [nameof(CompanyColumn.ContactEmail)] = new("email", "e-mail", "contactemail", "contact email", "email lien he", "email address"),
+        [nameof(CompanyColumn.ContactPhone)] = new("phone", "sdt", "sđt", "dien thoai", "điện thoại", "contactphone", "contact phone", "so dien thoai", "số điện thoại", "phone number", "sdt lien he"),
+        [nameof(CompanyColumn.Address)] = new("diachi", "dia chi", "address", "dia chi tru so", "dia chi chi nhanh", "dia diem"),
+        [nameof(CompanyColumn.Website)] = new("website", "web", "trang web", "trang chu", "url", "homepage"),
+        [nameof(CompanyColumn.Capacity)] = new("succhua", "suc chua", "capacity", "so luong", "so luong sv", "so luong tiep nhan", "chi tieu", "so luong tiep nhan sv", "so luong tuyen", "tieu chi", "slsv"),
+    };
 
     public CompanyService(AppDbContext db, IMapper mapper, IExcelService excelService)
     {
@@ -448,60 +449,21 @@ public class CompanyService : ICompanyService
 
     private static Dictionary<CompanyColumn, int> BuildColumnMap(IXLRangeRow headerRow)
     {
+        // Use fuzzy column matcher with expanded aliases
+        var fuzzyResult = FuzzyColumnMatcher.Match(headerRow, CompanyColumns, minScore: 50);
+
+        // Map string keys back to enum
         var map = new Dictionary<CompanyColumn, int>();
-
-        foreach (var cell in headerRow.CellsUsed())
+        foreach (var kvp in fuzzyResult)
         {
-            var header = NormalizeHeader(cell.GetString());
-            if (string.IsNullOrEmpty(header))
-                continue;
-
-            if (!map.ContainsKey(CompanyColumn.CompanyName) && CompanyNameHeaders.Contains(header))
-                map[CompanyColumn.CompanyName] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.Industry) && IndustryHeaders.Contains(header))
-                map[CompanyColumn.Industry] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.ContactPerson) && ContactPersonHeaders.Contains(header))
-                map[CompanyColumn.ContactPerson] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.ContactEmail) && ContactEmailHeaders.Contains(header))
-                map[CompanyColumn.ContactEmail] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.ContactPhone) && ContactPhoneHeaders.Contains(header))
-                map[CompanyColumn.ContactPhone] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.Address) && AddressHeaders.Contains(header))
-                map[CompanyColumn.Address] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.Website) && WebsiteHeaders.Contains(header))
-                map[CompanyColumn.Website] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(CompanyColumn.Capacity) && CapacityHeaders.Contains(header))
-                map[CompanyColumn.Capacity] = cell.Address.ColumnNumber;
+            if (Enum.TryParse<CompanyColumn>(kvp.Key, out var col))
+                map[col] = kvp.Value;
         }
-
         return map;
     }
 
-    private static string NormalizeHeader(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        var normalized = RemoveDiacritics(value.Trim().ToLowerInvariant());
-        normalized = Regex.Replace(normalized, @"\s+", " ");
-        return normalized;
-    }
-
-    private static string RemoveDiacritics(string text)
-    {
-        var formD = text.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(formD.Length);
-        foreach (var ch in formD)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                sb.Append(ch);
-        }
-
-        return sb.ToString()
-            .Normalize(NormalizationForm.FormC)
-            .Replace('đ', 'd')
-            .Replace('Đ', 'D');
-    }
+    private static string NormalizeHeader(string value) =>
+        FuzzyColumnMatcher.NormalizeHeader(value);
 
     private static string? GetCell(IXLRangeRow row, Dictionary<CompanyColumn, int> map, CompanyColumn column)
     {

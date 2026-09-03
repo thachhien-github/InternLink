@@ -1,4 +1,7 @@
 using ClosedXML.Excel;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
@@ -119,6 +122,320 @@ public class InternshipReportService : IInternshipReportService
         using var ms = new MemoryStream();
         workbook.SaveAs(ms);
         return ms.ToArray();
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> ExportC22AWordReportAsync(Guid? semesterId = null)
+    {
+        // ── Load data ──────────────────────────────────────────────────────
+        var internshipsQuery = _db.Internships
+            .Include(i => i.Student)
+            .Include(i => i.Company)
+            .Include(i => i.Lecturer)
+            .Include(i => i.WeeklyReports)
+            .AsNoTracking();
+
+        if (semesterId.HasValue)
+            internshipsQuery = internshipsQuery.Where(i => i.SemesterId == semesterId.Value);
+
+        var internships = await internshipsQuery.ToListAsync();
+
+        var internshipIds = internships.Select(i => i.Id).ToHashSet();
+        var evaluations = await _db.Set<Domain.Entities.Evaluation>()
+            .Where(e => internshipIds.Contains(e.InternshipId))
+            .AsNoTracking()
+            .ToDictionaryAsync(e => e.InternshipId);
+
+        var totalStudents = await _db.Students.CountAsync();
+        var totalCompanies = internships
+            .Select(i => i.CompanyId)
+            .Where(c => c.HasValue).Distinct().Count();
+
+        // ── Calculate statistics ────────────────────────────────────────────
+        var interning = internships.Count;
+        var completedCount = internships.Count(i =>
+            i.Status == InternshipStatus.Completed || i.Status == InternshipStatus.Graded);
+        var incompleteCount = interning - completedCount;
+        var notInterning = totalStudents - interning;
+
+        // Grade classification
+        var gradeCategories = new[]
+        {
+            "Xuất sắc", "Giỏi", "Khá", "Trung bình khá",
+            "Trung bình", "Yếu", "Không thực tập"
+        };
+        var gradeCounts = new Dictionary<string, int>();
+        foreach (var cat in gradeCategories) gradeCounts[cat] = 0;
+
+        foreach (var intern in internships)
+        {
+            if (evaluations.TryGetValue(intern.Id, out var eval))
+            {
+                var classification = ClassifyGrade(eval.FinalGrade);
+                gradeCounts[classification]++;
+            }
+            else
+            {
+                gradeCounts["Trung bình"]++;
+            }
+        }
+        gradeCounts["Không thực tập"] = notInterning;
+
+        int totalForPercent = totalStudents > 0 ? totalStudents : 1;
+
+        // Incomplete students
+        var incompleteStudents = internships
+            .Where(i => i.Status != InternshipStatus.Completed && i.Status != InternshipStatus.Graded)
+            .Select(i => i.Student)
+            .ToList();
+
+        // ── Build placeholder map ──────────────────────────────────────────
+        var placeholders = new Dictionary<string, string>
+        {
+            ["{{REPORT_DATE}}"] = DateTime.Now.ToString("dd/MM/yyyy"),
+            ["{{TOTAL_COMPANIES}}"] = totalCompanies.ToString(),
+            ["{{TOTAL_REGISTERED_STUDENTS}}"] = interning.ToString(),
+            ["{{TOTAL_COMPLETED_STUDENTS}}"] = completedCount.ToString(),
+            ["{{TOTAL_NOT_COMPLETED_STUDENTS}}"] = incompleteCount.ToString(),
+            ["{{TOTAL_STUDENTS}}"] = totalStudents.ToString(),
+            ["{{TOTAL_NOT_INTERNSHIP}}"] = notInterning.ToString(),
+        };
+
+        // Grade stats placeholders
+        foreach (var cat in gradeCategories)
+        {
+            int count = gradeCounts[cat];
+            double pct = Math.Round(count * 100.0 / totalForPercent, 1);
+            string key = cat switch
+            {
+                "Xuất sắc" => "EXCELLENT",
+                "Giỏi" => "GOOD",
+                "Khá" => "FAIR",
+                "Trung bình khá" => "AVERAGE_GOOD",
+                "Trung bình" => "AVERAGE",
+                "Yếu" => "WEAK",
+                "Không thực tập" => "NO_INTERNSHIP",
+                _ => cat.ToUpper()
+            };
+            placeholders[$"{{{{{key}_COUNT}}}}"] = count.ToString();
+            placeholders[$"{{{{{key}_PERCENT}}}}"] = $"{pct}%";
+        }
+
+        // ── Load Word template ─────────────────────────────────────────────
+        var templatePath = Path.Combine(
+            AppContext.BaseDirectory, "Templates",
+            "Bao cao tong ket cong tac thuc tap tot nghiep C22A.docx");
+
+        if (!File.Exists(templatePath))
+        {
+            throw new FileNotFoundException(
+                $"Word template not found at: {templatePath}", templatePath);
+        }
+
+        var templateBytes = await File.ReadAllBytesAsync(templatePath);
+        using var templateStream = new MemoryStream(templateBytes);
+
+        // Create a copy in memory to avoid modifying the original
+        using var outputStream = new MemoryStream();
+        templateStream.CopyTo(outputStream);
+        outputStream.Position = 0;
+
+        using (var doc = WordprocessingDocument.Open(outputStream, true))
+        {
+            var body = doc.MainDocumentPart?.Document?.Body;
+            if (body == null)
+                throw new InvalidOperationException("Word document has no body.");
+
+            // ── Replace all placeholders in paragraphs ──────────────────────
+            ReplacePlaceholdersInBody(body, placeholders);
+
+            // ── Populate the incomplete students table ──────────────────────
+            PopulateIncompleteStudentsTable(body, incompleteStudents);
+
+            doc.MainDocumentPart.Document.Save();
+        }
+
+        return outputStream.ToArray();
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Word document helpers
+    // ────────────────────────────────────────────────────────────────────────
+
+    private static void ReplacePlaceholdersInBody(
+        DocumentFormat.OpenXml.Wordprocessing.Body body,
+        Dictionary<string, string> placeholders)
+    {
+        // Process all paragraphs
+        foreach (var paragraph in body.Descendants<Paragraph>())
+        {
+            var fullText = string.Concat(paragraph.Descendants<Text>().Select(t => t.Text));
+            if (string.IsNullOrEmpty(fullText)) continue;
+
+            bool replaced = false;
+            foreach (var kvp in placeholders)
+            {
+                if (fullText.Contains(kvp.Key))
+                {
+                    fullText = fullText.Replace(kvp.Key, kvp.Value);
+                    replaced = true;
+                }
+            }
+
+            if (replaced)
+            {
+                // Preserve the first run's formatting
+                var firstRun = paragraph.Descendants<Run>().FirstOrDefault();
+                var rPr = firstRun?.RunProperties?.CloneNode(true) as RunProperties;
+
+                // Clear all runs and texts
+                foreach (var run in paragraph.Descendants<Run>().ToList())
+                    run.Remove();
+                foreach (var child in paragraph.ChildElements
+                    .Where(c => c is not ParagraphProperties).ToList())
+                    child.Remove();
+
+                // Rebuild with the replaced text, preserving formatting
+                var newRun = new Run();
+                if (rPr != null) newRun.Append(rPr);
+                newRun.Append(new Text(fullText) { Space = SpaceProcessingModeValues.Preserve });
+                paragraph.Append(newRun);
+            }
+        }
+
+        // Also process tables (cells may contain placeholders)
+        foreach (var table in body.Descendants<Table>())
+        {
+            foreach (var cell in table.Descendants<TableCell>())
+            {
+                foreach (var paragraph in cell.Descendants<Paragraph>())
+                {
+                    var fullText = string.Concat(
+                        paragraph.Descendants<Text>().Select(t => t.Text));
+                    if (string.IsNullOrEmpty(fullText)) continue;
+
+                    bool replaced = false;
+                    foreach (var kvp in placeholders)
+                    {
+                        if (fullText.Contains(kvp.Key))
+                        {
+                            fullText = fullText.Replace(kvp.Key, kvp.Value);
+                            replaced = true;
+                        }
+                    }
+
+                    if (replaced)
+                    {
+                        var firstRun = paragraph.Descendants<Run>().FirstOrDefault();
+                        var rPr = firstRun?.RunProperties?.CloneNode(true) as RunProperties;
+
+                        foreach (var run in paragraph.Descendants<Run>().ToList())
+                            run.Remove();
+                        foreach (var child in paragraph.ChildElements
+                            .Where(c => c is not ParagraphProperties).ToList())
+                            child.Remove();
+
+                        var newRun = new Run();
+                        if (rPr != null) newRun.Append(rPr);
+                        newRun.Append(new Text(fullText)
+                        {
+                            Space = SpaceProcessingModeValues.Preserve
+                        });
+                        paragraph.Append(newRun);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void PopulateIncompleteStudentsTable(
+        DocumentFormat.OpenXml.Wordprocessing.Body body,
+        List<Domain.Entities.Student> incompleteStudents)
+    {
+        // Find the incomplete students table by looking for a table containing
+        // "Chưa hoàn thành" or similar header text
+        var tables = body.Descendants<Table>().ToList();
+        Table? targetTable = null;
+
+        foreach (var table in tables)
+        {
+            var tableText = string.Concat(
+                table.Descendants<Text>().Select(t => t.Text));
+            if (tableText.Contains("Chưa hoàn thành") ||
+                tableText.Contains("chưa hoàn thành") ||
+                tableText.Contains("DANH SÁCH") && tableText.Contains("Lý do"))
+            {
+                targetTable = table;
+                break;
+            }
+        }
+
+        if (targetTable == null) return;
+
+        // Find the template data row (the row after headers that we can clone)
+        var rows = targetTable.Descendants<TableRow>().ToList();
+        if (rows.Count < 2) return;
+
+        // The last data row is the template row to clone
+        var templateRow = rows[^1];
+
+        if (incompleteStudents.Count == 0)
+        {
+            // Remove the template data row and add a "no data" message
+            templateRow.Remove();
+            return;
+        }
+
+        // Remove template row
+        templateRow.Remove();
+
+        // Add rows for each incomplete student
+        int stt = 1;
+        foreach (var student in incompleteStudents)
+        {
+            var newRow = templateRow.CloneNode(true) as TableRow;
+            if (newRow == null) continue;
+
+            var cells = newRow.Descendants<TableCell>().ToList();
+            if (cells.Count >= 4)
+            {
+                SetCellText(cells[0], stt.ToString());
+                SetCellText(cells[1], student.FullName);
+                SetCellText(cells[2], student.Class ?? "—");
+                SetCellText(cells[3], "Chưa hoàn thành báo cáo / thực tập");
+            }
+
+            targetTable.Append(newRow);
+            stt++;
+        }
+    }
+
+    private static void SetCellText(TableCell cell, string text)
+    {
+        // Get existing formatting from the cell
+        var existingPara = cell.Descendants<Paragraph>().FirstOrDefault();
+        var existingRun = existingPara?.Descendants<Run>().FirstOrDefault();
+        var rPr = existingRun?.RunProperties?.CloneNode(true) as RunProperties;
+
+        // Clear existing content
+        foreach (var para in cell.Descendants<Paragraph>().ToList())
+        {
+            foreach (var run in para.Descendants<Run>().ToList())
+                run.Remove();
+        }
+
+        // Set new text with formatting
+        var paragraph = cell.Descendants<Paragraph>().FirstOrDefault();
+        if (paragraph == null)
+        {
+            paragraph = new Paragraph();
+            cell.Append(paragraph);
+        }
+
+        var newRun = new Run();
+        if (rPr != null) newRun.Append(rPr);
+        newRun.Append(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+        paragraph.Append(newRun);
     }
 
     // ────────────────────────────────────────────────────────────────────────

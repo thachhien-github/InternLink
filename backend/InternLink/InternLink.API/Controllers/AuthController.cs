@@ -4,6 +4,7 @@ using InternLink.Application.Interfaces;
 using InternLink.Application.DTOs;
 using InternLink.API.Extensions;
 using InternLink.Shared.Responses;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace InternLink.API.Controllers;
 
@@ -34,9 +35,16 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "AccessToken and RefreshToken are required" }));
 
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var response = await _auth.RefreshTokenAsync(request, ipAddress);
-        return Ok(ApiResponse<LoginResponse>.Ok(response));
+        try
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var response = await _auth.RefreshTokenAsync(request, ipAddress);
+            return Ok(ApiResponse<LoginResponse>.Ok(response));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 
     [HttpPost("revoke-token")]
@@ -118,5 +126,32 @@ public class AuthController : ControllerBase
 
         await _auth.ResetPasswordAsync(request.Token, request.NewPassword);
         return Ok(ApiResponse<object>.Ok(null));
+    }
+
+    [HttpPost("avatar")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Image file is required" }));
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Only .jpg, .png, .webp files are supported" }));
+
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
+        Directory.CreateDirectory(uploadsDir);
+        var fileName = $"{userId}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream);
+
+        var avatarUrl = $"/uploads/avatars/{fileName}";
+        await _auth.UpdateAvatarAsync(userId.Value, avatarUrl);
+        return Ok(ApiResponse<object>.Ok(new { avatarUrl }));
     }
 }

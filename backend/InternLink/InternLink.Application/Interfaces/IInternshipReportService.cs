@@ -12,8 +12,13 @@ public interface IInternshipReportService
     Task<byte[]> ExportC23ExcelAsync(Guid? semesterId = null);
 
     /// <summary>
-    /// Export "Báo cáo tổng kết công tác thực tập tốt nghiệp" Word/PDF matching C22A template.
-    /// Contains summary metrics, grading distribution, incomplete students list, and formal signature blocks.
+    /// Export "Báo cáo tổng kết công tác thực tập tốt nghiệp" as Excel (fallback).
     /// </summary>
     Task<byte[]> ExportC22ASummaryReportAsync(Guid? semesterId = null);
+
+    /// <summary>
+    /// Export "Báo cáo tổng kết công tác thực tập tốt nghiệp" as Word (.docx)
+    /// using the C22A template with placeholder replacement and dynamic table population.
+    /// </summary>
+    Task<byte[]> ExportC22AWordReportAsync(Guid? semesterId = null);
 }

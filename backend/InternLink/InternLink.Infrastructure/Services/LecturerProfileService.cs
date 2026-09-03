@@ -27,14 +27,18 @@ public class LecturerProfileService : ILecturerProfileService
     private readonly IExcelService _excelService;
     private readonly ILogger<LecturerProfileService> _logger;
 
-    private static readonly string[] StaffCodeHeaders = ["magv", "ma gv", "staffcode", "staff code", "code", "ma giang vien", "msgv"];
-    private static readonly string[] FullNameHeaders = ["hoten", "ho ten", "ho va ten", "fullname", "full name", "tengiangvien", "ten giang vien", "ho va ten giang vien"];
-    private static readonly string[] HoHeaders = ["ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname"];
-    private static readonly string[] TenHeaders = ["ten", "tên", "first name", "firstname"];
-    private static readonly string[] EmailHeaders = ["email", "e-mail"];
-    private static readonly string[] PhoneHeaders = ["phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại"];
-    private static readonly string[] DepartmentHeaders = ["bomon", "bo mon", "department", "khoa", "bo mon / khoa", "bo mon/khoa"];
-    private static readonly string[] UsernameHeaders = ["username", "tendangnhap", "ten dang nhap"];
+    // Fuzzy matching definitions for lecturer columns
+    private static readonly Dictionary<string, ColumnDefinition> LecturerColumns = new()
+    {
+        [nameof(Col.StaffCode)] = new("magv", "ma gv", "staffcode", "staff code", "code", "ma giang vien", "msgv", "ma giang vien", "staff number", "ma so gv", "ma so giao vien", "employee id", "employeeid"),
+        [nameof(Col.FullName)] = new("hoten", "ho ten", "ho va ten", "fullname", "full name", "tengiangvien", "ten giang vien", "ho va ten giang vien", "ten giao vien", "họ tên", "họ và tên"),
+        [nameof(Col.Ho)] = new("ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname", "họ và đệm"),
+        [nameof(Col.Ten)] = new("ten", "tên", "first name", "firstname", "ten goi", "tên gọi"),
+        [nameof(Col.Email)] = new("email", "e-mail", "thu dien tu", "thư điện tử", "email address", "email gv"),
+        [nameof(Col.Phone)] = new("phone", "sdt", "sđt", "dien thoai", "điện thoại", "so dien thoai", "số điện thoại", "phone number", "sdt lien he", "so dt"),
+        [nameof(Col.Department)] = new("bomon", "bo mon", "department", "khoa", "bo mon / khoa", "bo mon/khoa", "bo mon chuyen mon", "khoa / bo mon", "department name", "bo mon dao tao"),
+        [nameof(Col.Username)] = new("username", "tendangnhap", "ten dang nhap", "tai khoan", "tài khoản", "user name", "login"),
+    };
 
     public LecturerProfileService(
         AppDbContext db,
@@ -659,50 +663,21 @@ public class LecturerProfileService : ILecturerProfileService
 
     private static Dictionary<Col, int> BuildColumnMap(IXLRangeRow headerRow)
     {
-        var map = new Dictionary<Col, int>();
-        foreach (var cell in headerRow.CellsUsed())
-        {
-            var header = NormalizeHeader(cell.GetString());
-            if (string.IsNullOrEmpty(header)) continue;
+        // Use fuzzy column matcher with expanded aliases
+        var fuzzyResult = FuzzyColumnMatcher.Match(headerRow, LecturerColumns, minScore: 50);
 
-            if (!map.ContainsKey(Col.StaffCode) && StaffCodeHeaders.Contains(header))
-                map[Col.StaffCode] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.FullName) && FullNameHeaders.Contains(header))
-                map[Col.FullName] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Ho) && HoHeaders.Contains(header))
-                map[Col.Ho] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Ten) && TenHeaders.Contains(header))
-                map[Col.Ten] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Email) && EmailHeaders.Contains(header))
-                map[Col.Email] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Phone) && PhoneHeaders.Contains(header))
-                map[Col.Phone] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Department) && DepartmentHeaders.Contains(header))
-                map[Col.Department] = cell.Address.ColumnNumber;
-            else if (!map.ContainsKey(Col.Username) && UsernameHeaders.Contains(header))
-                map[Col.Username] = cell.Address.ColumnNumber;
+        // Map string keys back to enum
+        var map = new Dictionary<Col, int>();
+        foreach (var kvp in fuzzyResult)
+        {
+            if (Enum.TryParse<Col>(kvp.Key, out var col))
+                map[col] = kvp.Value;
         }
         return map;
     }
 
-    private static string NormalizeHeader(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var normalized = RemoveDiacritics(value.Trim().ToLowerInvariant());
-        return Regex.Replace(normalized, @"\s+", " ");
-    }
-
-    private static string RemoveDiacritics(string text)
-    {
-        var formD = text.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(formD.Length);
-        foreach (var ch in formD)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                sb.Append(ch);
-        }
-        return sb.ToString().Normalize(NormalizationForm.FormC).Replace('đ', 'd').Replace('Đ', 'D');
-    }
+    private static string NormalizeHeader(string value) =>
+        FuzzyColumnMatcher.NormalizeHeader(value);
 
     private static string? GetCell(IXLRangeRow row, Dictionary<Col, int> map, Col column)
     {
