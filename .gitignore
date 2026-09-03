@@ -47,3 +47,9 @@ backend/**/uploads/
 .agents/
 .hallmark/
 skills-lock.json
+
+# IDE metadata
+metadata.json
+
+# Bun lockfile (project uses npm)
+bun.lock

@@ -13,6 +13,7 @@
     "test": "npm run test --workspace=frontend"
   },
   "dependencies": {
-    "@microsoft/signalr": "^10.0.11"
+    "@microsoft/signalr": "^10.0.11",
+    "freebuff": "^0.0.161"
   }
 }
