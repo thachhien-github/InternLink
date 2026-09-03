@@ -24,6 +24,10 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<EvaluationRubric> EvaluationRubrics { get; set; } = null!;
+    public DbSet<EvaluationRubricCriterion> EvaluationRubricCriteria { get; set; } = null!;
+    public DbSet<SystemSetting> SystemSettings { get; set; } = null!;
+    public DbSet<AccountRequest> AccountRequests { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -216,6 +220,8 @@ public class AppDbContext : DbContext
             b.Property(x => x.Title).IsRequired().HasMaxLength(200);
             b.Property(x => x.Content).IsRequired().HasMaxLength(2000);
             b.Property(x => x.Link).HasMaxLength(500);
+            b.Property(x => x.AttachmentUrl).HasMaxLength(1000);
+            b.Property(x => x.AttachmentName).HasMaxLength(250);
             b.Property(x => x.IsRead).HasDefaultValue(false);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
@@ -250,6 +256,79 @@ public class AppDbContext : DbContext
             b.HasOne(x => x.User).WithMany(u => u.RefreshTokens).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(x => x.Token).IsUnique();
             b.HasIndex(x => new { x.UserId, x.IsRevoked, x.IsUsed });
+        });
+
+        modelBuilder.Entity<EvaluationRubric>(b =>
+        {
+            b.ToTable("EvaluationRubrics");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("EvaluationRubricId");
+            b.Property(x => x.Name).IsRequired().HasMaxLength(250);
+            b.Property(x => x.ApplicationMode).HasDefaultValue(RubricApplicationMode.Required);
+            b.Property(x => x.Status).HasDefaultValue(RubricStatus.Draft);
+            b.Property(x => x.RejectionReason).HasMaxLength(1000);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.Semester).WithOne(s => s.EvaluationRubric).HasForeignKey<EvaluationRubric>(x => x.SemesterId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne(x => x.SubmittedBy).WithMany().HasForeignKey(x => x.SubmittedById).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne(x => x.ApprovedBy).WithMany().HasForeignKey(x => x.ApprovedById).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<EvaluationRubricCriterion>(b =>
+        {
+            b.ToTable("EvaluationRubricCriteria");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("EvaluationRubricCriterionId");
+            b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Description).HasMaxLength(500);
+            b.Property(x => x.Weight).IsRequired().HasPrecision(5, 2);
+            b.Property(x => x.MaxScore).HasDefaultValue(10);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.Rubric).WithMany(r => r.Criteria).HasForeignKey(x => x.RubricId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Extend Evaluation with CriteriaScoresJson and RubricId
+        modelBuilder.Entity<Evaluation>(b =>
+        {
+            b.Property(x => x.CriteriaScoresJson).HasMaxLength(8000);
+            b.HasOne(x => x.Rubric).WithMany().HasForeignKey(x => x.RubricId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<AccountRequest>(b =>
+        {
+            b.ToTable("AccountRequests");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("AccountRequestId");
+            b.Property(x => x.RequesterCode).IsRequired().HasMaxLength(50);
+            b.Property(x => x.RequesterName).IsRequired().HasMaxLength(200);
+            b.Property(x => x.RequesterEmail).HasMaxLength(200);
+            b.Property(x => x.RequesterPhone).HasMaxLength(50);
+            b.Property(x => x.DepartmentOrClass).HasMaxLength(200);
+            b.Property(x => x.RequestType).IsRequired().HasMaxLength(100);
+            b.Property(x => x.Description).HasMaxLength(2000);
+            b.Property(x => x.Priority).HasMaxLength(20);
+            b.Property(x => x.Status).HasDefaultValue(AccountRequestStatus.Pending);
+            b.Property(x => x.ProcessorName).HasMaxLength(200);
+            b.Property(x => x.AdminNote).HasMaxLength(2000);
+            b.Property(x => x.AttachmentUrl).HasMaxLength(1000);
+            b.Property(x => x.AttachmentName).HasMaxLength(250);
+            b.Property(x => x.RequestedChangesJson).HasMaxLength(4000);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.RequesterUser).WithMany().HasForeignKey(x => x.RequesterUserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.RequesterCode);
+        });
+
+        modelBuilder.Entity<SystemSetting>(b =>
+        {
+            b.ToTable("SystemSettings");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("SystemSettingId");
+            b.Property(x => x.Key).IsRequired().HasMaxLength(100);
+            b.Property(x => x.Value).IsRequired().HasMaxLength(4000);
+            b.Property(x => x.Category).HasMaxLength(50);
+            b.Property(x => x.Description).HasMaxLength(500);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasIndex(x => x.Key).IsUnique();
         });
     }
 }

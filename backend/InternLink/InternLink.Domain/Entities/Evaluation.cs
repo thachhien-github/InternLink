@@ -68,10 +68,75 @@ public class Evaluation : BaseEntity
     public bool IsFinalized { get; set; } = false;
 
     /// <summary>
-    /// Calculate overall grade as average of 4 scores
+    /// The rubric used when this evaluation was created.
+    /// Null for legacy evaluations or when lecturer uses custom criteria.
+    /// </summary>
+    public Guid? RubricId { get; set; }
+    public EvaluationRubric? Rubric { get; set; }
+
+    /// <summary>
+    /// JSON-serialized criteria scores.
+    /// Format: [{ "criterionId": "...", "criterionName": "...", "weight": 40, "maxScore": 10, "score": 8, "comment": "..." }]
+    /// Used when rubric is configured; null for legacy 4-field evaluations.
+    /// </summary>
+    public string? CriteriaScoresJson { get; set; }
+
+    /// <summary>
+    /// Calculate overall grade as average of 4 scores (legacy mode)
     /// </summary>
     public void CalculateFinalGrade()
     {
         FinalGrade = Math.Round((TechnicalScore + CommunicationScore + TeamworkScore + InitiativeScore) / 4.0m, 2);
+    }
+
+    /// <summary>
+    /// Calculate final grade from criteria JSON using rubric weights.
+    /// Called when CriteriaScoresJson is populated.
+    /// </summary>
+    public void CalculateFinalGradeFromCriteria()
+    {
+        if (string.IsNullOrWhiteSpace(CriteriaScoresJson))
+        {
+            CalculateFinalGrade();
+            return;
+        }
+
+        try
+        {
+            var scores = System.Text.Json.JsonSerializer.Deserialize<List<CriteriaScoreEntry>>(CriteriaScoresJson);
+            if (scores == null || scores.Count == 0)
+            {
+                CalculateFinalGrade();
+                return;
+            }
+
+            decimal totalWeight = scores.Sum(s => s.Weight);
+            if (totalWeight <= 0) totalWeight = 100;
+
+            decimal weightedSum = scores.Sum(s =>
+            {
+                decimal normalizedScore = s.MaxScore > 0 ? s.Score / (decimal)s.MaxScore : 0;
+                return normalizedScore * s.Weight;
+            });
+
+            FinalGrade = Math.Round(weightedSum / totalWeight * 10, 2);
+        }
+        catch
+        {
+            CalculateFinalGrade();
+        }
+    }
+
+    /// <summary>
+    /// Helper model for JSON deserialization of criteria scores
+    /// </summary>
+    private class CriteriaScoreEntry
+    {
+        public Guid? CriterionId { get; set; }
+        public string CriterionName { get; set; } = "";
+        public decimal Weight { get; set; }
+        public int MaxScore { get; set; } = 10;
+        public int Score { get; set; }
+        public string? Comment { get; set; }
     }
 }

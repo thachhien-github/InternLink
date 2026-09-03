@@ -14,4 +14,9 @@ public class Semester : BaseEntity
     public int MaxStudentsPerLecturer { get; set; } = 30;
 
     public ICollection<Internship> Internships { get; set; } = new List<Internship>();
+
+    /// <summary>
+    /// The evaluation rubric configured for this semester (at most one)
+    /// </summary>
+    public EvaluationRubric? EvaluationRubric { get; set; }
 }
