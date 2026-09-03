@@ -100,6 +100,9 @@ public static class DependencyInjection
         // Evaluation and grading service
         services.AddScoped<InternLink.Application.Interfaces.IEvaluationService, InternLink.Infrastructure.Services.EvaluationService>();
 
+        // Evaluation rubric management
+        services.AddScoped<InternLink.Application.Interfaces.IRubricService, InternLink.Infrastructure.Services.RubricService>();
+
         // Submission and feedback service
         services.AddScoped<InternLink.Application.Interfaces.ISubmissionService, InternLink.Infrastructure.Services.SubmissionService>();
 
@@ -122,6 +125,12 @@ public static class DependencyInjection
 
         // User management (Admin)
         services.AddScoped<IUserManagementService, InternLink.Infrastructure.Services.UserManagementService>();
+
+        // System settings (DB-backed)
+        services.AddScoped<Application.Interfaces.ISettingsService, Services.SettingsService>();
+
+        // Account requests management
+        services.AddScoped<IAccountRequestService, Services.AccountRequestService>();
 
         // Student–lecturer assignment (Admin)
         services.AddScoped<IAssignmentService, InternLink.Infrastructure.Services.AssignmentService>();
