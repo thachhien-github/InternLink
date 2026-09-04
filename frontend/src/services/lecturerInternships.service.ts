@@ -18,6 +18,11 @@ export const lecturerInternshipsService = {
     );
   },
 
+  getAllSubmissions(semesterId?: string): Promise<SubmissionDto[]> {
+    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<SubmissionDto[]>(`/api/Lecturer/submissions${params}`);
+  },
+
   addFeedback(
     submissionId: string,
     body: { comment: string; isPublic?: boolean; newStatus?: string },

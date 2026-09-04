@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { adminSemestersService, type BackendSemesterDto } from "../services/adminSemesters.service";
-import { adminStudentsService } from "../services/adminStudents.service";
-import { adminLecturersService } from "../services/adminLecturers.service";
-import { adminCompaniesService } from "../services/adminCompanies.service";
+import { getStoredToken } from "../lib/apiClient";
 
 export interface Semester {
   id: string;
@@ -78,42 +76,13 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
 
   const refreshApiCounts = useCallback(async () => {
+    if (!getStoredToken()) return;
     try {
-      // 1. Try to fetch from real backend Semesters API
       const backendSemesters = await adminSemestersService.getAll().catch(() => null);
       if (Array.isArray(backendSemesters) && backendSemesters.length > 0) {
         const mapped = backendSemesters.map(mapBackendToFrontend);
         setSemesters(mapped);
-        return;
       }
-
-      // 2. Fallback: Aggregate counts from student/lecturer/company APIs
-      const [studentsRes, lecturersRes, companiesRes] = await Promise.all([
-        adminStudentsService.getAll(0, 500).catch(() => null),
-        adminLecturersService.getAll(0, 500).catch(() => null),
-        adminCompaniesService.getAll(0, 500).catch(() => null),
-      ]);
-
-      const totalStudents = Array.isArray(studentsRes) ? studentsRes.length : 0;
-      const totalLecturers = Array.isArray(lecturersRes) ? lecturersRes.length : 0;
-      const totalCompanies = Array.isArray(companiesRes) ? companiesRes.length : 0;
-      const placed = Array.isArray(studentsRes)
-        ? studentsRes.filter((s) => s.lecturerName && s.lecturerName !== "—").length
-        : 0;
-
-      setSemesters((prev) =>
-        prev.map((s, idx) =>
-          idx === 0
-            ? {
-                ...s,
-                studentsCount: totalStudents,
-                lecturersCount: totalLecturers,
-                companiesCount: totalCompanies,
-                placedStudents: placed,
-              }
-            : s,
-        ),
-      );
     } catch (err) {
       console.warn("Error refreshing semester API counts:", err);
     }

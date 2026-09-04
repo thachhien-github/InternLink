@@ -16,6 +16,11 @@ export const weeklyReportService = {
     );
   },
 
+  getAllForLecturer(semesterId?: string): Promise<WeeklyReportDto[]> {
+    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<WeeklyReportDto[]>(`/api/Lecturer/weekly-reports${params}`);
+  },
+
   create(body: CreateWeeklyReportRequestDto): Promise<WeeklyReportDto> {
     return apiRequest<WeeklyReportDto>("/api/WeeklyReport", {
       method: "POST",

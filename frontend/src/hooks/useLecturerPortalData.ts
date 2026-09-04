@@ -31,10 +31,17 @@ export function useLecturerPortalData(
     if (!enabled) return;
     setIsLoading(true);
     try {
-      const [internships, companies] = await Promise.all([
-        lecturerInternshipsService.getAll(semesterId ?? undefined),
-        lecturerCompaniesService.getAll(semesterId ?? undefined),
-      ]);
+      const [internships, companies, allSubmissions, allWeeklyReports] =
+        await Promise.all([
+          lecturerInternshipsService.getAll(semesterId ?? undefined),
+          lecturerCompaniesService.getAll(semesterId ?? undefined),
+          lecturerInternshipsService
+            .getAllSubmissions(semesterId ?? undefined)
+            .catch(() => []),
+          weeklyReportService
+            .getAllForLecturer(semesterId ?? undefined)
+            .catch(() => []),
+        ]);
 
       const studentRows = internships.map((i) =>
         mapInternshipDtoToStudent(i, lecturerName),
@@ -51,39 +58,18 @@ export function useLecturerPortalData(
         ]),
       );
 
-      // Chunk requests in small batches to stay within browser socket limit
-      const chunkSize = 5;
-      const submissionGroups = [];
-      for (let i = 0; i < internships.length; i += chunkSize) {
-        const chunk = internships.slice(i, i + chunkSize);
-        const res = await Promise.all(
-          chunk.map((item) =>
-            lecturerInternshipsService.getSubmissions(item.id).catch(() => []),
-          ),
-        );
-        submissionGroups.push(...res);
-      }
-
-      const weeklyGroups = [];
-      for (let i = 0; i < internships.length; i += chunkSize) {
-        const chunk = internships.slice(i, i + chunkSize);
-        const res = await Promise.all(
-          chunk.map((item) =>
-            weeklyReportService.getByInternship(item.id).catch(() => []),
-          ),
-        );
-        weeklyGroups.push(...res);
-      }
-
-      const submissionRows = submissionGroups.flatMap((group, idx) => {
-        const internshipId = internships[idx]?.id;
-        const ctx = internshipId ? internshipCtx.get(internshipId) : undefined;
-        return group.map((s) => mapSubmissionDtoToRow(s, ctx ?? {}));
+      const submissionRows = allSubmissions.map((s) => {
+        const ctx = s.internshipId ? internshipCtx.get(s.internshipId) : undefined;
+        return mapSubmissionDtoToRow(s, ctx ?? {
+          studentName: s.internship?.student?.fullName,
+          mssv: s.internship?.student?.studentCode,
+          company: s.internship?.company?.companyName,
+        });
       });
 
       setStudents(studentRows);
       setSubmissions(submissionRows);
-      setWeeklyReports(weeklyGroups.flat());
+      setWeeklyReports(allWeeklyReports);
       setEnterprises(companies.map(mapCompanyDtoToEnterprise));
     } catch (err) {
       onError?.(getApiErrorMessage(err));
