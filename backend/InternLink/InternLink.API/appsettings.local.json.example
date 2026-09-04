@@ -1,0 +1,12 @@
+{
+  "Email": {
+    "Enabled": true,
+    "Password": "<YOUR_GMAIL_APP_PASSWORD>"
+  },
+  "Jwt": {
+    "Secret": "<YOUR_JWT_SECRET_KEY>"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.;Database=InternLink;User Id=sa;Password=<YOUR_SA_PASSWORD>;TrustServerCertificate=True;MultipleActiveResultSets=true"
+  }
+}
