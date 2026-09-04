@@ -276,6 +276,7 @@ export function AppRoutes() {
                       weeklyTrendData={appState.weeklyTrendData}
                       onShowToast={showToast}
                       onNavigate={(tab) => navigate(`/lecturer/${tab}`)}
+                      onRefresh={appState.refresh}
                     />
                   }
                 />

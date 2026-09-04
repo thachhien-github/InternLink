@@ -139,7 +139,7 @@ export function useRealAppState(
       value: counts.submitted,
       target: assignedStudents.length || 0,
     }));
-  }, [lecturerPortal.weeklyReports, assignedStudents.length]);
+  }, [lecturerPortal.weeklyReports, assignedStudents]);
 
   return {
     currentLecturer,
@@ -172,5 +172,6 @@ export function useRealAppState(
     weeklyReports: lecturerPortal.weeklyReports,
     handleUpdateSubmissionStatus,
     handleReviewWeeklyReport,
+    refresh: lecturerPortal.refresh,
   };
 }

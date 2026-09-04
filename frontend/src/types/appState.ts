@@ -39,4 +39,5 @@ export interface AppState {
   lecturerEnterprises?: any[];
   handleUpdateSubmissionStatus: (submissionId: string, status: string) => void;
   handleReviewWeeklyReport: (reportId: string, status: string, feedback: string) => void;
+  refresh?: () => Promise<void>;
 }

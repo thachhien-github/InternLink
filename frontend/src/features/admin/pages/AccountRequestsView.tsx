@@ -48,6 +48,7 @@ export const AccountRequestsView = ({
   const [requests, setRequests] = useState<any[]>([]);
   const [userAccounts, setUserAccounts] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Map API DTO to local UI format
   const mapDtoToRequest = useCallback((dto: AccountRequestDto) => ({
@@ -98,7 +99,6 @@ export const AccountRequestsView = ({
   const [processActionType, setProcessActionType] = useState(null);
   const [adminNoteInput, setAdminNoteInput] = useState("");
   const [generatedTempPass, setGeneratedTempPass] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [newAccCode, setNewAccCode] = useState("");
   const [newAccName, setNewAccName] = useState("");

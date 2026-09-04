@@ -26,6 +26,7 @@ export const DashboardView = ({
   weeklyTrendData = [],
   onShowToast,
   onNavigate,
+  onRefresh,
 }: {
   actionItems: ActionItem[];
   deadlines: Deadline[];
@@ -41,6 +42,7 @@ export const DashboardView = ({
   weeklyTrendData?: { label: string; value: number; target?: number }[];
   onShowToast: (msg: string) => void;
   onNavigate: (tab: string) => void;
+  onRefresh?: () => Promise<void> | void;
 }) => {
   const { selectedSemester } = useSemester();
   const statusSlices = buildLecturerStatusSlices(stats);
@@ -55,7 +57,10 @@ export const DashboardView = ({
           {
             label: "Làm mới",
             icon: RefreshCw,
-            onClick: () => onShowToast("Đã làm mới dữ liệu tổng quan"),
+            onClick: async () => {
+              if (onRefresh) await onRefresh();
+              onShowToast("Đã làm mới dữ liệu tổng quan");
+            },
             variant: "secondary",
           },
         ]}
