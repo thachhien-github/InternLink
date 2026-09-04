@@ -167,6 +167,8 @@ export function mapInternshipDtoToStudent(
     lastReportName: "—",
     lastReportDate: "—",
     updatedAt: formatViDate(i.endDate),
+    startDate: i.startDate ?? undefined,
+    endDate: i.endDate ?? undefined,
     notesCount: 0,
     chatCount: 0,
   };

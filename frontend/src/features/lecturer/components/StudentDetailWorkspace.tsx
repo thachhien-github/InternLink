@@ -311,7 +311,9 @@ export const StudentDetailWorkspace = ({
                 </span>
                 <span className="font-bold text-slate-800 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                  12 tuần (01/08/2026 → 30/11/2026)
+                  {student.startDate && student.endDate
+                    ? `${new Date(student.startDate).toLocaleDateString("vi-VN")} → ${new Date(student.endDate).toLocaleDateString("vi-VN")}`
+                    : "Theo kế hoạch học kỳ thực tập"}
                 </span>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { Printer, Download, X, Award, CheckCircle2, Building, User, Calendar } from "lucide-react";
+import { useSemester } from "../../../contexts/SemesterContext";
 
 export interface StudentEvaluationItem {
   id: string;
@@ -39,6 +40,13 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
   evaluatorName,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const { selectedSemester } = useSemester();
+
+  // Use the real selected semester instead of a hardcoded academic year.
+  const term = selectedSemester?.term?.trim();
+  const academicYear = selectedSemester?.academicYear?.trim();
+  const studyPeriodLabel =
+    term && academicYear ? `${term}, Năm học ${academicYear}` : "";
 
   const handlePrint = () => {
     window.print();
@@ -145,8 +153,8 @@ export const EvaluationPdfModal: React.FC<EvaluationPdfModalProps> = ({
               PHIẾU ĐÁNH GIÁ KẾT QUẢ THỰC TẬP TỐT NGHIỆP
             </h1>
             <p className="text-xs italic text-slate-600 font-sans">
-              (Áp dụng cho sinh viên bậc Đại học chính quy – Học kỳ I, Năm học
-              2025 - 2026)
+              (Áp dụng cho sinh viên bậc Đại học chính quy
+              {studyPeriodLabel && <> – {studyPeriodLabel}</>})
             </p>
           </div>
 

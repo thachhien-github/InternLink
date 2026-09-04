@@ -17,6 +17,9 @@ export interface Student {
   avatar: string;
   email?: string;
   phone?: string;
+  /** Internship period (ISO dates), when known. */
+  startDate?: string;
+  endDate?: string;
   lastReportName: string;
   lastReportDate: string;
   updatedAt: string;

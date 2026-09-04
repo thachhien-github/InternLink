@@ -230,6 +230,7 @@ public class LecturerRubricController : ControllerBase
                     PendingReportCount = 0,
                     SubmissionCount = 0,
                     FinalGrade = ev?.FinalGrade,
+                    EvaluatedAt = ev?.EvaluatedAt,
                     HasEvaluation = ev != null,
                     IsEvaluationFinalized = ev?.IsFinalized ?? false,
                     ProgressPercent = i.Status == InternLink.Domain.Enums.InternshipStatus.Completed ? 100
@@ -271,6 +272,7 @@ public class LecturerEvaluationStudentDto
     public int PendingReportCount { get; set; }
     public int SubmissionCount { get; set; }
     public decimal? FinalGrade { get; set; }
+    public DateTime? EvaluatedAt { get; set; }
     public bool HasEvaluation { get; set; }
     public bool IsEvaluationFinalized { get; set; }
     public int ProgressPercent { get; set; }

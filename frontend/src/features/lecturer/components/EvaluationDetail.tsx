@@ -86,6 +86,13 @@ export const EvaluationDetail = ({
   const handlePrint = () => {
     window.print();
   };
+
+  // Real evaluation state from backend (LecturerRubricController.GetLecturerStudents)
+  const hasEvaluation = Boolean(student.hasEvaluation);
+  const isFinalized = Boolean(student.isEvaluationFinalized);
+  const auditDate = student.evaluatedAt
+    ? new Date(student.evaluatedAt).toLocaleDateString("vi-VN")
+    : null;
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-16 font-sans">
       {/* Toast Alert */}
@@ -527,48 +534,66 @@ export const EvaluationDetail = ({
           <span>7. Lịch sử trạng thái phiếu đánh giá (Audit History)</span>
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-          {/* Step 1: Draft */}
-          <div className="p-3 bg-emerald-50 rounded-md border border-emerald-200 relative">
-            <div className="flex items-center justify-between text-emerald-800 font-bold mb-1">
-              <span>1. Tạo nháp (Draft)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-[10px] text-emerald-700">
-              15/10/2026 • Giảng viên tạo phiếu
-            </p>
-          </div>
-
-          {/* Step 2: Submitted */}
-          <div className="p-3 bg-emerald-50 rounded-md border border-emerald-200 relative">
-            <div className="flex items-center justify-between text-emerald-800 font-bold mb-1">
-              <span>2. Đã nộp (Submitted)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-[10px] text-emerald-700">
-              23/10/2026 • DN &amp; SV hoàn tất
-            </p>
-          </div>
-
-          {/* Step 3: Edited */}
-          <div className="p-3 bg-emerald-50 rounded-md border border-emerald-200 relative">
-            <div className="flex items-center justify-between text-emerald-800 font-bold mb-1">
-              <span>3. Chỉnh sửa (Edited)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-[10px] text-emerald-700">
-              25/10/2026 • Cập nhật điểm Hội đồng
-            </p>
-          </div>
-
-          {/* Step 4: Completed */}
-          <div className="p-3 bg-blue-600 text-white rounded-md shadow-md relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          {/* Step 1: Khởi tạo phiếu đánh giá */}
+          <div
+            className={`p-3 rounded-md border relative ${
+              hasEvaluation
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-slate-50 border-slate-200"
+            }`}
+          >
             <div className="flex items-center justify-between font-bold mb-1">
-              <span>4. Hoàn thành (Completed)</span>
-              <Check className="w-4 h-4 text-white" />
+              <span
+                className={hasEvaluation ? "text-emerald-800" : "text-slate-500"}
+              >
+                1. Khởi tạo phiếu đánh giá
+              </span>
+              <CheckCircle2
+                className={`w-4 h-4 ${
+                  hasEvaluation ? "text-emerald-600" : "text-slate-300"
+                }`}
+              />
             </div>
-            <p className="text-[10px] text-blue-100">
-              26/10/2026 • Phê duyệt chính thức
+            <p
+              className={`text-[10px] ${
+                hasEvaluation ? "text-emerald-700" : "text-slate-400"
+              }`}
+            >
+              {hasEvaluation
+                ? `${auditDate ?? "Đã tạo"} • Giảng viên tạo & chấm điểm`
+                : "Chưa tạo phiếu"}
+            </p>
+          </div>
+
+          {/* Step 2: Chốt điểm chính thức */}
+          <div
+            className={`p-3 rounded-md border relative ${
+              isFinalized
+                ? "bg-blue-600 border-blue-600 shadow-md"
+                : "bg-slate-50 border-slate-200"
+            }`}
+          >
+            <div className="flex items-center justify-between font-bold mb-1">
+              <span
+                className={isFinalized ? "text-white" : "text-slate-500"}
+              >
+                2. Chốt điểm chính thức
+              </span>
+              <Check
+                className={`w-4 h-4 ${isFinalized ? "text-white" : "text-slate-300"}`}
+              />
+            </div>
+            <p
+              className={`text-[10px] ${
+                isFinalized ? "text-blue-100" : "text-slate-400"
+              }`}
+            >
+              {isFinalized
+                ? `${auditDate ?? "Đã chốt"} • Phê duyệt chính thức`
+                : hasEvaluation
+                  ? "Phiếu đang ở trạng thái nháp"
+                  : "Chưa thực hiện"}
             </p>
           </div>
         </div>

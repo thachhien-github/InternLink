@@ -445,6 +445,9 @@ export const EvaluationDashboard = () => {
                                   lecturerComments: s.finalGrade != null ? `Điểm: ${s.finalGrade}` : "",
                                   gradeClassification: getClassification(s.finalGrade)?.label ?? "",
                                   internshipId: s.internshipId,
+                                  evaluatedAt: s.evaluatedAt,
+                                  hasEvaluation: s.hasEvaluation,
+                                  isEvaluationFinalized: s.isEvaluationFinalized,
                                 });
                               }}
                               className="p-1.5 hover:bg-blue-100 rounded-lg text-blue-700 transition-colors"

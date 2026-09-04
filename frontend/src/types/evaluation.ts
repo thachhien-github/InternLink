@@ -100,6 +100,7 @@ export interface LecturerEvaluationStudentDto {
   pendingReportCount?: number;
   submissionCount?: number;
   finalGrade?: number | null;
+  evaluatedAt?: string | null;
   hasEvaluation: boolean;
   isEvaluationFinalized: boolean;
   progressPercent: number;
