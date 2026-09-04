@@ -279,5 +279,49 @@ public class LecturerServiceTests
         bytes.Should().NotBeNull();
         bytes.Length.Should().BeGreaterThan(100);
     }
+
+    [Fact]
+    public async Task RemindStudentAsync_ShouldCreateNotification_WhenStudentAssigned()
+    {
+        var db = GetDb();
+        var (lecturerUser, _, internship1, _) = await SeedLecturerDataAsync(db);
+        var studentUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = "student1",
+            PasswordHash = "hash",
+            Role = Role.Student,
+            FullName = "Tran Van B",
+            Email = "student1@uni.edu.vn",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Users.Add(studentUser);
+        internship1.Student.UserId = studentUser.Id;
+        await db.SaveChangesAsync();
+
+        var notificationServiceMock = new Mock<INotificationService>();
+        var service = new LecturerService(db, _mapper, notificationServiceMock.Object);
+
+        var result = await service.RemindStudentAsync(lecturerUser.Id, internship1.StudentId, "Custom Title", "Custom Message");
+
+        result.Should().BeTrue();
+        notificationServiceMock.Verify(n => n.CreateAsync(It.Is<CreateNotificationRequest>(r =>
+            r.UserId == studentUser.Id &&
+            r.Title == "Custom Title" &&
+            r.Content == "Custom Message" &&
+            r.Link == "/student/dashboard")), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemindStudentAsync_ShouldReturnFalse_WhenStudentNotAssigned()
+    {
+        var db = GetDb();
+        var (lecturerUser, _, _, _) = await SeedLecturerDataAsync(db);
+        var service = new LecturerService(db, _mapper, Mock.Of<INotificationService>());
+
+        var result = await service.RemindStudentAsync(lecturerUser.Id, Guid.NewGuid());
+
+        result.Should().BeFalse();
+    }
 }
 

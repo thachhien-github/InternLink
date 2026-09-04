@@ -261,6 +261,32 @@ public class LecturerController : ControllerBase
     }
 
     /// <summary>
+    /// Send a reminder notification to a specific assigned student
+    /// </summary>
+    [HttpPost("students/{id:guid}/remind")]
+    [HttpPost("internships/{id:guid}/remind")]
+    [HttpPost("students/{id:guid}/notify")]
+    public async Task<IActionResult> RemindStudent(Guid id, [FromBody] RemindStudentRequest? request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var sent = await _lecturerService.RemindStudentAsync(userId.Value, id, request?.Title, request?.Message);
+            if (!sent)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student/Internship not found or access denied" }));
+
+            return Ok(ApiResponse<object>.Ok(new { message = "Reminder sent successfully" }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    /// <summary>
     /// Get all submissions for students assigned to current lecturer
     /// </summary>
     [HttpGet("submissions")]

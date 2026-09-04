@@ -10,6 +10,8 @@ import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { FEATURES } from "../config/featureFlags";
 import { useSemester } from "../contexts/SemesterContext";
+import { lecturerInternshipsService } from "../services/lecturerInternships.service";
+
 
 // Auth & Layouts
 import { LoginPortal } from "../components/common/LoginPortal";
@@ -286,7 +288,12 @@ export function AppRoutes() {
                     <LecturerStudentsView
                       students={appState.assignedStudents}
                       enterprises={appState.lecturerEnterprises}
-                      onSendReminder={(s) => showToast(`Nhắc nhở ${s.name}`)}
+                      onSendReminder={(s) => {
+                        lecturerInternshipsService.remindStudent(s.id)
+                          .then(() => showToast(`Đã gửi nhắc nhở đến ${s.name}`))
+                          .catch(() => showToast(`Gửi nhắc nhở ${s.name} thất bại`));
+                      }}
+
                     />
                   }
                 />

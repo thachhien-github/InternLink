@@ -19,8 +19,9 @@ public interface ILecturerService
     // Student notes
     Task<bool> UpdateStudentNotesAsync(Guid userId, Guid internshipId, string notes);
 
-    // Bulk notify
+    // Bulk notify & individual remind
     Task<int> NotifyAssignedStudentsAsync(Guid userId, string title, string message);
+    Task<bool> RemindStudentAsync(Guid userId, Guid studentOrInternshipId, string? title = null, string? message = null);
 
     // Analytics endpoints
     Task<List<WeeklyTrendDto>> GetWeeklyTrendAsync(Guid userId, Guid? semesterId = null);

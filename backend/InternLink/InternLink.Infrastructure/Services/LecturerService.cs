@@ -977,6 +977,44 @@ public class LecturerService : ILecturerService
         await _db.SaveChangesAsync();
         return notifiedCount;
     }
+
+    public async Task<bool> RemindStudentAsync(Guid userId, Guid studentOrInternshipId, string? title = null, string? message = null)
+    {
+        var lecturerId = await ResolveLecturerIdAsync(userId)
+            ?? throw new UnauthorizedAccessException("Lecturer profile not found for current user");
+
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .FirstOrDefaultAsync(i => (i.Id == studentOrInternshipId || i.StudentId == studentOrInternshipId)
+                                     && i.LecturerId == lecturerId
+                                     && !i.IsDeleted);
+
+        if (internship == null)
+            return false;
+
+        var studentUserId = internship.Student?.UserId;
+        if (studentUserId == null)
+            return false;
+
+        var notifTitle = string.IsNullOrWhiteSpace(title)
+            ? "Nhắc nhở từ Giảng viên hướng dẫn"
+            : title.Trim();
+
+        var notifMessage = string.IsNullOrWhiteSpace(message)
+            ? "Giảng viên hướng dẫn yêu cầu bạn kiểm tra tiến độ và hoàn thành các nhiệm vụ, báo cáo thực tập theo đúng hạn quy định."
+            : message.Trim();
+
+        await _notificationService.CreateAsync(new CreateNotificationRequest
+        {
+            UserId = studentUserId.Value,
+            Title = notifTitle,
+            Content = notifMessage,
+            Link = "/student/dashboard"
+        });
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
 }
 
 

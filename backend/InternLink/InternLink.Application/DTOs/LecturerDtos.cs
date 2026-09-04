@@ -158,6 +158,12 @@ public sealed class NotifyStudentsRequest
     public string Message { get; set; } = null!;
 }
 
+public sealed class RemindStudentRequest
+{
+    public string? Title { get; set; }
+    public string? Message { get; set; }
+}
+
 public sealed class LecturerStudentListItemDto
 {
     public Guid StudentId { get; set; }

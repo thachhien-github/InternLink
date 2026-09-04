@@ -46,4 +46,11 @@ export const lecturerInternshipsService = {
       body: { title, message },
     });
   },
+
+  remindStudent(studentId: string, title?: string, message?: string) {
+    return apiRequest<{ message: string }>(`/api/Lecturer/students/${studentId}/remind`, {
+      method: "POST",
+      body: { title: title ?? null, message: message ?? null },
+    });
+  },
 };
