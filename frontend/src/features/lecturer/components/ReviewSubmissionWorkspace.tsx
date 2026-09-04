@@ -23,8 +23,15 @@ import {
 export const ReviewSubmissionWorkspace = ({
   student = {} as any,
   submissionTitle = "",
+  onBack,
   onApprove,
   onRequestRevision,
+}: {
+  student?: any;
+  submissionTitle?: string;
+  onBack?: () => void;
+  onApprove: () => void;
+  onRequestRevision: () => void;
 }) => {
   const [currentVersion, setCurrentVersion] = useState("v3");
   const [zoomLevel, setZoomLevel] = useState(100);

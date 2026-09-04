@@ -263,7 +263,26 @@ export function mapEvaluationListItemToUi(e: EvaluationListItemDto) {
   };
 }
 
-export function mapNotificationDtoToStudentUi(n: NotificationDto) {
+export interface StudentNotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  fullContent: string;
+  senderName: string;
+  senderRole: string;
+  dateStr: string;
+  timeAgo: string;
+  category: string;
+  priority: string;
+  isUnread: boolean;
+  relatedModule: string;
+  relatedTab: string;
+  attachment?: { name: string; size: string; type: string } | undefined;
+}
+
+export function mapNotificationDtoToStudentUi(
+  n: NotificationDto,
+): StudentNotificationItem {
   const text = `${n.title} ${n.content}`.toLowerCase();
   
   let category = "Thông báo Khoa";

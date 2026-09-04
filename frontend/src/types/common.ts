@@ -14,7 +14,7 @@ export interface ActionItem {
   subtitle: string;
   type: string;
   priority?: string;
-  count: number;
+  count?: number;
   buttonText?: string;
 }
 

@@ -11,16 +11,16 @@ public class InternshipProfile : Profile
 {
     public InternshipProfile()
     {
-        CreateMap<Internship, InternshipDetailFullDto>()
+        CreateMap<Internship, InternshipDetailFullDto>().MaxDepth(64)
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()));
 
-        CreateMap<Internship, InternshipListItemDto>()
+        CreateMap<Internship, InternshipListItemDto>().MaxDepth(64)
             .ForMember(d => d.StudentName, o => o.MapFrom(s => s.Student.FullName))
             .ForMember(d => d.CompanyName, o => o.MapFrom(s => s.Company.CompanyName))
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()))
             .ForMember(d => d.SubmissionCount, o => o.MapFrom(s => s.Submissions.Count));
 
-        CreateMap<CreateInternshipRequest, Internship>();
-        CreateMap<UpdateInternshipRequest, Internship>();
+        CreateMap<CreateInternshipRequest, Internship>().MaxDepth(64);
+        CreateMap<UpdateInternshipRequest, Internship>().MaxDepth(64);
     }
 }

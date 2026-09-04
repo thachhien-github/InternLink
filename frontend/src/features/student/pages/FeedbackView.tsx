@@ -349,8 +349,11 @@ export const FeedbackView = ({
           <EmptyState
             title="Chưa có phản hồi hoặc nhận xét nào"
             description="Khi Giảng viên hướng dẫn nhận xét báo cáo tuần hoặc sản phẩm nộp của bạn, phản hồi chi tiết sẽ hiển thị tại đây."
-            actionLabel={onNavigateToWeeklyReports ? "Đi tới Báo cáo tuần" : undefined}
-            onAction={onNavigateToWeeklyReports}
+            action={
+              onNavigateToWeeklyReports
+                ? { label: "Đi tới Báo cáo tuần", onClick: onNavigateToWeeklyReports }
+                : undefined
+            }
           />
         </Panel>
       ) : (

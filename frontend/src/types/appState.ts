@@ -1,4 +1,5 @@
-import type { AuthUser } from "../contexts/AuthContext";
+import type { Submission } from "./submission";
+import type { WeeklyReportDto } from "./api";
 
 export interface ActionItem {
   id: string;
@@ -17,42 +18,23 @@ export interface Deadline {
   studentCount: number;
 }
 
-export interface WeeklyReport {
-  id?: string;
-  studentName?: string;
-  weekNumber?: number;
-  title?: string;
-  content?: string;
-  status?: string;
-  submittedAt?: string;
-  feedback?: string;
-  [key: string]: unknown;
-}
-
-export interface StudentSubmission {
-  id?: string;
-  studentName?: string;
-  title?: string;
-  status?: string;
-  submittedAt?: string;
-  [key: string]: unknown;
-}
-
 export interface Stats {
-  pendingReview?: number;
-  approved?: number;
-  rejected?: number;
-  [key: string]: unknown;
+  total: number;
+  interning: number;
+  pending: number;
+  overdue: number;
+  completed: number;
+  avgProg: number;
 }
 
 export interface AppState {
   currentLecturer: string;
   assignedStudents: any[];
-  assignedSubmissions: StudentSubmission[];
+  assignedSubmissions: Submission[];
   dynamicActionItems: ActionItem[];
   deadlines: Deadline[];
   stats: Stats;
-  weeklyReports: WeeklyReport[];
+  weeklyReports: WeeklyReportDto[];
   weeklyTrendData: { label: string; value: number; target?: number }[];
   lecturerEnterprises?: any[];
   handleUpdateSubmissionStatus: (submissionId: string, status: string) => void;

@@ -65,7 +65,7 @@ export const StudentProgressWorkspace = ({
       date: rep?.submittedAt ? new Date(rep.submittedAt).toLocaleDateString("vi-VN") : `Mốc tuần ${weekNum}`,
       status: isReviewed ? "completed" : isSubmitted ? "in_progress" : isOverdue ? "overdue" : "upcoming",
       score: undefined,
-      note: rep?.lecturerComment || (isOverdue ? "Chưa nộp báo cáo tuần" : rep?.contentSummary || ""),
+      note: rep?.lecturerComment || (isOverdue ? "Chưa nộp báo cáo tuần" : rep?.content || ""),
     };
   });
 
@@ -77,7 +77,7 @@ export const StudentProgressWorkspace = ({
         task: r.title || `Nội dung công việc Tuần ${r.weekNumber}`,
         hours: 40,
         status: r.status === "APPROVED" || r.status === "REVIEWED" ? "Completed" : r.status === "SUBMITTED" ? "Submitted" : "Draft",
-        difficulty: r.contentSummary || "Bình thường",
+        difficulty: r.content ? "Chi tiết" : "Bình thường",
       },
     ];
   });

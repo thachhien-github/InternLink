@@ -22,4 +22,13 @@
     <ProjectReference Include="..\InternLink.Shared\InternLink.Shared.csproj" />
   </ItemGroup>
 
+  <!--
+    NU1903: AutoMapper 13.0.1 (free, final patched version requires a paid license).
+    The DoS (GHSA-rvv3-g6hj-g44x) is neutralized by the global MaxDepth(64) guard
+    registered in DependencyInjection.cs; ASP.NET Core JSON also caps request depth at 64.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x" />
+  </ItemGroup>
+
 </Project>

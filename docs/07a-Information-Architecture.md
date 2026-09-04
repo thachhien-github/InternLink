@@ -110,8 +110,6 @@ Nếu `mustChangePassword = true`, `ProtectedRoute` chặn tất cả route và 
 FEATURES = {
   adminSemesters: true,        // Trang Quản lý Học kỳ
   adminAccountRequests: true,  // Trang Yêu cầu & Cấp phát Tài khoản
-  floatingAi: false,           // Floating AI Assistant (ẩn)
   lecturerAnalytics: true,     // Trang Analytics nâng cao
-  adminRubricApprovals: true,  // Trang Duyệt Rubric
 }
 ```

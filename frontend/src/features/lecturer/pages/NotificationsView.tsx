@@ -1497,8 +1497,12 @@ export const NotificationsView = () => {
                   >
                     <option value="">-- Chọn sinh viên nhận thông báo --</option>
                     {assignedStudents.map((sv) => (
-                      <option key={sv.id} value={`${sv.studentName} (${sv.studentCode} - ${sv.companyName})`}>
-                        {sv.studentName} (MSSV: {sv.studentCode}) - {sv.companyName}
+                      <option
+                        key={sv.id}
+                        value={`${sv.student?.fullName ?? ""} (${sv.student?.studentCode ?? ""} - ${sv.company?.companyName ?? ""})`}
+                      >
+                        {sv.student?.fullName ?? ""} (MSSV: {sv.student?.studentCode ?? ""}) -{" "}
+                        {sv.company?.companyName ?? ""}
                       </option>
                     ))}
                   </select>

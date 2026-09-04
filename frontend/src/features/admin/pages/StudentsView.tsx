@@ -516,11 +516,13 @@ export const StudentsView = ({
                     <EmptyState
                       title="Không tìm thấy sinh viên phù hợp"
                       description="Hãy thử đổi bộ lọc lớp, trạng thái tài khoản hoặc từ khóa tìm kiếm."
-                      actionLabel="Xóa bộ lọc tìm kiếm"
-                      onAction={() => {
-                        setSearchQuery("");
-                        setClassFilter("all");
-                        setAccountStatusFilter("all");
+                      action={{
+                        label: "Xóa bộ lọc tìm kiếm",
+                        onClick: () => {
+                          setSearchQuery("");
+                          setClassFilter("all");
+                          setAccountStatusFilter("all");
+                        },
                       }}
                     />
                   </td>

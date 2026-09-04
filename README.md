@@ -28,8 +28,8 @@ Trước đây, công tác quản lý thực tập tốt nghiệp tại các tr�
   - **PDF Export**: Engine tạo mã nhị phân PDF chuẩn hóa Server-side (Bảng tổng hợp cuối kỳ & Phiếu đánh giá sinh viên).
 - **Real-time Communication**: SignalR Core Hubs (`/hubs/notifications`).
 
-### 2. Frontend (React 18 + TypeScript + Vite)
-- **Công nghệ**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Recharts.
+### 2. Frontend (React 19 + TypeScript + Vite)
+- **Công nghệ**: React 19, TypeScript, Tailwind CSS, Lucide Icons, Recharts.
 - **Giao diện**: Phân hệ chuyên biệt theo vai trò:
   - `Admin Portal`: Quản lý người dùng, học kỳ, doanh nghiệp, phân công GVHD - SV, broadcast thông báo.
   - `Lecturer Portal`: Danh sách sinh viên hướng dẫn, duyệt báo cáo tuần, chấm điểm Rubric, xuất báo cáo PDF/Excel.

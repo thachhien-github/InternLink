@@ -19,7 +19,10 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { getApiErrorMessage } from "../../../lib/apiClient";
-import { mapNotificationDtoToStudentUi } from "../../../lib/portalMappers";
+import {
+  mapNotificationDtoToStudentUi,
+  type StudentNotificationItem,
+} from "../../../lib/portalMappers";
 import { notificationService } from "../../../services/notification.service";
 import { weeklyReportService } from "../../../services/weeklyReport.service";
 import { INTERNSHIP_WEEKS } from "../../../config/internship";
@@ -36,8 +39,9 @@ export const NotificationsView = ({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
   const [selectedNotifId, setSelectedNotifId] = useState<string | null>(null);
-  const [selectedModalNotif, setSelectedModalNotif] = useState<unknown>(null);
-  const [notifications, setNotifications] = useState<unknown[]>([]);
+  const [selectedModalNotif, setSelectedModalNotif] =
+    useState<StudentNotificationItem | null>(null);
+  const [notifications, setNotifications] = useState<StudentNotificationItem[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<
     { weekNumber: number; title: string; status: string }[]
   >([]);

@@ -1050,7 +1050,7 @@ export const AccountView = ({
                   <span className="font-medium text-slate-700">Doanh nghiệp liên kết</span>
                 </div>
                 <span className="font-bold text-amber-900">
-                  {navStats?.companyCount || 185} Đối tác
+                  {navStats?.companyCount || 0} Đối tác
                 </span>
               </div>
             </div>

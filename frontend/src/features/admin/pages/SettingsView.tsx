@@ -136,7 +136,7 @@ export const SettingsView = ({
       await adminEmailService.testEmail({
         toEmail,
         fullName: "Quản trị viên Khoa",
-        role: "Admin",
+        role: "Lecturer",
       });
       onShowToast(`Đã gửi email kiểm tra kết nối tới ${toEmail}`);
     } catch (err) {

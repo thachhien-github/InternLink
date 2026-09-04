@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react";
 import type { UserRole } from "../../types/common";
+import type { NotificationDto } from "../../types/api";
 import { notificationService } from "../../services/notification.service";
 import { adminNotificationsService } from "../../services/adminNotifications.service";
 import { signalRNotificationService } from "../../services/signalr.service";
@@ -99,7 +100,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
     try {
       setIsLoading(true);
-      if (role === "Admin") {
+      if (role === "admin") {
         // For Admin, fetch personal notifications and broadcast campaigns
         const [mineRows, campaigns] = await Promise.all([
           notificationService.getMine().catch(() => []),
@@ -125,7 +126,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             title: dto.title,
             message: dto.content,
             category,
-            priority: (text.includes("khẩn") || text.includes("gấp") || dto.priority === "High") ? "urgent" : "normal",
+            priority: text.includes("khẩn") || text.includes("gấp") ? "urgent" : "normal",
             timestamp: dto.createdAt
               ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", {
                   hour: "2-digit",
@@ -167,7 +168,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         setNotifications(list);
       } else {
         // For Student & Lecturer
-        const rows = await notificationService.getMine().catch(() => []);
+        const rows: NotificationDto[] = await notificationService
+          .getMine()
+          .catch(() => []);
         if (rows && rows.length > 0) {
           const mapped: AppNotification[] = rows.map((dto) => {
             const text = `${dto.title} ${dto.content}`.toLowerCase();
@@ -192,7 +195,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               title: dto.title,
               message: dto.content,
               category,
-              priority: (text.includes("khẩn") || text.includes("gấp") || dto.priority === "High") ? "urgent" : "normal",
+              priority: text.includes("khẩn") || text.includes("gấp") ? "urgent" : "normal",
               timestamp: dto.createdAt
                 ? new Date(dto.createdAt).toLocaleTimeString("vi-VN", {
                     hour: "2-digit",
@@ -243,11 +246,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         id: incoming.id || `notif-rt-${Date.now()}`,
         title: incoming.title,
         message: incoming.content,
-        category: role === "Admin" ? "system" : "report",
+        category: role === "admin" ? "system" : "report",
         priority: "urgent",
         timestamp: "Vừa xong",
         isRead: false,
-        targetTab: incoming.link || (role === "Admin" ? "admin-notifications" : undefined),
+        targetTab: incoming.link || (role === "admin" ? "admin-notifications" : undefined),
         sender: { name: "Hệ thống (Live)", role: "Realtime Hub" },
       };
 
@@ -303,7 +306,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const filteredNotifications = notifications.filter((item) => {
     if (activeFilter === "unread") return !item.isRead;
-    if (role === "Admin") {
+    if (role === "admin") {
       if (activeFilter === "reports") return item.category === "enterprise" || item.category === "announcement";
       if (activeFilter === "system") return item.category === "system" || item.category === "deadline";
     } else {
@@ -401,7 +404,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               </div>
               <div>
                 <h4 className="font-bold text-xs tracking-tight">
-                  {role === "Admin" ? "Thông báo Quản trị & Hệ thống" : "Trung tâm Thông báo"}
+                  {role === "admin" ? "Thông báo Quản trị & Hệ thống" : "Trung tâm Thông báo"}
                 </h4>
                 <p className="text-[10px] text-slate-300">
                   {unreadCount > 0
@@ -459,7 +462,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
               }`}
             >
-              {role === "Admin" ? "Chiến dịch & Đối tác" : "Báo cáo & Điểm"}
+              {role === "admin" ? "Chiến dịch & Đối tác" : "Báo cáo & Điểm"}
             </button>
             <button
               type="button"
@@ -470,7 +473,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
               }`}
             >
-              {role === "Admin" ? "Bảo mật & Cấu hình" : "Hạn chót & Hệ thống"}
+              {role === "admin" ? "Bảo mật & Cấu hình" : "Hạn chót & Hệ thống"}
             </button>
           </div>
 
@@ -563,8 +566,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               onClick={() => {
                 setIsOpen(false);
                 if (onNavigate) {
-                  if (role === "Student") onNavigate("student-notifications");
-                  else if (role === "Lecturer") onNavigate("notifications");
+                  if (role === "student") onNavigate("student-notifications");
+                  else if (role === "lecturer") onNavigate("notifications");
                   else onNavigate("admin-notifications");
                 }
               }}

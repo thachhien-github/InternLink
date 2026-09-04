@@ -6,8 +6,6 @@ export const FEATURES = {
   adminAccountRequests: true,
   /** Lecturer Analytics nâng cao */
   lecturerAnalytics: true,
-  /** Admin Rubric Approvals page */
-  adminRubricApprovals: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURES;

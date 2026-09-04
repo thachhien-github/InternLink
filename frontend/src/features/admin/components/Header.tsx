@@ -196,7 +196,7 @@ export const Header = ({
 
         {/* Notifications Popover */}
         <NotificationDropdown
-          role="Admin"
+          role="admin"
           onNavigate={onNavigate}
           onShowToast={onShowToast}
         />

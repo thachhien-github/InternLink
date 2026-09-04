@@ -35,8 +35,8 @@
 |:---|:---|:---|
 | Frontend | React + TypeScript + Vite | React 19 |
 | CSS | Tailwind CSS | v4 |
-| Backend | ASP.NET Core Web API | .NET 8 |
-| ORM | Entity Framework Core | 8.x |
+| Backend | ASP.NET Core Web API | .NET 10 |
+| ORM | Entity Framework Core | 10.x |
 | Database | Microsoft SQL Server | 2022 |
 | Auth | JWT Bearer + Refresh Token | — |
 | Real-time | SignalR Core | — |

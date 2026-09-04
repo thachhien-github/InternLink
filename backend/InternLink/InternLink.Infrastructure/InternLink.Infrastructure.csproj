@@ -29,4 +29,9 @@
     <ProjectReference Include="..\InternLink.Application\InternLink.Application.csproj" />
   </ItemGroup>
 
+  <!-- NU1903 (GHSA-rvv3-g6hj-g44x): mitigated by global MaxDepth(64) in DependencyInjection.cs -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x" />
+  </ItemGroup>
+
 </Project>

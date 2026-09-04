@@ -15,6 +15,8 @@ export interface Student {
   progress: number;
   riskFlag: boolean;
   avatar: string;
+  email?: string;
+  phone?: string;
   lastReportName: string;
   lastReportDate: string;
   updatedAt: string;

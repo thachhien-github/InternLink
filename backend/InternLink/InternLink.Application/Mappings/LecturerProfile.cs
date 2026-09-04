@@ -8,8 +8,8 @@ public class LecturerProfile : Profile
 {
     public LecturerProfile()
     {
-        CreateMap<Lecturer, LecturerDto>();
-        CreateMap<CreateLecturerRequest, Lecturer>()
+        CreateMap<Lecturer, LecturerDto>().MaxDepth(64);
+        CreateMap<CreateLecturerRequest, Lecturer>().MaxDepth(64)
             .ForMember(d => d.Id, o => o.Ignore())
             .ForMember(d => d.User, o => o.Ignore())
             .ForMember(d => d.Internships, o => o.Ignore())
@@ -19,13 +19,13 @@ public class LecturerProfile : Profile
             .ForMember(d => d.CreatedBy, o => o.Ignore())
             .ForMember(d => d.UpdatedBy, o => o.Ignore());
 
-        CreateMap<Student, StudentSummaryDto>();
-        CreateMap<Company, CompanySummaryDto>();
+        CreateMap<Student, StudentSummaryDto>().MaxDepth(64);
+        CreateMap<Company, CompanySummaryDto>().MaxDepth(64);
 
-        CreateMap<Internship, InternshipDto>()
+        CreateMap<Internship, InternshipDto>().MaxDepth(64)
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()));
 
-        CreateMap<Internship, InternshipDetailDto>()
+        CreateMap<Internship, InternshipDetailDto>().MaxDepth(64)
             .IncludeBase<Internship, InternshipDto>();
     }
 }

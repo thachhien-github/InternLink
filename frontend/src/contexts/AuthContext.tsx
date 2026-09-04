@@ -19,6 +19,7 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   email?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface AuthSession {

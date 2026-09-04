@@ -101,7 +101,7 @@ export const Header = ({
         </div>
 
         {/* Notifications */}
-        <NotificationDropdown role="Lecturer" onNavigate={onNavigate} />
+        <NotificationDropdown role="lecturer" onNavigate={onNavigate} />
 
         <div className="relative">
           <button

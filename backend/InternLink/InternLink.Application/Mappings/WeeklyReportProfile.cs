@@ -8,7 +8,7 @@ public class WeeklyReportProfile : Profile
 {
     public WeeklyReportProfile()
     {
-        CreateMap<WeeklyReport, WeeklyReportDto>()
+        CreateMap<WeeklyReport, WeeklyReportDto>().MaxDepth(64)
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()));
     }
 }
