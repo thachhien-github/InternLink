@@ -46,9 +46,18 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   auth?: boolean;
   _retry?: boolean;
+  skipCache?: boolean;
 };
 
 let refreshPromise: Promise<string | null> | null = null;
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
+const apiGetCache = new Map<string, { data: unknown; expiresAt: number }>();
+const DEFAULT_GET_CACHE_TTL = 20_000; // 20s cache for GET
+
+export function clearApiCache(): void {
+  apiGetCache.clear();
+  inFlightGetRequests.clear();
+}
 
 function dispatchUnauthorized(): void {
   if (typeof window !== "undefined") {
@@ -134,69 +143,110 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, auth = true, headers, _retry = false, ...rest } = options;
+  const method = (options.method ?? "GET").toUpperCase();
+  const isGet = method === "GET";
   const url = resolveApiUrl(path);
+  const cacheKey = `${url}|auth=${Boolean(options.auth !== false)}`;
 
-  const reqHeaders = new Headers(headers);
-  if (body !== undefined && !(body instanceof FormData)) {
-    reqHeaders.set("Content-Type", "application/json");
+  if (isGet && !options.skipCache) {
+    const cached = apiGetCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data as T;
+    }
+    const inFlight = inFlightGetRequests.get(cacheKey);
+    if (inFlight) {
+      return inFlight as Promise<T>;
+    }
   }
-  if (auth) {
-    const token = getStoredToken();
-    if (token) reqHeaders.set("Authorization", `Bearer ${token}`);
-  }
 
-  const res = await fetch(url, {
-    ...rest,
-    headers: reqHeaders,
-    body:
-      body === undefined
-        ? undefined
-        : body instanceof FormData
-          ? body
-          : JSON.stringify(body),
-  });
+  const performFetch = async (): Promise<T> => {
+    const { body, auth = true, headers, _retry = false, skipCache: _skip, ...rest } = options;
 
-  // Handle Token Expiry & Automatic Refresh Token Flow
-  if (res.status === 401 && auth && !_retry && !path.includes("/api/Auth/login") && !path.includes("/api/Auth/refresh-token")) {
-    if (!refreshPromise) {
-      refreshPromise = attemptRefreshToken().finally(() => {
-        refreshPromise = null;
+    const reqHeaders = new Headers(headers);
+    if (body !== undefined && !(body instanceof FormData)) {
+      reqHeaders.set("Content-Type", "application/json");
+    }
+    if (auth) {
+      const token = getStoredToken();
+      if (token) reqHeaders.set("Authorization", `Bearer ${token}`);
+    }
+
+    const res = await fetch(url, {
+      ...rest,
+      method,
+      headers: reqHeaders,
+      body:
+        body === undefined
+          ? undefined
+          : body instanceof FormData
+            ? body
+            : JSON.stringify(body),
+    });
+
+    // Handle Token Expiry & Automatic Refresh Token Flow
+    if (res.status === 401 && auth && !_retry && !path.includes("/api/Auth/login") && !path.includes("/api/Auth/refresh-token")) {
+      if (!refreshPromise) {
+        refreshPromise = attemptRefreshToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const newToken = await refreshPromise;
+      if (newToken) {
+        // Retry original request with fresh access token
+        return apiRequest<T>(path, {
+          ...options,
+          _retry: true,
+          skipCache: true,
+        });
+      }
+    }
+
+    const payload = await parseJson<T>(res);
+
+    if (res.status === 401) {
+      clearAuthTokens();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("internlink:unauthorized", {
+            detail: { status: 401, message: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ." },
+          }),
+        );
+      }
+    }
+
+    if (!res.ok || payload.success === false) {
+      const msg =
+        payload.error?.title ||
+        payload.error?.detail ||
+        (res.status === 401 ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." : `HTTP ${res.status}`);
+      throw new ApiClientError(msg, res.status, payload);
+    }
+
+    const result = payload.data as T;
+
+    if (isGet && !options.skipCache) {
+      apiGetCache.set(cacheKey, {
+        data: result,
+        expiresAt: Date.now() + DEFAULT_GET_CACHE_TTL,
       });
+    } else if (!isGet) {
+      // Invalidate cache on mutations (POST, PUT, DELETE)
+      clearApiCache();
     }
 
-    const newToken = await refreshPromise;
-    if (newToken) {
-      // Retry original request with fresh access token
-      return apiRequest<T>(path, {
-        ...options,
-        _retry: true,
-      });
-    }
+    return result;
+  };
+
+  if (isGet && !options.skipCache) {
+    const promise = performFetch().finally(() => {
+      inFlightGetRequests.delete(cacheKey);
+    });
+    inFlightGetRequests.set(cacheKey, promise);
+    return promise;
   }
 
-  const payload = await parseJson<T>(res);
-
-  if (res.status === 401) {
-    clearAuthTokens();
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("internlink:unauthorized", {
-          detail: { status: 401, message: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ." },
-        }),
-      );
-    }
-  }
-
-  if (!res.ok || payload.success === false) {
-    const msg =
-      payload.error?.title ||
-      payload.error?.detail ||
-      (res.status === 401 ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." : `HTTP ${res.status}`);
-    throw new ApiClientError(msg, res.status, payload);
-  }
-
-  return payload.data as T;
+  return performFetch();
 }
 
 /** For endpoints that return raw JSON (e.g. EvaluationController). */
