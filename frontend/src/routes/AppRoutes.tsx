@@ -61,7 +61,7 @@ import { EvaluationView as StudentEvaluationView } from "../features/student/pag
 import { useRealAppState } from "./useRealAppState";
 
 export function AppRoutes() {
-  const { isLoggedIn, role, user, login, logout, switchRole } = useAuth();
+  const { isLoggedIn, isBootstrapping, role, user, login, logout, switchRole } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -85,8 +85,19 @@ export function AppRoutes() {
       <Route
         path="/login"
         element={
-          isLoggedIn ? (
-            <Navigate to={`/${role}/dashboard`} replace />
+          isBootstrapping ? (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-700">
+              <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm font-medium text-slate-600">Đang xác thực phiên làm việc…</p>
+            </div>
+          ) : isLoggedIn ? (
+            <Navigate
+              to={
+                (location.state as { from?: { pathname?: string } })?.from?.pathname ||
+                `/${role}/dashboard`
+              }
+              replace
+            />
           ) : (
             <LoginPortal
               onLoginSuccess={(user) => {
@@ -101,8 +112,11 @@ export function AppRoutes() {
                   mustChangePassword: user.mustChangePassword,
                 });
                 showToast(`Chào mừng ${user.name}`);
+                const returnUrl = (location.state as { from?: { pathname?: string } })?.from?.pathname;
                 if (user.mustChangePassword) {
                   navigate("/change-password");
+                } else if (returnUrl && returnUrl !== "/login") {
+                  navigate(returnUrl);
                 } else {
                   navigate(`/${user.role}/dashboard`);
                 }

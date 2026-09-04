@@ -41,6 +41,10 @@ class SignalRNotificationService {
       localStorage.getItem('authToken') ||
       '';
 
+    if (!token) {
+      return;
+    }
+
     const baseUrl = API_URL.replace(/\/+$/, '');
     const hubUrl = `${baseUrl}/hubs/notifications`;
 

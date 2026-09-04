@@ -65,7 +65,7 @@ function mapMeToAuthUser(me: CurrentUserDto): AuthUser {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isBootstrapping, setIsBootstrapping] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState<boolean>(() => Boolean(getStoredToken()));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -90,10 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore network/server errors during logout */
       } finally {
-        setStoredToken(null);
+        clearAuthTokens();
       }
     } else {
-      setStoredToken(null);
+      clearAuthTokens();
     }
     setIsLoggedIn(false);
     setUser(null);
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleUnauthorized = () => {
-      setStoredToken(null);
+      clearAuthTokens();
       setIsLoggedIn(false);
       setUser(null);
       setMustChangePassword(false);
