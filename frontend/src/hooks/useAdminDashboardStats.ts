@@ -148,32 +148,42 @@ export function useAdminDashboardStats(
 
     setIsLoading(true);
     try {
-      const [students, lecturers, companies, internshipStats, notifications] =
-        await Promise.all([
-          adminStudentsService.getAll(),
-          adminLecturersService.getAll(),
-          adminCompaniesService.getAll(),
-          adminDashboardService
-            .getInternshipStats(semesterId ?? undefined)
-            .catch(() => ({ ...EMPTY_INTERNSHIP_STATS })),
-          notificationService.getMine().catch(() => []),
-        ]);
+      const [
+        students,
+        lecturers,
+        companies,
+        internshipStats,
+        notifications,
+        allAssignments,
+      ] = await Promise.all([
+        adminStudentsService.getAll(),
+        adminLecturersService.getAll(),
+        adminCompaniesService.getAll(),
+        adminDashboardService
+          .getInternshipStats(semesterId ?? undefined)
+          .catch(() => ({ ...EMPTY_INTERNSHIP_STATS })),
+        notificationService.getMine().catch(() => []),
+        adminAssignmentsService
+          .getAll(semesterId ?? undefined)
+          .catch(() => []),
+      ]);
 
-      const assignmentGroups = await Promise.all(
-        lecturers.map((l) =>
-          adminAssignmentsService
-            .getByLecturer(l.id, semesterId ?? undefined)
-            .catch(() => []),
-        ),
-      );
-
+      const assignmentsByLecturer = new Map<string, number>();
       const assignedStudentIds = new Set<string>();
+      for (const item of allAssignments) {
+        assignedStudentIds.add(item.studentId);
+        assignmentsByLecturer.set(
+          item.lecturerId,
+          (assignmentsByLecturer.get(item.lecturerId) ?? 0) + 1,
+        );
+      }
+
       const perLecturerCounts: number[] = [];
       let lecturersWithStudents = 0;
-      for (const group of assignmentGroups) {
-        if (group.length > 0) lecturersWithStudents++;
-        perLecturerCounts.push(group.length);
-        for (const item of group) assignedStudentIds.add(item.studentId);
+      for (const l of lecturers) {
+        const count = assignmentsByLecturer.get(l.id) ?? 0;
+        if (count > 0) lecturersWithStudents++;
+        perLecturerCounts.push(count);
       }
 
       const assignedStudents = assignedStudentIds.size;

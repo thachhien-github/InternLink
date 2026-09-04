@@ -51,17 +51,29 @@ export function useLecturerPortalData(
         ]),
       );
 
-      const submissionGroups = await Promise.all(
-        internships.map((i) =>
-          lecturerInternshipsService.getSubmissions(i.id).catch(() => []),
-        ),
-      );
+      // Chunk requests in small batches to stay within browser socket limit
+      const chunkSize = 5;
+      const submissionGroups = [];
+      for (let i = 0; i < internships.length; i += chunkSize) {
+        const chunk = internships.slice(i, i + chunkSize);
+        const res = await Promise.all(
+          chunk.map((item) =>
+            lecturerInternshipsService.getSubmissions(item.id).catch(() => []),
+          ),
+        );
+        submissionGroups.push(...res);
+      }
 
-      const weeklyGroups = await Promise.all(
-        internships.map((i) =>
-          weeklyReportService.getByInternship(i.id).catch(() => []),
-        ),
-      );
+      const weeklyGroups = [];
+      for (let i = 0; i < internships.length; i += chunkSize) {
+        const chunk = internships.slice(i, i + chunkSize);
+        const res = await Promise.all(
+          chunk.map((item) =>
+            weeklyReportService.getByInternship(item.id).catch(() => []),
+          ),
+        );
+        weeklyGroups.push(...res);
+      }
 
       const submissionRows = submissionGroups.flatMap((group, idx) => {
         const internshipId = internships[idx]?.id;

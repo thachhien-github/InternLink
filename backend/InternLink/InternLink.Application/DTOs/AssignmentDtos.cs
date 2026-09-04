@@ -32,6 +32,8 @@ public class AssignmentErrorDto
 public class LecturerAssignmentItemDto
 {
     public Guid InternshipId { get; set; }
+    public Guid? LecturerId { get; set; }
+    public string? LecturerName { get; set; }
     public Guid StudentId { get; set; }
     public string StudentCode { get; set; } = null!;
     public string StudentName { get; set; } = null!;

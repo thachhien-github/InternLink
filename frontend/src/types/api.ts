@@ -139,6 +139,8 @@ export interface BulkAssignResultDto {
 
 export interface LecturerAssignmentItemDto {
   internshipId: string;
+  lecturerId: string;
+  lecturerName?: string | null;
   studentId: string;
   studentCode: string;
   studentName: string;

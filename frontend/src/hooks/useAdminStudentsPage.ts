@@ -21,23 +21,19 @@ export function useAdminStudentsPage(
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [studentRows, lecturerRows, usersPage] = await Promise.all([
-        adminStudentsService.getAll(),
-        adminLecturersService.getAll(),
-        adminUsersService.getAll({ take: 500, role: "Student" }),
-      ]);
-
-      const assignmentGroups = await Promise.all(
-        lecturerRows.map((l) =>
+      const [studentRows, lecturerRows, usersPage, allAssignments] =
+        await Promise.all([
+          adminStudentsService.getAll(),
+          adminLecturersService.getAll(),
+          adminUsersService.getAll({ take: 500, role: "Student" }),
           adminAssignmentsService
-            .getByLecturer(l.id, semesterId ?? undefined)
+            .getAll(semesterId ?? undefined)
             .catch(() => []),
-        ),
-      );
+        ]);
 
       const { studentAssignment } = buildAssignmentMaps(
         lecturerRows,
-        assignmentGroups,
+        allAssignments,
       );
 
       const usersById = new Map(

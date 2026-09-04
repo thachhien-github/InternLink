@@ -32,22 +32,17 @@ export function useAdminAssignmentMatrix(
     if (!enabled) return;
     setIsLoading(true);
     try {
-      const [lecturerDtos, studentDtos] = await Promise.all([
+      const [lecturerDtos, studentDtos, allAssignments] = await Promise.all([
         adminLecturersService.getAll(),
         adminStudentsService.getAll(),
+        adminAssignmentsService
+          .getAll(semesterId ?? undefined)
+          .catch(() => []),
       ]);
-
-      const assignmentGroups = await Promise.all(
-        lecturerDtos.map((l) =>
-          adminAssignmentsService
-            .getByLecturer(l.id, semesterId ?? undefined)
-            .catch(() => []),
-        ),
-      );
 
       const { studentAssignment, lecturerCounts } = buildAssignmentMaps(
         lecturerDtos,
-        assignmentGroups,
+        allAssignments,
       );
 
       const lecturerRows = lecturerDtos.map((l) =>

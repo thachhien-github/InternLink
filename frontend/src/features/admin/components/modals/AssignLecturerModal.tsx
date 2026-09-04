@@ -45,23 +45,26 @@ export const AssignLecturerModal = ({
 
     setIsLoading(true);
     try {
-      const [studentRows, lecturerRows] = await Promise.all([
+      const [studentRows, lecturerRows, allAssignments] = await Promise.all([
         adminStudentsService.getAll(),
         adminLecturersService.getAll(),
+        adminAssignmentsService.getAll().catch(() => []),
       ]);
 
-      const assignmentGroups = await Promise.all(
-        lecturerRows.map((l) =>
-          adminAssignmentsService.getByLecturer(l.id).catch(() => []),
-        ),
-      );
-
+      const assignmentsByLecturer = new Map<string, number>();
       const assignedIds = new Set<string>();
-      const lecturerOptions: LecturerOption[] = lecturerRows.map((l, idx) => {
-        const group = assignmentGroups[idx] ?? [];
-        for (const item of group) assignedIds.add(item.studentId);
-        return { ...l, assignedCount: group.length };
-      });
+      for (const item of allAssignments) {
+        assignedIds.add(item.studentId);
+        assignmentsByLecturer.set(
+          item.lecturerId,
+          (assignmentsByLecturer.get(item.lecturerId) ?? 0) + 1,
+        );
+      }
+
+      const lecturerOptions: LecturerOption[] = lecturerRows.map((l) => ({
+        ...l,
+        assignedCount: assignmentsByLecturer.get(l.id) ?? 0,
+      }));
 
       setStudents(studentRows);
       setLecturers(lecturerOptions);

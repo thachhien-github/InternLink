@@ -171,6 +171,27 @@ public class AssignmentService : IAssignmentService
         return internships.Select(MapAssignmentItem).ToList();
     }
 
+    public async Task<IReadOnlyList<LecturerAssignmentItemDto>> GetAllAssignmentsAsync(Guid? semesterId = null)
+    {
+        var query = _db.Internships
+            .AsNoTracking()
+            .Where(i => !i.IsDeleted && i.LecturerId != null);
+
+        if (semesterId.HasValue && semesterId.Value != Guid.Empty)
+        {
+            query = query.Where(i => i.SemesterId == semesterId.Value);
+        }
+
+        var internships = await query
+            .Include(i => i.Student)
+            .Include(i => i.Company)
+            .Include(i => i.Lecturer)
+            .OrderBy(i => i.Student!.FullName)
+            .ToListAsync();
+
+        return internships.Select(MapAssignmentItem).ToList();
+    }
+
     public async Task<bool> UnassignAsync(UnassignRequest request)
     {
         var internship = await _db.Internships
@@ -458,6 +479,8 @@ public class AssignmentService : IAssignmentService
         return new LecturerAssignmentItemDto
         {
             InternshipId = internship.Id,
+            LecturerId = internship.LecturerId,
+            LecturerName = internship.Lecturer?.FullName ?? string.Empty,
             StudentId = internship.StudentId,
             StudentCode = internship.Student?.StudentCode ?? string.Empty,
             StudentName = internship.Student?.FullName ?? string.Empty,

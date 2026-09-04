@@ -38,6 +38,13 @@ public class AdminAssignmentsController : ControllerBase
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? semesterId = null)
+    {
+        var items = await _assignmentService.GetAllAssignmentsAsync(semesterId);
+        return Ok(ApiResponse<IReadOnlyList<LecturerAssignmentItemDto>>.Ok(items));
+    }
+
     [HttpGet("by-lecturer/{lecturerId:guid}")]
     public async Task<IActionResult> GetByLecturer(Guid lecturerId, [FromQuery] Guid? semesterId = null)
     {

@@ -190,7 +190,7 @@ export function mapStudentDtoToAssignmentRow(
 
 export function buildAssignmentMaps(
   lecturers: LecturerDto[],
-  assignmentGroups: LecturerAssignmentItemDto[][],
+  assignments: LecturerAssignmentItemDto[][] | LecturerAssignmentItemDto[],
 ) {
   const studentAssignment = new Map<
     string,
@@ -204,19 +204,31 @@ export function buildAssignmentMaps(
   >();
   const lecturerCounts = new Map<string, number>();
 
-  lecturers.forEach((l, idx) => {
-    const items = assignmentGroups[idx] ?? [];
-    lecturerCounts.set(l.id, items.length);
-    for (const item of items) {
-      studentAssignment.set(item.studentId, {
-        lecturerId: l.id,
-        lecturerName: l.fullName,
-        assignedDate: new Date(item.createdAt).toLocaleDateString("vi-VN"),
-        companyName: item.companyName,
-        status: item.status,
-      });
-    }
+  lecturers.forEach((l) => {
+    lecturerCounts.set(l.id, 0);
   });
+
+  const lecturerNameById = new Map(lecturers.map((l) => [l.id, l.fullName]));
+
+  const flatItems: LecturerAssignmentItemDto[] =
+    assignments.length > 0 && Array.isArray(assignments[0])
+      ? (assignments as LecturerAssignmentItemDto[][]).flat()
+      : (assignments as LecturerAssignmentItemDto[]);
+
+  for (const item of flatItems) {
+    lecturerCounts.set(
+      item.lecturerId,
+      (lecturerCounts.get(item.lecturerId) ?? 0) + 1,
+    );
+    studentAssignment.set(item.studentId, {
+      lecturerId: item.lecturerId,
+      lecturerName:
+        item.lecturerName || lecturerNameById.get(item.lecturerId) || "Giảng viên",
+      assignedDate: new Date(item.createdAt).toLocaleDateString("vi-VN"),
+      companyName: item.companyName,
+      status: item.status,
+    });
+  }
 
   return { studentAssignment, lecturerCounts };
 }

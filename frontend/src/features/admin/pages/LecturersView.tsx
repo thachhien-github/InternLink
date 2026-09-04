@@ -69,13 +69,11 @@ export const LecturersView = ({
   const [pageSize, setPageSize] = useState(10);
 
   const fetchLecturerRows = async () => {
-    const dtos = await adminLecturersService.getAll();
-    const assignmentGroups = await Promise.all(
-      dtos.map((l) =>
-        adminAssignmentsService.getByLecturer(l.id).catch(() => []),
-      ),
-    );
-    const { lecturerCounts } = buildAssignmentMaps(dtos, assignmentGroups);
+    const [dtos, allAssignments] = await Promise.all([
+      adminLecturersService.getAll(),
+      adminAssignmentsService.getAll().catch(() => []),
+    ]);
+    const { lecturerCounts } = buildAssignmentMaps(dtos, allAssignments);
     return dtos.map((l) =>
       mapLecturerDtoToRow(l, lecturerCounts.get(l.id) ?? 0),
     );

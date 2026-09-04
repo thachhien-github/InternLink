@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminAssignmentsService } from "../services/adminAssignments.service";
+import { adminCompaniesService } from "../services/adminCompanies.service";
 import { adminLecturersService } from "../services/adminLecturers.service";
 import { adminNotificationsService } from "../services/adminNotifications.service";
 import { adminStudentsService } from "../services/adminStudents.service";
@@ -9,6 +10,7 @@ import type { NotificationDto } from "../types/api";
 export interface AdminNavStats {
   studentCount: number;
   lecturerCount: number;
+  companyCount: number;
   unassignedCount: number;
   notificationCampaignCount: number;
   unreadNotificationCount: number;
@@ -17,6 +19,7 @@ export interface AdminNavStats {
 const DEFAULT_NAV_STATS: AdminNavStats = {
   studentCount: 0,
   lecturerCount: 0,
+  companyCount: 0,
   unassignedCount: 0,
   notificationCampaignCount: 0,
   unreadNotificationCount: 0,
@@ -37,28 +40,27 @@ export function useAdminNavStats(
 
     setIsLoading(true);
     try {
-      const [students, lecturers, campaigns, mine] = await Promise.all([
-        adminStudentsService.getAll(),
-        adminLecturersService.getAll(),
-        adminNotificationsService.getCampaigns(20).catch(() => []),
-        notificationService.getMine().catch(() => []),
-      ]);
-
-      const assignmentGroups = await Promise.all(
-        lecturers.map((l) =>
+      const [students, lecturers, companies, campaigns, mine, allAssignments] =
+        await Promise.all([
+          adminStudentsService.getAll(),
+          adminLecturersService.getAll(),
+          adminCompaniesService.getAll(),
+          adminNotificationsService.getCampaigns(20).catch(() => []),
+          notificationService.getMine().catch(() => []),
           adminAssignmentsService
-            .getByLecturer(l.id, semesterId ?? undefined)
+            .getAll(semesterId ?? undefined)
             .catch(() => []),
-        ),
-      );
+        ]);
+
       const assignedIds = new Set<string>();
-      for (const group of assignmentGroups) {
-        for (const item of group) assignedIds.add(item.studentId);
+      for (const item of allAssignments) {
+        assignedIds.add(item.studentId);
       }
 
       setStats({
         studentCount: students.length,
         lecturerCount: lecturers.length,
+        companyCount: companies.length,
         unassignedCount: students.filter((s) => !assignedIds.has(s.id)).length,
         notificationCampaignCount: campaigns.length,
         unreadNotificationCount: mine.filter((n) => !n.isRead).length,

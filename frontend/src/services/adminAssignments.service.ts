@@ -19,6 +19,13 @@ export const adminAssignmentsService = {
     });
   },
 
+  getAll(semesterId?: string) {
+    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    return apiRequest<LecturerAssignmentItemDto[]>(
+      `/api/Admin/assignments${qs}`,
+    );
+  },
+
   getByLecturer(lecturerId: string, semesterId?: string) {
     const qs = semesterId ? `?semesterId=${semesterId}` : "";
     return apiRequest<LecturerAssignmentItemDto[]>(
