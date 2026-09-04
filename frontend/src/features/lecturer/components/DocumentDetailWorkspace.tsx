@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { getStoredToken, resolveApiUrl } from "../../../lib/apiClient";
 import { Toast } from "../../../components/common/Toast";
 import {
   ArrowLeft,
@@ -18,6 +19,9 @@ import {
 } from "lucide-react";
 import type { DocumentItem } from "../../../types/document";
 
+// pdfjs-dist (~1 MB) is loaded on demand, only when a PDF preview is opened.
+const PdfViewer = lazy(() => import("./PdfViewer"));
+
 interface DocumentDetailWorkspaceProps {
   document: DocumentItem;
   onBack: () => void;
@@ -32,7 +36,9 @@ export const DocumentDetailWorkspace = ({
   onArchiveToggle,
 }: DocumentDetailWorkspaceProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 4;
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [activeSidebarTab, setActiveSidebarTab] = useState<"info" | "logs">("info");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -41,6 +47,34 @@ export const DocumentDetailWorkspace = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  const isPdfFile =
+    document.fileType?.toLowerCase() === "pdf" ||
+    document.fileName?.toLowerCase().endsWith(".pdf");
+
+  // Stream the real file from the API with the JWT attached (same endpoint as download).
+  const pdfFile = useMemo(
+    () => {
+      const token = getStoredToken();
+      return {
+        url: resolveApiUrl(`/api/Document/${document.id}/download`),
+        httpHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
+      };
+    },
+    [document.id],
+  );
+
+  // Reset the viewer state when switching to a different document.
+  useEffect(() => {
+    setCurrentPage(1);
+    setNumPages(null);
+    setPdfLoading(true);
+    setPdfError(null);
+  }, [document.id]);
+
+  useEffect(() => {
+    if (numPages && currentPage > numPages) setCurrentPage(numPages);
+  }, [numPages, currentPage]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -187,10 +221,12 @@ export const DocumentDetailWorkspace = ({
           {/* Toolbar */}
           <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between text-white text-xs">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-300">{document.fileType} Viewer</span>
+              <span className="font-bold text-slate-300">
+                {document.fileType} Viewer
+              </span>
               <span className="text-slate-500">•</span>
               <span className="text-slate-400 font-medium">
-                Trang {currentPage} / {totalPages}
+                Trang {currentPage} / {numPages ?? (pdfLoading ? "…" : "—")}
               </span>
             </div>
 
@@ -217,13 +253,17 @@ export const DocumentDetailWorkspace = ({
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="p-1 hover:bg-slate-700 disabled:opacity-40 rounded text-slate-300"
+                title="Trang trước"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(numPages ?? p, p + 1))
+                }
+                disabled={!numPages || currentPage >= numPages}
                 className="p-1 hover:bg-slate-700 disabled:opacity-40 rounded text-slate-300"
+                title="Trang sau"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -231,65 +271,60 @@ export const DocumentDetailWorkspace = ({
           </div>
 
           {/* Document Content Canvas View */}
-          <div className="flex-1 p-8 bg-slate-950/80 overflow-auto flex items-center justify-center">
-            <div
-              style={{ transform: `scale(${zoomLevel / 100})` }}
-              className="bg-white text-slate-900 p-10 rounded-md shadow-md max-w-xl w-full min-h-[500px] transition-transform origin-top space-y-6 font-serif border border-slate-200"
-            >
-              {/* Document Header Mock */}
-              <div className="text-center space-y-1 border-b pb-4 border-slate-200">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500 font-sans">
-                  TRƯỜNG ĐẠI HỌC • KHOA CÔNG NGHỆ THÔNG TIN
+          <div className="flex-1 p-4 sm:p-8 bg-slate-950/80 overflow-auto flex items-start sm:items-center justify-center min-h-[520px]">
+            {isPdfFile ? (
+              <div className="w-full max-w-3xl">
+                <Suspense
+                  fallback={
+                    <div className="text-center py-20 text-slate-400 text-xs font-medium">
+                      Đang tải trình xem PDF…
+                    </div>
+                  }
+                >
+                  <PdfViewer
+                    file={pdfFile}
+                    pageNumber={currentPage}
+                    scale={zoomLevel / 100}
+                    onLoadStart={() => setPdfLoading(true)}
+                    onLoadSuccess={(pages) => {
+                      setNumPages(pages);
+                      setPdfError(null);
+                      setPdfLoading(false);
+                    }}
+                    onLoadError={(message) => {
+                      setPdfError(message);
+                      setPdfLoading(false);
+                    }}
+                  />
+                </Suspense>
+              </div>
+            ) : pdfError ? (
+              <div className="bg-white text-slate-900 p-10 rounded-md shadow-md max-w-xl w-full text-center border border-slate-200 space-y-3">
+                <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
+                <p className="text-sm font-bold text-slate-800">
+                  Không thể xem trước tài liệu
                 </p>
-                <h2 className="text-base font-bold text-slate-900 uppercase leading-snug">
-                  {document.title}
-                </h2>
-                <p className="text-[11px] italic text-slate-600 font-sans">
-                  Ban hành theo Quyết định số 2026/QĐ-CNTT • Phiên bản {document.version}
+                <p className="text-xs text-slate-500 leading-relaxed">{pdfError}</p>
+              </div>
+            ) : (
+              <div className="bg-white text-slate-900 p-10 rounded-md shadow-md max-w-xl w-full text-center border border-slate-200 space-y-4">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-800">
+                  Không thể xem trước file {document.fileType || "này"} trong trình duyệt
                 </p>
-                {!isCirculating && (
-                  <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wide font-sans bg-rose-50 py-0.5 rounded">
-                    [TÀI LIỆU ĐÃ NGƯNG LƯU HÀNH - LƯU TRỮ LOG ĐỐI SOÁT]
-                  </p>
-                )}
+                <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                  Định dạng này chưa được hỗ trợ xem trực tuyến. Hãy tải xuống để mở trên máy của
+                  bạn.
+                </p>
+                <button
+                  onClick={() => onDownload(document)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all mx-auto"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Tải xuống ({document.fileSize})</span>
+                </button>
               </div>
-
-              {/* Document Page Content Mock */}
-              <div className="space-y-4 text-xs leading-relaxed text-slate-800 font-sans">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-slate-900">1. QUI ĐỊNH CHUNG VỀ THỰC TẬP</h4>
-                  <p className="text-slate-600 text-[11px]">
-                    Sinh viên thực hiện quá trình thực tập tại các doanh nghiệp đối tác đã qua thẩm
-                    định của Khoa. Thời gian tối thiểu là 12 tuần với tổng số giờ làm việc không
-                    dưới 360 giờ.
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <h4 className="font-bold text-slate-900">2. YÊU CẦU BÁO CÁO GIỮA KỲ &amp; CUỐI KỲ</h4>
-                  <p className="text-slate-600 text-[11px]">
-                    - Báo cáo giữa kỳ nộp vào tuần thứ 6 trên hệ thống InternLink.
-                    <br />- Báo cáo cuối kỳ có chữ ký xác nhận của Mentor doanh nghiệp và đóng dấu
-                    giáp lai.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-[11px]">
-                  <p className="font-bold text-slate-900 mb-0.5">Lưu ý đối với sinh viên:</p>
-                  <p className="text-slate-600">
-                    Sử dụng đúng phông chữ Arial / Times New Roman, cỡ chữ 12pt, giãn dòng 1.3
-                    lines theo quy chuẩn.
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-slate-200 flex items-center justify-between text-[10px] font-sans text-slate-400">
-                <span>Học kỳ: {document.semester}</span>
-                <span>
-                  Trang {currentPage} / {totalPages}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
