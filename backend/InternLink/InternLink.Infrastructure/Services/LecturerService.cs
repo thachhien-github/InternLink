@@ -375,7 +375,66 @@ public class LecturerService : ILecturerService
 
 
         return _mapper.Map<List<SubmissionDto>>(submissions);
+    }
 
+    public async Task<IEnumerable<SubmissionDto>> GetAssignedSubmissionsAsync(Guid userId, Guid? semesterId = null)
+    {
+        var lecturerId = await ResolveLecturerIdAsync(userId);
+        if (lecturerId == null)
+            return Array.Empty<SubmissionDto>();
+
+        var internshipQuery = _db.Internships
+            .AsNoTracking()
+            .Where(i => i.LecturerId == lecturerId && !i.IsDeleted);
+
+        if (semesterId.HasValue)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == semesterId.Value);
+
+        var internshipIds = await internshipQuery.Select(i => i.Id).ToListAsync();
+        if (internshipIds.Count == 0)
+            return Array.Empty<SubmissionDto>();
+
+        var submissions = await _db.Submissions
+            .AsNoTracking()
+            .Where(s => internshipIds.Contains(s.InternshipId) && !s.IsDeleted)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Company)
+            .Include(s => s.Feedbacks.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.Lecturer)
+            .OrderByDescending(s => s.SubmittedAt)
+            .ToListAsync();
+
+        return _mapper.Map<List<SubmissionDto>>(submissions);
+    }
+
+    public async Task<IEnumerable<WeeklyReportDto>> GetAssignedWeeklyReportsAsync(Guid userId, Guid? semesterId = null)
+    {
+        var lecturerId = await ResolveLecturerIdAsync(userId);
+        if (lecturerId == null)
+            return Array.Empty<WeeklyReportDto>();
+
+        var internshipQuery = _db.Internships
+            .AsNoTracking()
+            .Where(i => i.LecturerId == lecturerId && !i.IsDeleted);
+
+        if (semesterId.HasValue)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == semesterId.Value);
+
+        var internshipIds = await internshipQuery.Select(i => i.Id).ToListAsync();
+        if (internshipIds.Count == 0)
+            return Array.Empty<WeeklyReportDto>();
+
+        var reports = await _db.WeeklyReports
+            .AsNoTracking()
+            .Where(r => internshipIds.Contains(r.InternshipId) && !r.IsDeleted)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return _mapper.Map<List<WeeklyReportDto>>(reports);
     }
 
 

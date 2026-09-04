@@ -261,6 +261,20 @@ public class LecturerController : ControllerBase
     }
 
     /// <summary>
+    /// Get all submissions for students assigned to current lecturer
+    /// </summary>
+    [HttpGet("submissions")]
+    public async Task<IActionResult> GetAssignedSubmissions([FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var submissions = await _lecturerService.GetAssignedSubmissionsAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<IEnumerable<SubmissionDto>>.Ok(submissions));
+    }
+
+    /// <summary>
     /// Get submissions for an assigned internship
     /// </summary>
     [HttpGet("internships/{id:guid}/submissions")]
@@ -307,10 +321,10 @@ public class LecturerController : ControllerBase
     // ==========================================
 
     /// <summary>
-    /// Get weekly reports for assigned internship
+    /// Get weekly reports for assigned internship or all assigned internships of lecturer
     /// </summary>
     [HttpGet("weekly-reports")]
-    public async Task<IActionResult> GetWeeklyReports([FromQuery] Guid? internshipId = null)
+    public async Task<IActionResult> GetWeeklyReports([FromQuery] Guid? internshipId = null, [FromQuery] Guid? semesterId = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
@@ -329,8 +343,8 @@ public class LecturerController : ControllerBase
             }
         }
 
-        // Return empty or fetch for all assigned internships
-        return Ok(ApiResponse<IEnumerable<WeeklyReportDto>>.Ok(Array.Empty<WeeklyReportDto>()));
+        var allReports = await _lecturerService.GetAssignedWeeklyReportsAsync(userId.Value, semesterId);
+        return Ok(ApiResponse<IEnumerable<WeeklyReportDto>>.Ok(allReports));
     }
 
     /// <summary>

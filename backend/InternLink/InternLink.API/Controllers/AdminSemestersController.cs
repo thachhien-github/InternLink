@@ -14,7 +14,8 @@ namespace InternLink.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/Admin/semesters")]
-[Authorize(Policy = "RequireAdmin")]
+[Route("api/Semesters")]
+[Authorize]
 public class AdminSemestersController : ControllerBase
 {
     private readonly ISemesterService _semesterService;
@@ -42,6 +43,7 @@ public class AdminSemestersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> Create([FromBody] CreateSemesterDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
@@ -58,6 +60,7 @@ public class AdminSemestersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSemesterDto dto)
     {
         var updated = await _semesterService.UpdateSemesterAsync(id, dto);
@@ -68,6 +71,7 @@ public class AdminSemestersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/close")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> Close(Guid id)
     {
         var success = await _semesterService.CloseSemesterAsync(id);
@@ -78,6 +82,7 @@ public class AdminSemestersController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var success = await _semesterService.DeleteSemesterAsync(id);
