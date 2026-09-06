@@ -50,11 +50,19 @@ export function mapStudentDtoToRow(
   const assignedLecturer =
     context?.assignment?.lecturerName?.trim() || "Chưa phân công";
 
+  // Mirror the HỌ | TÊN columns of the import Excel: họ = all words except the
+  // last (surname + middle names), tên = the last word (given name).
+  const nameParts = s.fullName.trim().split(/\s+/).filter(Boolean);
+  const ho = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : "";
+  const ten = nameParts.length > 0 ? nameParts[nameParts.length - 1] : s.fullName.trim();
+
   return {
     id: s.id,
     userId: s.userId ?? null,
     mssv: s.studentCode,
     fullName: s.fullName,
+    ho,
+    ten,
     gender: "—",
     dateOfBirth: "—",
     classCode: s.class ?? "—",
@@ -98,23 +106,34 @@ export function mapLecturerDtoToRow(l: LecturerDto, assignedCount = 0) {
 
 export function mapCompanyDtoToEnterprise(c: CompanyDto): Enterprise {
   const short =
+    c.companyCode ||
     c.companyName
       .split(/\s+/)
       .map((w) => w[0])
       .join("")
       .slice(0, 3)
-      .toUpperCase() || "DN";
+      .toUpperCase() ||
+    "DN";
+  const semesterUnlinked = c.isSemesterLinked === false;
   return {
     id: c.id,
     name: c.companyName,
     shortCode: short,
-    badge: c.isActive ? "Đang hợp tác" : "Tạm ngưng",
-    badgeType: c.isActive ? "teal" : "gray",
-    studentCount: 0,
-    activeThisWeek: c.isActive,
+    badge: semesterUnlinked
+      ? "Ngưng liên kết"
+      : c.isActive
+        ? "Đang hợp tác"
+        : "Tạm ngưng",
+    badgeType: semesterUnlinked ? "gray" : c.isActive ? "teal" : "gray",
+    studentCount: c.studentCount ?? 0,
+    activeThisWeek: c.isActive && !semesterUnlinked,
     contactEmail: c.contactEmail ?? "—",
     location: c.address ?? "—",
-    status: c.isActive ? "Đang hợp tác" : "Tạm ngưng",
+    status: semesterUnlinked
+      ? "Ngưng liên kết"
+      : c.isActive
+        ? "Đang hợp tác"
+        : "Tạm ngưng",
     field: c.industry ?? "—",
     contactPerson: c.contactPerson ?? "—",
     contactPhone: c.contactPhone ?? "—",

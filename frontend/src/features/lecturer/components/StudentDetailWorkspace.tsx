@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { Toast } from "../../../components/common/Toast";
 import {
   ArrowLeft,
@@ -17,7 +18,6 @@ import {
   UserCheck,
   ExternalLink,
   ChevronRight,
-  Sparkles,
   FileCheck,
   GraduationCap,
 } from "lucide-react";
@@ -26,7 +26,10 @@ export const StudentDetailWorkspace = ({
   student,
   enterprises = [],
   onBack,
+  onSendComment,
   onChat,
+  onGrade,
+  onReviewSubmission,
   onAssignCompany,
 }: {
   student: import("../../../types/student").Student & {
@@ -41,6 +44,7 @@ export const StudentDetailWorkspace = ({
   onReviewSubmission?: (student: any, title?: string) => void;
   onAssignCompany?: (companyName: string) => void;
 }) => {
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showAssignCompanyModal, setShowAssignCompanyModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(
@@ -49,6 +53,20 @@ export const StudentDetailWorkspace = ({
   const [selectedStatus, setSelectedStatus] = useState(
     student.status || "Đúng tiến độ",
   );
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onBack?.();
+    };
+    if (student) {
+      window.addEventListener('keydown', handleKey);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [student, onBack]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -115,8 +133,15 @@ export const StudentDetailWorkspace = ({
   const submittedCount = weeklyMilestones.filter((m) => m.submitted).length;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 pb-16 font-sans">
-      <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onBack?.();
+      }}
+    >
+      <div className="bg-white rounded-lg border border-slate-200 shadow-md w-full max-w-4xl p-5 space-y-5 animate-in fade-in zoom-in-95">
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
 
       {/* HEADER BAR: Navigation & Breadcrumb */}
       <div className="flex items-center justify-between">
@@ -434,7 +459,11 @@ export const StudentDetailWorkspace = ({
 
                     {m.submitted && (
                       <button
-                        onClick={() => triggerToast(`Đang mở xem bài nộp Tuần ${m.week}...`)}
+                        onClick={() =>
+                          onReviewSubmission
+                            ? onReviewSubmission(student, `Báo cáo Tuần ${m.week} - ${m.title}`)
+                            : triggerToast(`Đang mở xem bài nộp Tuần ${m.week}...`)
+                        }
                         className="p-1.5 bg-white hover:bg-blue-50 text-blue-600 rounded border border-slate-200 hover:border-blue-300 transition-colors"
                         title="Xem chi tiết bài nộp"
                       >
@@ -451,8 +480,13 @@ export const StudentDetailWorkspace = ({
 
       {/* ASSIGN COMPANY MODAL */}
       {showAssignCompanyModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-md w-full max-w-md p-5 space-y-4 animate-in zoom-in-95 duration-150">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAssignCompanyModal(false);
+          }}
+        >
+          <div className="bg-white rounded-lg border border-slate-200 shadow-md w-full max-w-md p-5 space-y-4 animate-in zoom-in-95">
             <h3 className="text-sm font-bold text-slate-900">
               Gán / Đổi doanh nghiệp cho {student.name}
             </h3>
@@ -495,6 +529,7 @@ export const StudentDetailWorkspace = ({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

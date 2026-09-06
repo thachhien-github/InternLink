@@ -35,6 +35,8 @@ export const CreateStudentModal = ({
   onAddStudent,
 }: CreateStudentModalProps) => {
   const [form, setForm] = useState(emptyForm);
+  const [ho, setHo] = useState("");
+  const [ten, setTen] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   if (!isOpen) return null;
@@ -46,8 +48,12 @@ export const CreateStudentModal = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const studentCode = form.studentCode.trim();
-    const fullName = form.fullName.trim();
+    const fullName = [ho.trim(), ten.trim()].filter(Boolean).join(" ");
 
+    if (!ten.trim()) {
+      onShowToast("Vui lòng nhập Tên sinh viên!");
+      return;
+    }
     if (!fullName) {
       onShowToast("Vui lòng nhập họ và tên sinh viên!");
       return;
@@ -72,6 +78,8 @@ export const CreateStudentModal = ({
       if (onAddStudent) await onAddStudent(payload);
       onShowToast(`Đã thêm sinh viên ${fullName} (${studentCode})`);
       setForm(emptyForm);
+      setHo("");
+      setTen("");
       onClose();
     } catch {
       /* parent shows API error */
@@ -119,19 +127,6 @@ export const CreateStudentModal = ({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-mono font-bold outline-none focus:bg-white focus:border-blue-500"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">
-                Họ tên <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={form.fullName}
-                onChange={(e) => setField("fullName", e.target.value)}
-                placeholder="Nguyễn Văn A"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-semibold outline-none focus:bg-white focus:border-blue-500"
-              />
-            </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Lớp</label>
               <input
@@ -140,6 +135,31 @@ export const CreateStudentModal = ({
                 onChange={(e) => setField("class", e.target.value)}
                 placeholder="DH24TIN06"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Họ & tên đệm
+              </label>
+              <input
+                type="text"
+                value={ho}
+                onChange={(e) => setHo(e.target.value)}
+                placeholder="Nguyễn Văn"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-semibold outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Tên <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={ten}
+                onChange={(e) => setTen(e.target.value)}
+                placeholder="An"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold outline-none focus:bg-white focus:border-blue-500"
               />
             </div>
             <div>
@@ -162,7 +182,7 @@ export const CreateStudentModal = ({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md outline-none focus:bg-white focus:border-blue-500"
               />
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <label className="block font-bold text-slate-700 mb-1">SDT</label>
               <input
                 type="text"

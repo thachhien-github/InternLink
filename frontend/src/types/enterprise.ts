@@ -23,3 +23,29 @@ export interface Enterprise {
   isPriority: boolean;
   updatedAt?: string;
 }
+
+/** Chi tiết doanh nghiệp hiển thị trên trang /lecturer/enterprises/[id] */
+export interface EnterpriseDetail {
+  id: string;
+  name: string;
+  industry: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  studentCount: number;
+  totalSubmissions: number;
+  totalWeeklyReports: number;
+  pendingReviewsCount: number;
+  internships: {
+    id: string;
+    studentId: string;
+    studentName: string;
+    position: string;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+    submissionCount: number;
+  }[];
+}
+

@@ -1,4 +1,4 @@
-import { apiRequestRaw } from "../lib/apiClient";
+import { apiRequest, apiRequestRaw } from "../lib/apiClient";
 
 import type {
   CreateEvaluationRequestDto,
@@ -62,7 +62,10 @@ export const evaluationService = {
   getByInternship(internshipId: string): Promise<EvaluationDetailDto | null> {
     return apiRequestRaw<EvaluationDetailDto>(
       `/api/Evaluation/internship/${internshipId}`,
-    ).catch(() => null);
+    ).catch((error) => {
+      if (error instanceof Error && error.message.includes("404")) return null;
+      throw error;
+    });
   },
 
   create(body: CreateEvaluationRequestDto): Promise<EvaluationDetailDto> {
@@ -87,6 +90,51 @@ export const evaluationService = {
       `/api/Evaluation/${id}/finalize`,
       { method: "POST" },
     );
+  },
+
+  updateDefense(
+    id: string,
+    body: {
+      defenseDate?: string | null;
+      defenseStatus: "NotScheduled" | "Scheduled" | "Completed";
+      defenseCouncilName?: string | null;
+      defenseExaminerName?: string | null;
+    },
+  ): Promise<EvaluationDetailDto> {
+    return apiRequestRaw<EvaluationDetailDto>(`/api/Lecturer/evaluations/${id}/defense`, {
+      method: "PUT",
+      body,
+    });
+  },
+
+  /**
+   * Schedule defense for an internship.
+   * If an evaluation already exists, update its defense fields.
+   * If no evaluation exists yet, create a draft evaluation (scores = 0, not finalized)
+   * and set the defense fields — so lecturers can schedule the defense before grading.
+   */
+  async scheduleDefense(
+    internshipId: string,
+    body: {
+      defenseDate?: string | null;
+      defenseStatus: "NotScheduled" | "Scheduled" | "Completed";
+      defenseCouncilName?: string | null;
+      defenseExaminerName?: string | null;
+    },
+  ): Promise<EvaluationDetailDto> {
+    const existing = await this.getByInternship(internshipId);
+    if (existing) {
+      return this.updateDefense(existing.id, body);
+    }
+    const draft = await this.create({
+      internshipId,
+      technicalScore: 0,
+      communicationScore: 0,
+      teamworkScore: 0,
+      initiativeScore: 0,
+      isFinalized: false,
+    });
+    return this.updateDefense(draft.id, body);
   },
 
   /**

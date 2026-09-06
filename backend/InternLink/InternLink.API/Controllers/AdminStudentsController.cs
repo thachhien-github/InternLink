@@ -22,14 +22,14 @@ public class AdminStudentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? semesterId = null)
     {
         if (skip < 0)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Skip must be greater than or equal to 0" }));
         if (take < 1 || take > 1000)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-        var students = await _studentService.GetAllStudentsAsync(skip, take);
+        var students = await _studentService.GetAllStudentsAsync(skip, take, semesterId: semesterId);
         return Ok(ApiResponse<IEnumerable<StudentDto>>.Ok(students));
     }
 

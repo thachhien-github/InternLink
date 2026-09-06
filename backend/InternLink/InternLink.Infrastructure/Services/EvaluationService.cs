@@ -469,6 +469,34 @@ public class EvaluationService : IEvaluationService
         return MapToDetailDto(finalized!);
     }
 
+    public async Task<EvaluationDetailDto?> UpdateDefenseAsync(Guid id, UpdateDefenseRequest request, Guid actorUserId)
+    {
+        var evaluation = await _db.Evaluations
+            .Include(e => e.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+        if (evaluation == null) return null;
+
+        var isAssigned = evaluation.Internship?.Lecturer?.UserId == actorUserId;
+        var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == actorUserId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if (!isAssigned && !isSuperAdmin)
+            throw new UnauthorizedAccessException("You do not have permission to update defense details");
+
+        evaluation.DefenseDate = request.DefenseDate;
+        evaluation.DefenseStatus = request.DefenseStatus;
+        evaluation.DefenseCouncilName = request.DefenseCouncilName?.Trim();
+        evaluation.DefenseExaminerName = request.DefenseExaminerName?.Trim();
+        evaluation.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var updated = await _db.Evaluations
+            .Include(e => e.Internship).ThenInclude(i => i.Student)
+            .Include(e => e.Internship).ThenInclude(i => i.Company)
+            .Include(e => e.EvaluatedBy)
+            .FirstAsync(e => e.Id == id);
+        return MapToDetailDto(updated);
+    }
+
     public async Task<bool> DeleteEvaluationAsync(Guid id, Guid? actorUserId = null)
     {
         var evaluation = await _db.Evaluations
@@ -616,6 +644,10 @@ public class EvaluationService : IEvaluationService
             EvaluatedAt = evaluation.EvaluatedAt,
             UpdatedAt = evaluation.UpdatedAt,
             IsFinalized = evaluation.IsFinalized,
+            DefenseDate = evaluation.DefenseDate,
+            DefenseStatus = evaluation.DefenseStatus,
+            DefenseCouncilName = evaluation.DefenseCouncilName,
+            DefenseExaminerName = evaluation.DefenseExaminerName,
             EvaluatedBy = evaluation.EvaluatedBy != null ? new UserSummaryDto
             {
                 Id = evaluation.EvaluatedBy.Id,

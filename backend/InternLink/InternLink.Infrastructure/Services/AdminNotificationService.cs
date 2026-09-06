@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
@@ -39,6 +41,7 @@ public class AdminNotificationService : IAdminNotificationService
                 var latestSentAt = g.Max(x => x.CreatedAt);
                 return new AdminNotificationCampaignDto
                 {
+                    Id = ComputeCampaignId(g.Key.Title, g.Key.Content, latestSentAt),
                     Title = g.Key.Title,
                     Content = g.Key.Content,
                     Audience = audience,
@@ -169,6 +172,16 @@ public class AdminNotificationService : IAdminNotificationService
 
         await _db.SaveChangesAsync();
         return items.Count;
+    }
+
+    private static string ComputeCampaignId(string title, string content, DateTime sentAt)
+    {
+        // Deterministic hash of the campaign content + send time so the id is stable
+        // across requests (used by the client to persist read/deleted state).
+        var input = $"{title}|{content}|{sentAt.Ticks}";
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        var hex = Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+        return $"campaign-{hex}";
     }
 
     private static string InferAudience(IReadOnlyList<Role> roles)

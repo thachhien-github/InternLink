@@ -9,6 +9,7 @@ interface Props {
   onClose: () => void;
   onShowToast: (msg: string) => void;
   onSuccess: () => void;
+  currentSemesterId?: string | null;
 }
 
 export const ImportLecturersModal = ({
@@ -16,6 +17,7 @@ export const ImportLecturersModal = ({
   onClose,
   onShowToast,
   onSuccess,
+  currentSemesterId,
 }: Props) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -50,7 +52,10 @@ export const ImportLecturersModal = ({
     setIsUploading(true);
     setResult(null);
     try {
-      const res = await adminLecturersService.importExcel(selectedFile);
+      const res = await adminLecturersService.importExcel(
+        selectedFile,
+        currentSemesterId ?? undefined,
+      );
       setResult(res);
       if (res.successCount > 0) {
         onShowToast(

@@ -9,12 +9,14 @@ using InternLink.Infrastructure.Identity;
 using InternLink.Infrastructure.Persistence;
 using InternLink.Infrastructure.Services;
 using InternLink.Shared.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using AutoMapper;
 using Moq;
+using InternLink.API.Controllers;
 
 namespace InternLink.Tests.Services;
 
@@ -182,5 +184,16 @@ public class AuthServiceTests
         var act = () => service.ResetPasswordAsync(rawToken, "NewPass456!");
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public void AdminSemestersController_ShouldRequireAdminPolicyAtControllerLevel()
+    {
+        var attributes = typeof(AdminSemestersController)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>()
+            .ToList();
+
+        attributes.Should().ContainSingle(attr => attr.Policy == "RequireAdmin");
     }
 }

@@ -19,7 +19,7 @@ services:
       - Email__SmtpHost=smtp.gmail.com
       - Email__SmtpPort=587
       - Email__Username=internlink.cntt@gmail.com
-      - Email__Password=srikwzwtpsfjiafr
+      - Email__Password=yxqldegwombxsujd
       - Email__FromAddress=internlink.cntt@gmail.com
       - Email__PortalUrl=http://localhost:3000
       - Cors__AllowedOrigins__0=http://localhost:3000

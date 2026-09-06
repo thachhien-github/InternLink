@@ -8,9 +8,9 @@ namespace InternLink.Application.Interfaces;
 public interface IStudentService
 {
     /// <summary>
-    /// Get all students with optional pagination
+    /// Get all students with optional pagination and semester filter
     /// </summary>
-    Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100, Guid? lecturerId = null);
+    Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100, Guid? lecturerId = null, Guid? semesterId = null);
 
     /// <summary>
     /// Get students with filtering and pagination

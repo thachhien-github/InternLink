@@ -25,6 +25,7 @@ public class SemesterService : ISemesterService
         var semesters = await _context.Semesters
             .Where(s => !s.IsDeleted)
             .Include(s => s.Internships)
+            .Include(s => s.SemesterLecturers)
             .OrderByDescending(s => s.Status == SemesterStatus.Active)
             .ThenByDescending(s => s.CreatedAt)
             .ToListAsync();
@@ -32,11 +33,24 @@ public class SemesterService : ISemesterService
         return semesters.Select(MapToDto);
     }
 
+    public async Task<SemesterDto?> GetActiveSemesterAsync()
+    {
+        var semester = await _context.Semesters
+            .Where(s => !s.IsDeleted && s.Status == SemesterStatus.Active)
+            .Include(s => s.Internships)
+            .Include(s => s.SemesterLecturers)
+            .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return semester == null ? null : MapToDto(semester);
+    }
+
     public async Task<SemesterDto?> GetSemesterByIdAsync(Guid id)
     {
         var semester = await _context.Semesters
             .Where(s => s.Id == id && !s.IsDeleted)
             .Include(s => s.Internships)
+            .Include(s => s.SemesterLecturers)
             .FirstOrDefaultAsync();
 
         return semester == null ? null : MapToDto(semester);
@@ -69,6 +83,7 @@ public class SemesterService : ISemesterService
         var semester = await _context.Semesters
             .Where(s => s.Id == id && !s.IsDeleted)
             .Include(s => s.Internships)
+            .Include(s => s.SemesterLecturers)
             .FirstOrDefaultAsync();
 
         if (semester == null)
@@ -82,6 +97,76 @@ public class SemesterService : ISemesterService
         if (dto.Status.HasValue) semester.Status = dto.Status.Value;
         if (dto.Description != null) semester.Description = dto.Description;
         if (dto.MaxStudentsPerLecturer.HasValue) semester.MaxStudentsPerLecturer = dto.MaxStudentsPerLecturer.Value;
+
+        semester.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return MapToDto(semester);
+    }
+
+    public async Task<SemesterDto?> StartSemesterAsync(Guid id)
+    {
+        var semester = await _context.Semesters
+            .Where(s => s.Id == id && !s.IsDeleted)
+            .Include(s => s.Internships)
+            .Include(s => s.SemesterLecturers)
+            .FirstOrDefaultAsync();
+
+        if (semester == null)
+            return null;
+
+        if (semester.Status == SemesterStatus.Completed)
+            throw new InvalidOperationException("A completed semester cannot be started again.");
+
+        var anotherActiveSemesterExists = await _context.Semesters
+            .AnyAsync(s => s.Id != id && !s.IsDeleted && s.Status == SemesterStatus.Active);
+        if (anotherActiveSemesterExists)
+            throw new InvalidOperationException("Another semester is already active. Close it before starting this semester.");
+
+        semester.Status = SemesterStatus.Active;
+
+        var internships = await _context.Internships
+            .Where(i => !i.IsDeleted && i.SemesterId == id)
+            .ToListAsync();
+        foreach (var internship in internships)
+        {
+            if (internship.Status == InternshipStatus.NotStarted)
+                internship.Status = InternshipStatus.InProgress;
+            internship.StartDate ??= semester.StartDate;
+            internship.EndDate ??= semester.EndDate;
+            internship.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var lecturerIds = await _context.SemesterLecturers
+            .Where(link => link.SemesterId == id && !link.IsDeleted)
+            .Select(link => link.LecturerId)
+            .Distinct()
+            .ToListAsync();
+        var internshipLecturerIds = internships
+            .Where(i => i.LecturerId.HasValue)
+            .Select(i => i.LecturerId!.Value)
+            .Distinct()
+            .ToList();
+        lecturerIds.AddRange(internshipLecturerIds);
+        var studentIds = internships.Select(i => i.StudentId).Distinct().ToList();
+        var userIds = await _context.Lecturers
+            .Where(lecturer => lecturerIds.Contains(lecturer.Id) && lecturer.UserId.HasValue)
+            .Select(lecturer => lecturer.UserId!.Value)
+            .ToListAsync();
+        userIds.AddRange(
+            await _context.Students
+                .Where(student => studentIds.Contains(student.Id) && student.UserId.HasValue)
+                .Select(student => student.UserId!.Value)
+                .ToListAsync());
+        userIds = userIds.Distinct().ToList();
+        var users = await _context.Users
+            .Where(user => userIds.Contains(user.Id) && !user.IsDeleted)
+            .ToListAsync();
+        foreach (var user in users)
+        {
+            user.IsActive = true;
+            user.UpdatedAt = DateTime.UtcNow;
+        }
 
         semester.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -144,7 +229,18 @@ public class SemesterService : ISemesterService
     {
         var validInternships = semester.Internships.Where(i => !i.IsDeleted).ToList();
         var studentsCount = validInternships.Count;
-        var lecturersCount = validInternships.Where(i => i.LecturerId != null).Select(i => i.LecturerId).Distinct().Count();
+
+        // Lecturers = assigned via internships OR imported/registered via SemesterLecturers.
+        var lecturerIds = validInternships
+            .Where(i => i.LecturerId != null)
+            .Select(i => i.LecturerId!.Value);
+        if (semester.SemesterLecturers != null)
+        {
+            lecturerIds = lecturerIds.Concat(
+                semester.SemesterLecturers.Where(sl => !sl.IsDeleted).Select(sl => sl.LecturerId));
+        }
+        var lecturersCount = lecturerIds.Distinct().Count();
+
         var companiesCount = validInternships.Select(i => i.CompanyId).Distinct().Count();
         var placedStudents = validInternships.Count(i => i.Status == InternshipStatus.InProgress || i.Status == InternshipStatus.Completed);
 

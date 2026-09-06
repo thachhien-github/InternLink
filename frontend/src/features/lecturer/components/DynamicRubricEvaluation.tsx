@@ -41,6 +41,8 @@ interface DynamicRubricEvaluationProps {
     hasEvaluation?: boolean;
     [key: string]: any;
   };
+  /** Explicit semester identifier for rubric lookup when the student row does not carry one. */
+  semesterId?: string | null;
   onBack?: () => void;
   onSave?: (data: {
     evaluationId?: string;
@@ -54,15 +56,18 @@ interface DynamicRubricEvaluationProps {
     }[];
     comments: string;
     finalScore: number;
-  }) => void;
+    finalize: boolean;
+  }) => void | Promise<void>;
 }
 
 export const DynamicRubricEvaluation = ({
   student,
+  semesterId,
   onBack,
   onSave,
 }: DynamicRubricEvaluationProps) => {
   const [rubric, setRubric] = useState<EvaluationRubricDto | null>(null);
+  const [rubricError, setRubricError] = useState<string | null>(null);
   const [scores, setScores] = useState<CriterionScoreDraft[]>([]);
   const [comments, setComments] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +76,10 @@ export const DynamicRubricEvaluation = ({
   const [evaluationId, setEvaluationId] = useState<string | undefined>(
     student.evaluationId,
   );
+
+  const resolvedSemesterId =
+    student.semesterId ||
+    (semesterId && semesterId !== "all" ? semesterId : undefined);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -81,20 +90,28 @@ export const DynamicRubricEvaluation = ({
   useEffect(() => {
     (async () => {
       setIsLoading(true);
+      setRubricError(null);
       try {
-        const semesterId =
-          student.semesterId ||
-          "00000000-0000-0000-0000-000000000000";
+        if (!resolvedSemesterId) {
+          setRubric(null);
+          setRubricError(
+            "Không xác định được kỳ thực tập cho sinh viên này. Liên hệ Admin nếu dữ liệu bị thiếu.",
+          );
+          setIsLoading(false);
+          return;
+        }
 
-        // 1. Load rubric
-        const rubricData = await rubricService.getApproved(semesterId);
+        const rubricData = await rubricService.getApproved(resolvedSemesterId);
         if (!rubricData) {
+          setRubric(null);
+          setRubricError(
+            "Kỳ thực tập này chưa có rubric đã được phê duyệt. Liên hệ Admin để thiết lập tiêu chí chấm điểm.",
+          );
           setIsLoading(false);
           return;
         }
         setRubric(rubricData);
 
-        // 2. Try to load existing evaluation scores
         let existingScores: CriterionScoreDraft[] | null = null;
         if (student.evaluationId) {
           try {
@@ -109,7 +126,7 @@ export const DynamicRubricEvaluation = ({
                 score: cs.score,
                 comment: cs.comment ?? "",
               }));
-              setComments(""); // existing comments are per-criterion
+              setComments("");
               setEvaluationId(student.evaluationId);
             }
           } catch {
@@ -117,7 +134,6 @@ export const DynamicRubricEvaluation = ({
           }
         }
 
-        // 3. Set scores — either from existing or defaults
         if (existingScores) {
           setScores(existingScores);
         } else {
@@ -128,18 +144,19 @@ export const DynamicRubricEvaluation = ({
               criterionDescription: c.description ?? "",
               weight: c.weight,
               maxScore: c.maxScore,
-              score: Math.round(c.maxScore * 0.8), // default 80%
+              score: 0,
               comment: "",
             })),
           );
         }
       } catch {
-        // No rubric found
+        setRubric(null);
+        setRubricError("Không thể tải rubric. Vui lòng thử lại.");
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [student.semesterId, student.evaluationId]);
+  }, [resolvedSemesterId, student.evaluationId]);
 
   // Calculate weighted grade
   const calculateFinalGrade = () => {
@@ -192,7 +209,14 @@ export const DynamicRubricEvaluation = ({
     };
   };
 
-  const handleSave = async () => {
+  const handleSave = async (finalize: boolean) => {
+    if (finalize && !window.confirm("Sau khi chốt, đánh giá sẽ chuyển sang chỉ đọc. Bạn có chắc muốn chốt điểm không?")) {
+      return;
+    }
+    if (finalize && scores.some((score) => score.score < 0 || score.score > score.maxScore)) {
+      showToast("Điểm phải nằm trong khoảng hợp lệ của từng tiêu chí.");
+      return;
+    }
     setIsSaving(true);
     try {
       if (onSave) {
@@ -208,6 +232,7 @@ export const DynamicRubricEvaluation = ({
           })),
           comments,
           finalScore: calculateFinalGrade(),
+          finalize,
         });
       }
       showToast(`Đã lưu đánh giá cho ${student.name}`);
@@ -231,19 +256,14 @@ export const DynamicRubricEvaluation = ({
     );
   }
 
-  if (!rubric) {
+  if (!rubric && rubricError) {
     return (
       <div className="space-y-4">
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
         <div className="bg-white p-6 rounded-lg border border-slate-200 text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-900">
-            Chưa có rubric phê duyệt
-          </h3>
-          <p className="text-xs text-slate-500">
-            Kỳ thực tập hiện tại chưa có rubric đã được phê duyệt. Vui lòng
-            liên hệ Admin để thiết lập tiêu chí chấm điểm.
-          </p>
+          <h3 className="text-sm font-bold text-slate-900">Không thể chấm điểm</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">{rubricError}</p>
           {onBack && (
             <button
               onClick={onBack}
@@ -306,14 +326,24 @@ export const DynamicRubricEvaluation = ({
             </p>
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          {isSaving ? "Đang lưu..." : "Lưu & Chốt Điểm"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void handleSave(false)}
+            disabled={isSaving}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md border border-slate-200 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? "Đang lưu..." : "Lưu nháp"}
+          </button>
+          <button
+            onClick={() => void handleSave(true)}
+            disabled={isSaving}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Lưu & chốt
+          </button>
+        </div>
       </div>
 
       {/* Student Info */}
@@ -505,7 +535,7 @@ export const DynamicRubricEvaluation = ({
         </div>
 
         <button
-          onClick={handleSave}
+          onClick={() => void handleSave(false)}
           disabled={isSaving}
           className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >

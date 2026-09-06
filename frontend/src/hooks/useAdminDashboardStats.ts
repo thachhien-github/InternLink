@@ -156,9 +156,9 @@ export function useAdminDashboardStats(
         notifications,
         allAssignments,
       ] = await Promise.all([
-        adminStudentsService.getAll(),
-        adminLecturersService.getAll(),
-        adminCompaniesService.getAll(),
+        adminStudentsService.getAll(0, 500, semesterId ?? undefined),
+        adminLecturersService.getAll(0, 500, semesterId ?? undefined),
+        adminCompaniesService.getAll(0, 500, semesterId ?? undefined),
         adminDashboardService
           .getInternshipStats(semesterId ?? undefined)
           .catch(() => ({ ...EMPTY_INTERNSHIP_STATS })),

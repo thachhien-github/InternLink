@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   Plus,
@@ -11,19 +12,18 @@ import {
   Mail,
   Phone,
   Globe,
-  Check,
   Download,
-  Upload,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
-import { useAdminCompanies } from "../../../hooks/useAdminCompanies";
 import type { Enterprise } from "../../../types/enterprise";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../../../lib/adminMappers";
 import { adminCompaniesService } from "../../../services/adminCompanies.service";
+import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
 import { ImportCompaniesModal } from "../components/modals/ImportCompaniesModal";
 
 const emptyForm = {
@@ -43,9 +43,10 @@ export const CompaniesView = ({
 }: {
   onShowToast: (msg: string) => void;
 }) => {
-  const { companies: initialCompanies, loading: companiesLoading, error: companiesError } = useAdminCompanies();
+  const navigate = useNavigate();
+  const { selectedSemester } = useSemester();
   const [companies, setCompanies] = useState<Enterprise[]>([]);
-  const [isLoadingApi, setIsLoadingApi] = useState(companiesLoading);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Enterprise | null>(null);
@@ -55,26 +56,29 @@ export const CompaniesView = ({
   const [deleteTarget, setDeleteTarget] = useState<Enterprise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [linkTarget, setLinkTarget] = useState<Enterprise | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
 
   const reloadCompanies = async () => {
-    const rows = await adminCompaniesService.getAll();
-    setCompanies(rows.map(mapCompanyDtoToEnterprise));
-  };
-
-  // Update companies when hook data changes
-  useEffect(() => {
-    if (initialCompanies && initialCompanies.length > 0) {
-      setCompanies(initialCompanies as unknown as Enterprise[]);
+    setIsLoadingApi(true);
+    try {
+      const rows = await adminCompaniesService.getAll(
+        0,
+        500,
+        toApiSemesterId(selectedSemester?.id),
+      );
+      setCompanies(rows.map(mapCompanyDtoToEnterprise));
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    } finally {
       setIsLoadingApi(false);
     }
-  }, [initialCompanies]);
+  };
 
-  // Handle errors from hook
+  // Load companies for the currently selected term; refetch on term change
   useEffect(() => {
-    if (companiesError) {
-      onShowToast(getApiErrorMessage(companiesError));
-    }
-  }, [companiesError, onShowToast]);
+    void reloadCompanies();
+  }, [selectedSemester?.id, onShowToast]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -157,6 +161,28 @@ export const CompaniesView = ({
     }
   };
 
+  const semesterId = toApiSemesterId(selectedSemester?.id);
+  const canLink = Boolean(semesterId);
+
+  const handleSetSemesterLink = async (c: Enterprise, isLinked: boolean) => {
+    if (!semesterId) return;
+    setIsLinking(true);
+    try {
+      await adminCompaniesService.setSemesterLink(c.id, semesterId, isLinked);
+      await reloadCompanies();
+      onShowToast(
+        isLinked
+          ? `Đã liên kết ${c.name} với học kỳ ${selectedSemester?.name}`
+          : `Đã ngưng liên kết ${c.name} với học kỳ ${selectedSemester?.name}. Sinh viên đang thực tập vẫn được giữ nguyên.`,
+      );
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    } finally {
+      setIsLinking(false);
+      setLinkTarget(null);
+    }
+  };
+
   const handleDelete = async (c: Enterprise) => {
     try {
       await adminCompaniesService.delete(c.id);
@@ -236,11 +262,20 @@ export const CompaniesView = ({
       <Panel className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">
-              Danh sách Doanh nghiệp
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                Danh sách Doanh nghiệp
+              </h2>
+              {selectedSemester?.id && selectedSemester.id !== "all" && (
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md border border-blue-200/60">
+                  Học kỳ: {selectedSemester.name}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 font-medium">
-              Quản lý đối tác, liên hệ và sức chứa thực tập
+              {canLink
+                ? "Doanh nghiệp liên kết mặc định với mọi học kỳ — dùng 'Ngưng liên kết' để ẩn khỏi phân bổ mới của kỳ này."
+                : "Chọn một học kỳ cụ thể để quản lý liên kết doanh nghiệp của kỳ đó."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -282,7 +317,11 @@ export const CompaniesView = ({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/80">
+                <tr
+                  key={c.id}
+                  className="hover:bg-slate-50/80 cursor-pointer"
+                  onClick={() => navigate(`/admin/companies/${c.id}`)}
+                >
                   <td className="py-3 pr-3">
                     <div className="font-bold text-slate-900">{c.name}</div>
                     <div className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -300,12 +339,52 @@ export const CompaniesView = ({
                     {c.studentCount} / {c.capacity}
                   </td>
                   <td className="py-3 pr-3">
-                    <span className="inline-flex px-2 py-0.5 rounded-md border border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-700">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded-md border text-[10px] font-bold ${
+                        c.status === "Ngưng liên kết"
+                          ? "bg-slate-100 text-slate-500 border-slate-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                      }`}
+                    >
                       {c.status}
                     </span>
+                    {c.status === "Ngưng liên kết" && (
+                      <span className="block text-[10px] text-slate-400 mt-0.5">
+                        Ẩn khỏi phân bổ mới · SV đang TT vẫn hiển thị
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/companies/${c.id}`)}
+                        className="p-1.5 rounded-md text-slate-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      {canLink && (
+                        <button
+                          type="button"
+                          onClick={() => setLinkTarget(c)}
+                          disabled={isLinking}
+                          className={`px-2 py-1 rounded-md text-[10px] font-bold border cursor-pointer disabled:opacity-50 transition-colors ${
+                            c.status === "Ngưng liên kết"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                              : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                          }`}
+                          title={
+                            c.status === "Ngưng liên kết"
+                              ? "Liên kết lại với học kỳ này"
+                              : "Ngưng liên kết với học kỳ này"
+                          }
+                        >
+                          {c.status === "Ngưng liên kết"
+                            ? "Liên kết lại"
+                            : "Ngưng liên kết"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEdit(c)}
@@ -318,7 +397,7 @@ export const CompaniesView = ({
                         type="button"
                         onClick={() => setDeleteTarget(c)}
                         className="p-1.5 rounded-md text-slate-500 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
-                        title="Xóa"
+                        title="Xóa khỏi hệ thống"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -454,6 +533,55 @@ export const CompaniesView = ({
         onClose={() => setIsImportModalOpen(false)}
         onShowToast={onShowToast}
         onSuccess={() => void reloadCompanies()}
+      />
+
+      <ConfirmDialog
+        open={Boolean(linkTarget)}
+        title={
+          linkTarget?.status === "Ngưng liên kết"
+            ? "Liên kết lại doanh nghiệp"
+            : "Ngưng liên kết doanh nghiệp"
+        }
+        description={
+          linkTarget ? (
+            linkTarget.status === "Ngưng liên kết" ? (
+              <>
+                Liên kết lại{" "}
+                <strong className="text-slate-900">{linkTarget.name}</strong>{" "}
+                với học kỳ{" "}
+                <strong className="text-slate-900">
+                  {selectedSemester?.name}
+                </strong>
+                ? Doanh nghiệp sẽ xuất hiện lại trong danh sách phân bổ của
+                học kỳ này.
+              </>
+            ) : (
+              <>
+                Ngưng liên kết{" "}
+                <strong className="text-slate-900">{linkTarget.name}</strong>{" "}
+                với học kỳ{" "}
+                <strong className="text-slate-900">
+                  {selectedSemester?.name}
+                </strong>
+                ? Doanh nghiệp sẽ bị ẩn khỏi các phân bổ mới, nhưng sinh viên
+                đang thực tập tại đây vẫn được giữ nguyên.
+              </>
+            )
+          ) : null
+        }
+        confirmLabel={
+          linkTarget?.status === "Ngưng liên kết"
+            ? "Liên kết lại"
+            : "Ngưng liên kết"
+        }
+        loading={isLinking}
+        onConfirm={() =>
+          void handleSetSemesterLink(
+            linkTarget!,
+            linkTarget?.status === "Ngưng liên kết",
+          )
+        }
+        onCancel={() => setLinkTarget(null)}
       />
 
       <ConfirmDialog

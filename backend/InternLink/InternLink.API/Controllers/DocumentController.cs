@@ -23,8 +23,10 @@ public class DocumentController : ControllerBase
     public async Task<IActionResult> GetAllDocuments([FromQuery] int skip = 0, [FromQuery] int take = 100)
     {
         var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
         var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
-        var documents = await _documentService.GetAllDocumentsAsync(skip, take, userId, isLecturerOrAdmin);
+        var documents = await _documentService.GetAllDocumentsAsync(skip, take, userId.Value, isLecturerOrAdmin);
         return Ok(ApiResponse<IEnumerable<DocumentListItemDto>>.Ok(documents));
     }
 
@@ -32,8 +34,10 @@ public class DocumentController : ControllerBase
     public async Task<IActionResult> GetDocumentsWithFilter([FromBody] DocumentFilterRequest filter)
     {
         var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
         var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
-        var result = await _documentService.GetDocumentsWithFilterAsync(filter, userId, isLecturerOrAdmin);
+        var result = await _documentService.GetDocumentsWithFilterAsync(filter, userId.Value, isLecturerOrAdmin);
         return Ok(ApiResponse<PaginatedResponse<DocumentListItemDto>>.Ok(result));
     }
 
@@ -83,37 +87,52 @@ public class DocumentController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadDocument([FromForm] UploadDocumentFormRequest form)
     {
-        if (form.File == null || form.File.Length == 0)
-            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
-
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var createRequest = new CreateDocumentRequest
-        {
-            InternshipId = form.InternshipId,
-            Title = form.Title,
-            Description = form.Description,
-            Category = form.Category,
-            IsRequired = form.IsRequired
-        };
+        var files = form.Files?.ToList() ?? new List<IFormFile>();
+        if (files.Count == 0 || files.All(f => f.Length == 0))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
 
-        try
-        {
-            await using var stream = form.File.OpenReadStream();
-            var document = await _documentService.UploadDocumentAsync(createRequest, stream, form.File.FileName, userId.Value);
+        var created = new List<DocumentDetailDto>();
 
-            return CreatedAtAction(nameof(GetDocumentById), new { id = document.Id }, ApiResponse<DocumentDetailDto>.Ok(document));
-        }
-        catch (UnauthorizedAccessException)
+        foreach (var file in files)
         {
-            return Forbid();
+            if (file.Length == 0)
+                continue;
+
+            var createRequest = new CreateDocumentRequest
+            {
+                InternshipId = form.InternshipId,
+                Title = string.IsNullOrWhiteSpace(form.Title)
+                    ? Path.GetFileNameWithoutExtension(file.FileName)
+                    : form.Title,
+                Description = form.Description,
+                Category = form.Category,
+                IsRequired = form.IsRequired
+            };
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                var document = await _documentService.UploadDocumentAsync(createRequest, stream, file.FileName, userId.Value);
+                created.Add(document);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+            }
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
-        }
+
+        if (created.Count == 0)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "No valid files were uploaded" }));
+
+        return Ok(ApiResponse<object>.Ok(new { count = created.Count, documents = created }));
     }
 
     [HttpPut("{id:guid}")]

@@ -149,6 +149,27 @@ public class LecturerController : ControllerBase
     }
 
     // ==========================================
+    // 2b. COMPANY DETAIL (ENTERPRISES)
+    // ==========================================
+
+    /// <summary>
+    /// Get detail of a company (internships + submissions + weekly reports) for lecturer portal
+    /// </summary>
+    [HttpGet("enterprises/{companyId:guid}")]
+    public async Task<IActionResult> GetCompanyDetail(Guid companyId, [FromQuery] Guid? semesterId = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var detail = await _lecturerService.GetCompanyDetailAsync(companyId, userId.Value, semesterId);
+        if (detail == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Company not found for your students" }));
+
+        return Ok(ApiResponse<CompanyDetailDto>.Ok(detail));
+    }
+
+    // ==========================================
     // 2. ASSIGNED STUDENTS & COMPANIES
     // ==========================================
 
@@ -457,7 +478,7 @@ public class LecturerController : ControllerBase
         {
             var eval = await _evaluationService.GetEvaluationByInternshipAsync(internshipId, userId.Value, isLecturerOrAdmin: true);
             if (eval == null)
-                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Evaluation not found" }));
+                return Ok(ApiResponse<EvaluationDetailDto?>.Ok(null));
 
             return Ok(ApiResponse<EvaluationDetailDto>.Ok(eval));
         }
@@ -544,6 +565,27 @@ public class LecturerController : ControllerBase
         }
     }
 
+    [HttpPut("evaluations/{id:guid}/defense")]
+    public async Task<IActionResult> UpdateDefense(Guid id, [FromBody] UpdateDefenseRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var evaluation = await _evaluationService.UpdateDefenseAsync(id, request, userId.Value);
+            if (evaluation == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Evaluation not found" }));
+
+            return Ok(ApiResponse<EvaluationDetailDto>.Ok(evaluation));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     // ==========================================
     // 6. DOCUMENTS
     // ==========================================
@@ -573,32 +615,48 @@ public class LecturerController : ControllerBase
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        if (form.File == null || form.File.Length == 0)
+        var files = form.Files?.ToList() ?? new List<IFormFile>();
+        if (files.Count == 0 || files.All(f => f.Length == 0))
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
 
-        var createRequest = new CreateDocumentRequest
-        {
-            InternshipId = form.InternshipId,
-            Title = form.Title,
-            Description = form.Description,
-            Category = form.Category,
-            IsRequired = form.IsRequired
-        };
+        var created = new List<DocumentDetailDto>();
 
-        try
+        foreach (var file in files)
         {
-            await using var stream = form.File.OpenReadStream();
-            var document = await _documentService.UploadDocumentAsync(createRequest, stream, form.File.FileName, userId.Value);
-            return Ok(ApiResponse<DocumentDetailDto>.Ok(document));
+            if (file.Length == 0)
+                continue;
+
+            var createRequest = new CreateDocumentRequest
+            {
+                InternshipId = form.InternshipId,
+                Title = string.IsNullOrWhiteSpace(form.Title)
+                    ? Path.GetFileNameWithoutExtension(file.FileName)
+                    : form.Title,
+                Description = form.Description,
+                Category = form.Category,
+                IsRequired = form.IsRequired
+            };
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                var document = await _documentService.UploadDocumentAsync(createRequest, stream, file.FileName, userId.Value);
+                created.Add(document);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+            }
         }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
-        }
+
+        if (created.Count == 0)
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "No valid files were uploaded" }));
+
+        return Ok(ApiResponse<object>.Ok(new { count = created.Count, documents = created }));
     }
 
     /// <summary>

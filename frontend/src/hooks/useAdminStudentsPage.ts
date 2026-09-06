@@ -23,7 +23,7 @@ export function useAdminStudentsPage(
     try {
       const [studentRows, lecturerRows, usersPage, allAssignments] =
         await Promise.all([
-          adminStudentsService.getAll(),
+          adminStudentsService.getAll(0, 500, semesterId ?? undefined),
           adminLecturersService.getAll(),
           adminUsersService.getAll({ take: 500, role: "Student" }),
           adminAssignmentsService

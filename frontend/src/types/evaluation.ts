@@ -99,6 +99,7 @@ export interface LecturerEvaluationStudentDto {
   weeklyReportCount: number;
   pendingReportCount?: number;
   submissionCount?: number;
+  evaluationId?: string | null;
   finalGrade?: number | null;
   evaluatedAt?: string | null;
   hasEvaluation: boolean;

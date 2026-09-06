@@ -2,9 +2,10 @@ import { apiRequest, downloadAuthenticatedFile } from "../lib/apiClient";
 import type { LecturerDto, LecturerImportResultDto } from "../types/api";
 
 export const adminLecturersService = {
-  getAll(skip = 0, take = 500): Promise<LecturerDto[]> {
+  getAll(skip = 0, take = 500, semesterId?: string): Promise<LecturerDto[]> {
+    const qs = semesterId && semesterId !== "all" ? `&semesterId=${semesterId}` : "";
     return apiRequest<LecturerDto[]>(
-      `/api/LecturerProfile?skip=${skip}&take=${take}`,
+      `/api/LecturerProfile?skip=${skip}&take=${take}${qs}`,
     );
   },
 
@@ -48,13 +49,17 @@ export const adminLecturersService = {
     });
   },
 
-  importExcel(file: File) {
+  importExcel(file: File, semesterId?: string) {
     const form = new FormData();
     form.append("file", file);
-    return apiRequest<LecturerImportResultDto>("/api/LecturerProfile/import", {
-      method: "POST",
-      body: form,
-    });
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
+    return apiRequest<LecturerImportResultDto>(
+      `/api/LecturerProfile/import${qs}`,
+      {
+        method: "POST",
+        body: form,
+      },
+    );
   },
 
   downloadImportTemplate() {

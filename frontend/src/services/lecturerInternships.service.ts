@@ -1,10 +1,25 @@
 import { apiRequest } from "../lib/apiClient";
-import type { InternshipDetailDto, InternshipDto, SubmissionDto } from "../types/api";
+import type {
+  InternshipDetailDto,
+  InternshipDto,
+  LecturerStudentListItemDto,
+  StudentDto,
+  SubmissionDto,
+} from "../types/api";
 
 export const lecturerInternshipsService = {
   getAll(semesterId?: string): Promise<InternshipDto[]> {
-    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    const params = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<InternshipDto[]>(`/api/Lecturer/internships${params}`);
+  },
+
+  getStudents(semesterId?: string): Promise<LecturerStudentListItemDto[]> {
+    const params = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
+    return apiRequest<LecturerStudentListItemDto[]>(`/api/Lecturer/students${params}`);
+  },
+
+  getStudentById(studentId: string): Promise<StudentDto> {
+    return apiRequest<StudentDto>(`/api/Student/${studentId}`);
   },
 
   getById(id: string): Promise<InternshipDetailDto> {
@@ -12,14 +27,14 @@ export const lecturerInternshipsService = {
   },
 
   getSubmissions(internshipId: string, semesterId?: string): Promise<SubmissionDto[]> {
-    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    const params = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<SubmissionDto[]>(
       `/api/Lecturer/internships/${internshipId}/submissions${params}`,
     );
   },
 
   getAllSubmissions(semesterId?: string): Promise<SubmissionDto[]> {
-    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    const params = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<SubmissionDto[]>(`/api/Lecturer/submissions${params}`);
   },
 
@@ -51,6 +66,16 @@ export const lecturerInternshipsService = {
     return apiRequest<{ message: string }>(`/api/Lecturer/students/${studentId}/remind`, {
       method: "POST",
       body: { title: title ?? null, message: message ?? null },
+    });
+  },
+
+  assignCompany(
+    internshipId: string,
+    body: { companyId: string; supervisorName?: string; position?: string },
+  ) {
+    return apiRequest<InternshipDetailDto>(`/api/Internship/${internshipId}/company`, {
+      method: "PUT",
+      body,
     });
   },
 };

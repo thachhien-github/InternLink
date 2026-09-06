@@ -341,15 +341,44 @@ public class CompanyServiceTests
         var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         using var stream = CreateCompanyExcel(
-            ("FPT Software", "CNTT", "Ms. Linh", "linh@fpt.com", "0901111111", "Q7 HCMC", "https://fpt.com", "10"),
-            ("Viettel Digital", "Vien thong", "Mr. Hoang", "hoang@viettel.vn", "0902222222", "Tan Binh", null, "8"));
+            ("12", "FPT Software", "CNTT", "Ms. Linh", "linh@fpt.com", "0901111111", "Q7 HCMC", "https://fpt.com", "10"),
+            ("13", "Viettel Digital", "Vien thong", "Mr. Hoang", "hoang@viettel.vn", "0902222222", "Tan Binh", null, "8"));
 
         var result = await service.ImportCompaniesFromExcelAsync(stream);
 
         result.SuccessCount.Should().Be(2);
         result.FailedCount.Should().Be(0);
-        result.CreatedCompanies.Should().Contain(c => c.CompanyName == "FPT Software");
+        result.CreatedCompanies.Should().Contain(c => c.CompanyName == "FPT Software" && c.CompanyCode == "12");
         (await db.Companies.CountAsync(c => !c.IsDeleted)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithOfficialTemplateRow_ShouldPersistAllColumns()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        // Mirrors the exact sample row of Mau-danh-sach-doanh-nghiep.xlsx
+        // (title row + STT + Mã doanh nghiệp + Số lượng tiếp nhận).
+        using var stream = CreateCompanyExcel(
+            ("12", "FPT Software", "Cong nghe thong tin", "Ms. Linh Tran", "linh.tran@fptsoftware.com", "0909123456", "Phu My Hung, Q7, TP.HCM", "https://fptsoftware.com", "10"));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.FailedCount.Should().Be(0);
+        result.Errors.Should().BeEmpty();
+
+        var company = await db.Companies.FirstOrDefaultAsync(c => c.CompanyCode == "12");
+        company.Should().NotBeNull();
+        company!.CompanyName.Should().Be("FPT Software");
+        company.Industry.Should().Be("Cong nghe thong tin");
+        company.ContactPerson.Should().Be("Ms. Linh Tran");
+        company.ContactEmail.Should().Be("linh.tran@fptsoftware.com");
+        company.ContactPhone.Should().Be("0909123456");
+        company.Address.Should().Be("Phu My Hung, Q7, TP.HCM");
+        company.Website.Should().Be("https://fptsoftware.com");
+        company.Capacity.Should().Be(10);
     }
 
     [Fact]
@@ -359,7 +388,7 @@ public class CompanyServiceTests
         var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
 
         using var stream = CreateCompanyExcel(
-            ("TMA Solutions", "CNTT", "Mr. Nam", "901234567", "contact@tma.com.vn", "Q12 HCMC", null, "20"));
+            ("14", "TMA Solutions", "CNTT", "Mr. Nam", "901234567", "contact@tma.com.vn", "Q12 HCMC", null, "20"));
 
         var result = await service.ImportCompaniesFromExcelAsync(stream);
 
@@ -373,27 +402,222 @@ public class CompanyServiceTests
     }
 
     [Fact]
-    public async Task ImportCompaniesFromExcelAsync_WithDuplicateName_ShouldReportError()
+    public async Task ImportCompaniesFromExcelAsync_WithExistingCode_ShouldUpdateInsteadOfError()
     {
         var db = GetInMemoryDbContext();
         var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+        var companyId = Guid.NewGuid();
         db.Companies.Add(new Company
         {
-            Id = Guid.NewGuid(),
+            Id = companyId,
+            CompanyCode = "12",
             CompanyName = "FPT Software",
+            ContactPerson = "Old Contact",
+            ContactEmail = "old@fpt.com",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
 
         using var stream = CreateCompanyExcel(
-            ("FPT Software", "CNTT", null, null, null, null, null, null));
+            ("12", "FPT Software", "CNTT", "Ms. Linh", "linh@fpt.com", "0909123456", "Q7 HCMC", "https://fpt.com", "10"));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.UpdatedCount.Should().Be(1);
+        result.CreatedCount.Should().Be(0);
+        result.FailedCount.Should().Be(0);
+        result.Errors.Should().BeEmpty();
+
+        var company = await db.Companies.FindAsync(companyId);
+        company.Should().NotBeNull();
+        company!.IsDeleted.Should().BeFalse();
+        company.ContactPerson.Should().Be("Ms. Linh");
+        company.ContactEmail.Should().Be("linh@fpt.com");
+        company.Capacity.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithExistingNameWithoutCode_ShouldAdoptIncomingCode()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+        var companyId = Guid.NewGuid();
+        db.Companies.Add(new Company
+        {
+            Id = companyId,
+            CompanyName = "FPT Software",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        // Same company, different case, without an existing code (legacy record).
+        using var stream = CreateCompanyExcel(
+            ("12", "fpt software", "CNTT", null, null, null, null, null, null));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.UpdatedCount.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var company = await db.Companies.FindAsync(companyId);
+        company.Should().NotBeNull();
+        company!.CompanyCode.Should().Be("12");
+        company.CompanyName.Should().Be("fpt software");
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithDuplicateCodeInFile_ShouldReportError()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        using var stream = CreateCompanyExcel(
+            ("12", "FPT Software", "CNTT", null, null, null, null, null, null),
+            ("12", "Viettel Digital", "Vien thong", null, null, null, null, null, null));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.FailedCount.Should().Be(1);
+        result.Errors.Should().Contain(e => e.CompanyCode == "12" && e.Message.Contains("Duplicate company code"));
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithDuplicateNameInFile_ShouldReportError()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        using var stream = CreateCompanyExcel(
+            ("12", "FPT Software", "CNTT", null, null, null, null, null, null),
+            ("13", "FPT Software", "Vien thong", null, null, null, null, null, null));
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.FailedCount.Should().Be(1);
+        result.Errors.Should().Contain(e => e.CompanyName == "FPT Software" && e.Message.Contains("Duplicate company name"));
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithMissingCodeValue_ShouldReportError()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        using var stream = CreateCompanyExcel(
+            (null, "FPT Software", "CNTT", null, null, null, null, null, null));
 
         var result = await service.ImportCompaniesFromExcelAsync(stream);
 
         result.SuccessCount.Should().Be(0);
-        result.SkippedDuplicateCount.Should().Be(1);
-        result.Errors.Should().Contain(e => e.CompanyName == "FPT Software");
+        result.FailedCount.Should().Be(1);
+        result.Errors.Should().Contain(e => e.Message.Contains("Company code (MaDN) is required"));
+    }
+
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithoutCompanyCodeColumn_ShouldThrow()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Companies");
+        sheet.Cell(1, 1).Value = "TenDN";
+        sheet.Cell(1, 2).Value = "Nganh";
+        sheet.Cell(2, 1).Value = "FPT Software";
+        var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var act = async () => await service.ImportCompaniesFromExcelAsync(stream);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*MaDN (CompanyCode)*");
+    }
+
+    [Fact]
+    public async Task GetAllCompaniesAsync_WithSemesterId_ShouldReturnAllCompaniesWithScopedCountsAndLinkStatus()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        var semesterId = Guid.NewGuid();
+        var otherSemesterId = Guid.NewGuid();
+        var companyInSem = new Company { Id = Guid.NewGuid(), CompanyName = "Sem Company", CreatedAt = DateTime.UtcNow };
+        var companyOther = new Company { Id = Guid.NewGuid(), CompanyName = "Other Company", CreatedAt = DateTime.UtcNow };
+        var student = new Student { Id = Guid.NewGuid(), StudentCode = "SV001", FullName = "A", CreatedAt = DateTime.UtcNow };
+        db.Companies.AddRange(companyInSem, companyOther);
+        db.Students.Add(student);
+        db.Internships.AddRange(
+            new Internship { Id = Guid.NewGuid(), StudentId = student.Id, SemesterId = semesterId, CompanyId = companyInSem.Id, CreatedAt = DateTime.UtcNow },
+            new Internship { Id = Guid.NewGuid(), StudentId = student.Id, SemesterId = otherSemesterId, CompanyId = companyOther.Id, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var result = (await service.GetAllCompaniesAsync(skip: 0, take: 100, semesterId: semesterId)).ToList();
+
+        // Companies are master data: all companies appear, linked by default.
+        result.Should().HaveCount(2);
+        result.Should().Contain(c => c.Id == companyOther.Id);
+        result.Should().OnlyContain(c => c.IsSemesterLinked == true);
+        // StudentCount is scoped to the selected semester.
+        result.Single(c => c.Id == companyInSem.Id).StudentCount.Should().Be(1);
+        result.Single(c => c.Id == companyOther.Id).StudentCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SetCompanySemesterStatusAsync_UnlinkedCompany_IsHiddenFromActiveListButKeptInMasterList()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        var semesterId = Guid.NewGuid();
+        var company = new Company { Id = Guid.NewGuid(), CompanyName = "FPT Software", IsActive = true, CreatedAt = DateTime.UtcNow };
+        db.Companies.Add(company);
+        db.Semesters.Add(new Semester { Id = semesterId, Name = "HK I 2026-2027", Term = "Học kỳ I", AcademicYear = "2026 - 2027", CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        // Unlink for the semester
+        await service.SetCompanySemesterStatusAsync(company.Id, semesterId, isLinked: false);
+
+        var master = (await service.GetAllCompaniesAsync(skip: 0, take: 100, semesterId: semesterId)).Single();
+        master.IsSemesterLinked.Should().BeFalse();
+
+        // Still visible globally (no semester context)
+        var global = (await service.GetAllCompaniesAsync(skip: 0, take: 100)).Single();
+        global.IsSemesterLinked.Should().BeNull();
+
+        // Hidden from the active roster used for new assignments in that semester
+        var active = (await service.GetActiveCompaniesAsync(skip: 0, take: 100, semesterId: semesterId)).ToList();
+        active.Should().BeEmpty();
+
+        // Relink brings it back
+        await service.SetCompanySemesterStatusAsync(company.Id, semesterId, isLinked: true);
+        var activeAfter = (await service.GetActiveCompaniesAsync(skip: 0, take: 100, semesterId: semesterId)).ToList();
+        activeAfter.Should().ContainSingle(c => c.Id == company.Id);
+        var masterAfter = (await service.GetAllCompaniesAsync(skip: 0, take: 100, semesterId: semesterId)).Single();
+        masterAfter.IsSemesterLinked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetCompanySemesterStatusAsync_UnknownCompanyOrSemester_ShouldThrow()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        var company = new Company { Id = Guid.NewGuid(), CompanyName = "FPT Software", CreatedAt = DateTime.UtcNow };
+        db.Companies.Add(company);
+        await db.SaveChangesAsync();
+
+        var act = async () => await service.SetCompanySemesterStatusAsync(Guid.NewGuid(), Guid.NewGuid(), isLinked: false);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Company not found*");
+
+        var act2 = async () => await service.SetCompanySemesterStatusAsync(company.Id, Guid.NewGuid(), isLinked: false);
+        await act2.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Semester not found*");
     }
 
     [Fact]
@@ -409,32 +633,63 @@ public class CompanyServiceTests
         bytes[1].Should().Be(0x4B);
     }
 
+    [Fact]
+    public async Task ImportCompaniesFromExcelAsync_WithPhysicalTemplate_ShouldWork()
+    {
+        var db = GetInMemoryDbContext();
+        var service = new CompanyService(db, _mapper, Mock.Of<IExcelService>());
+
+        var bytes = service.GetCompanyImportTemplate();
+        using var stream = new MemoryStream(bytes);
+
+        var result = await service.ImportCompaniesFromExcelAsync(stream);
+
+        result.SuccessCount.Should().Be(1);
+        result.CreatedCount.Should().Be(1);
+        result.FailedCount.Should().Be(0);
+        result.Errors.Should().BeEmpty();
+
+        var company = await db.Companies.FirstOrDefaultAsync(c => c.CompanyCode == "12");
+        company.Should().NotBeNull();
+        company!.CompanyName.Should().Be("FPT Software");
+        company.Industry.Should().Be("Cong nghe thong tin");
+        company.Capacity.Should().Be(10);
+    }
+
     private static MemoryStream CreateCompanyExcel(
-        params (string Name, string? Industry, string? Contact, string? Email, string? Phone, string? Address, string? Website, string? Capacity)[] rows)
+        params (string? Code, string Name, string? Industry, string? Contact, string? Email, string? Phone, string? Address, string? Website, string? Capacity)[] rows)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
         var sheet = workbook.Worksheets.Add("Companies");
-        sheet.Cell(1, 1).Value = "TenDN";
-        sheet.Cell(1, 2).Value = "Nganh";
-        sheet.Cell(1, 3).Value = "NguoiLienHe";
-        sheet.Cell(1, 4).Value = "Email";
-        sheet.Cell(1, 5).Value = "SDT";
-        sheet.Cell(1, 6).Value = "DiaChi";
-        sheet.Cell(1, 7).Value = "Website";
-        sheet.Cell(1, 8).Value = "SucChua";
+
+        // Official layout of Mau-danh-sach-doanh-nghiep.xlsx: title on row 1, headers on row 2,
+        // data (with STT + Mã doanh nghiệp) from row 3.
+        sheet.Cell(1, 1).Value = "DANH SÁCH DOANH NGHIỆP LIÊN KẾT";
+        sheet.Cell(2, 1).Value = "STT";
+        sheet.Cell(2, 2).Value = "Mã doanh nghiệp";
+        sheet.Cell(2, 3).Value = "Tên công ty";
+        sheet.Cell(2, 4).Value = "Ngành";
+        sheet.Cell(2, 5).Value = "Người liên hệ";
+        sheet.Cell(2, 6).Value = "Email";
+        sheet.Cell(2, 7).Value = "SĐT";
+        sheet.Cell(2, 8).Value = "Địa chỉ";
+        sheet.Cell(2, 9).Value = "Website";
+        sheet.Cell(2, 10).Value = "Số lượng tiếp nhận";
 
         for (var i = 0; i < rows.Length; i++)
         {
             var row = rows[i];
-            var excelRow = i + 2;
-            sheet.Cell(excelRow, 1).Value = row.Name;
-            if (row.Industry != null) sheet.Cell(excelRow, 2).Value = row.Industry;
-            if (row.Contact != null) sheet.Cell(excelRow, 3).Value = row.Contact;
-            if (row.Email != null) sheet.Cell(excelRow, 4).Value = row.Email;
-            if (row.Phone != null) sheet.Cell(excelRow, 5).Value = row.Phone;
-            if (row.Address != null) sheet.Cell(excelRow, 6).Value = row.Address;
-            if (row.Website != null) sheet.Cell(excelRow, 7).Value = row.Website;
-            if (row.Capacity != null) sheet.Cell(excelRow, 8).Value = row.Capacity;
+            var excelRow = i + 3;
+            sheet.Cell(excelRow, 1).Value = i + 1;
+            if (row.Code != null) sheet.Cell(excelRow, 2).Value = row.Code;
+            sheet.Cell(excelRow, 3).Value = row.Name;
+            if (row.Industry != null) sheet.Cell(excelRow, 4).Value = row.Industry;
+            if (row.Contact != null) sheet.Cell(excelRow, 5).Value = row.Contact;
+            if (row.Email != null) sheet.Cell(excelRow, 6).Value = row.Email;
+            if (row.Phone != null) sheet.Cell(excelRow, 7).Value = row.Phone;
+            if (row.Address != null) sheet.Cell(excelRow, 8).Value = row.Address;
+            if (row.Website != null) sheet.Cell(excelRow, 9).Value = row.Website;
+            if (row.Capacity != null) sheet.Cell(excelRow, 10).Value = row.Capacity;
         }
 
         var stream = new MemoryStream();

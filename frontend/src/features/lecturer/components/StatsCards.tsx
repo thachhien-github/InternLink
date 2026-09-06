@@ -7,6 +7,7 @@ export const StatsCards = ({
   pendingResponseCount,
   overdueCount,
   avgProgress,
+  semesterName,
   onCardClick,
 }: {
   totalStudents: number;
@@ -15,6 +16,7 @@ export const StatsCards = ({
   overdueCount: number;
   completedCount?: number;
   avgProgress: number;
+  semesterName?: string;
   onCardClick?: (type: string) => void;
 }) => {
   return (
@@ -25,7 +27,7 @@ export const StatsCards = ({
         value={totalStudents}
         unit="sinh viên"
         icon={Users}
-        footer="Phân công đợt HK1 • 2026"
+        footer={`Phân công đợt ${semesterName ?? "học kỳ hiện tại"}`}
         onClick={() => onCardClick?.("all")}
       />
       <KpiCard
@@ -39,7 +41,7 @@ export const StatsCards = ({
       />
       <KpiCard
         tone="amber"
-        title="Báo cáo cần phản hồi"
+        title="Nội dung cần phản hồi"
         value={pendingResponseCount}
         unit="báo cáo"
         icon={FileText}

@@ -267,4 +267,23 @@ public sealed class LecturerActivityStatsDto
     public decimal ComplianceRate { get; set; }
 }
 
+/// <summary>
+/// Detail DTO for a company in lecturer portal: includes internships + submissions/logs.
+/// </summary>
+public sealed class CompanyDetailDto
+{
+    public Guid Id { get; set; }
+    public string CompanyName { get; set; } = null!;
+    public string? Industry { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? Address { get; set; }
+    public int AssignedStudentsCount { get; set; }
+    public int TotalSubmissions { get; set; }
+    public int TotalWeeklyReports { get; set; }
+    public int PendingReviewsCount { get; set; }
+    public IEnumerable<InternshipListItemDto> Internships { get; set; } = Array.Empty<InternshipListItemDto>();
+}
+
 

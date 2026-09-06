@@ -25,6 +25,7 @@ export interface Stats {
   overdue: number;
   completed: number;
   avgProg: number;
+  statusDistribution?: Record<string, number>;
 }
 
 export interface AppState {
@@ -35,7 +36,13 @@ export interface AppState {
   deadlines: Deadline[];
   stats: Stats;
   weeklyReports: WeeklyReportDto[];
-  weeklyTrendData: { label: string; value: number; target?: number }[];
+  weeklyTrendData: {
+    label: string;
+    value: number;
+    target?: number;
+    late?: number;
+    missing?: number;
+  }[];
   lecturerEnterprises?: any[];
   handleUpdateSubmissionStatus: (submissionId: string, status: string) => void;
   handleReviewWeeklyReport: (reportId: string, status: string, feedback: string) => void;

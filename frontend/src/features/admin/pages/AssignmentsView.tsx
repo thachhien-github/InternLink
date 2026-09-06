@@ -366,7 +366,8 @@ export const AssignmentsView = ({
 
     setIsExporting(true);
     try {
-      const { blob, filename } = await adminAssignmentsService.downloadExport();
+      const exportSemesterId = selectedSemester === "all" ? undefined : selectedSemester;
+      const { blob, filename } = await adminAssignmentsService.downloadExport(exportSemesterId);
       if (blob.size < 100) {
         onShowToast("File xuất ra trống hoặc lỗi — thử restart backend API.");
         return;
@@ -381,7 +382,8 @@ export const AssignmentsView = ({
   const handleExportInternshipList = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadInternshipExcel(selectedSemester ?? undefined);
+      const exportSemesterId = selectedSemester === "all" ? undefined : selectedSemester;
+      await exportService.downloadInternshipExcel(exportSemesterId || undefined);
       onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
@@ -499,11 +501,16 @@ export const AssignmentsView = ({
                   value={selectedSemester}
                   onChange={(e) => {
                     setSelectedSemester(e.target.value);
-                    const sem = semesters.find((s) => s.id === e.target.value);
-                    if (sem) onShowToast(`Đã chọn đợt: "${sem.name}"`);
+                    if (e.target.value === "all") {
+                      onShowToast("Đã chọn: Tất cả học kỳ");
+                    } else {
+                      const sem = semesters.find((s) => s.id === e.target.value);
+                      if (sem) onShowToast(`Đã chọn đợt: "${sem.name}"`);
+                    }
                   }}
                   className="mt-0.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500 cursor-pointer max-w-full truncate"
                 >
+                  <option value="all">Tất cả học kỳ</option>
                   {semesters.map((sem) => (
                     <option key={sem.id} value={sem.id}>
                       {sem.name} — [{sem.status === "active" ? "Đang chạy" : sem.status === "upcoming" ? "Sắp tới" : "Đã đóng"}]
@@ -601,7 +608,7 @@ export const AssignmentsView = ({
                         </p>
                       </div>
                       <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-md">
-                        Học kỳ I
+                        {currentSemesterObj.name}
                       </span>
                     </div>
 
@@ -796,7 +803,7 @@ export const AssignmentsView = ({
                         </div>
 
                         <span className="text-xs font-bold text-slate-500">
-                          Học kỳ I (2025 - 2026)
+                          {currentSemesterObj.name}
                         </span>
                       </div>
 
@@ -1776,7 +1783,7 @@ export const AssignmentsView = ({
           setShowImportLecturerModal(false);
           apiMatrix.reload();
         }}
-        currentSemesterId={selectedSemester}
+        currentSemesterId={selectedSemester === "all" ? undefined : selectedSemester}
       />
     </div>
   );

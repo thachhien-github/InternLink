@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\InternLink.API\InternLink.API.csproj" />
     <ProjectReference Include="..\InternLink.Application\InternLink.Application.csproj" />
     <ProjectReference Include="..\InternLink.Infrastructure\InternLink.Infrastructure.csproj" />
     <ProjectReference Include="..\InternLink.Domain\InternLink.Domain.csproj" />

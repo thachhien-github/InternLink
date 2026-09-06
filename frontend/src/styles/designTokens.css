@@ -32,8 +32,8 @@
   --il-text-muted: #94a3b8;
 
   /* Typography */
-  --il-font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
-  --il-font-display: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+  --il-font-sans: "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
+  --il-font-display: "Montserrat", "Space Grotesk", sans-serif;
   --il-font-mono: "JetBrains Mono", monospace;
 
   /* Radius — keep modest (F0) */

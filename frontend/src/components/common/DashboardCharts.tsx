@@ -34,6 +34,8 @@ export type TrendPoint = {
   label: string;
   value: number;
   target?: number;
+  late?: number;
+  missing?: number;
 };
 
 export function DashboardTrendChart({
@@ -43,6 +45,7 @@ export function DashboardTrendChart({
   valueLabel = "Thực tế",
   targetLabel = "Kế hoạch",
   variant = "area",
+  stacked = false,
 }: {
   title: string;
   subtitle?: string;
@@ -50,6 +53,7 @@ export function DashboardTrendChart({
   valueLabel?: string;
   targetLabel?: string;
   variant?: "area" | "bar";
+  stacked?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -83,8 +87,10 @@ export function DashboardTrendChart({
                 }}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="value" name={valueLabel} fill="#1d4ed8" radius={[4, 4, 0, 0]} />
-              {data.some((d) => d.target != null) && (
+              <Bar dataKey="value" name={valueLabel} fill="#059669" radius={[4, 4, 0, 0]} stackId={stacked ? "reports" : undefined} />
+              {stacked && <Bar dataKey="late" name="Trễ / cần sửa" fill="#d97706" stackId="reports" />}
+              {stacked && <Bar dataKey="missing" name="Chưa nộp" fill="#cbd5e1" stackId="reports" radius={[4, 4, 0, 0]} />}
+              {!stacked && data.some((d) => d.target != null) && (
                 <Bar
                   dataKey="target"
                   name={targetLabel}
@@ -254,7 +260,27 @@ export function buildLecturerStatusSlices(stats: {
   pending: number;
   overdue: number;
   completed: number;
+  statusDistribution?: Record<string, number>;
 }): ChartSlice[] {
+  const distribution = stats.statusDistribution;
+  if (distribution && Object.keys(distribution).length > 0) {
+    const labels: Record<string, { name: string; tone: ChartSlice["tone"] }> = {
+      NotStarted: { name: "Chưa bắt đầu", tone: "slate" },
+      InProgress: { name: "Đúng tiến độ", tone: "emerald" },
+      BehindSchedule: { name: "Quá hạn", tone: "rose" },
+      AwaitingFeedback: { name: "Chờ phản hồi", tone: "amber" },
+      RequiresRevision: { name: "Cần chỉnh sửa", tone: "amber" },
+      Completed: { name: "Hoàn thành", tone: "sky" },
+      Graded: { name: "Đã chấm", tone: "blue" },
+    };
+    return Object.entries(distribution)
+      .map(([key, value]) => ({
+        ...(labels[key] ?? { name: key, tone: "slate" as const }),
+        value,
+      }))
+      .filter((slice) => slice.value > 0);
+  }
+
   const onTrack = Math.max(
     0,
     stats.total - stats.pending - stats.overdue - stats.completed,

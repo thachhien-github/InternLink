@@ -6,7 +6,7 @@ public interface IAuthService
 {
     Task<LoginResponse> LoginAsync(LoginRequest request, string? ipAddress = null);
     Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request, string? ipAddress = null);
-    Task<bool> RevokeTokenAsync(string token, string? ipAddress = null);
+    Task<bool> RevokeTokenAsync(string token, Guid userId, string? ipAddress = null);
     Task<bool> RevokeAllTokensForUserAsync(Guid userId, string? ipAddress = null);
     Task LogoutAsync(Guid userId);
     Task<CurrentUserResponse?> GetCurrentUserAsync(Guid userId);

@@ -208,9 +208,10 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<bool> RevokeTokenAsync(string token, string? ipAddress = null)
+    public async Task<bool> RevokeTokenAsync(string token, Guid userId, string? ipAddress = null)
     {
-        var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == token && !r.IsDeleted && !r.IsRevoked);
+        var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(r =>
+            r.Token == token && r.UserId == userId && !r.IsDeleted && !r.IsRevoked);
         if (storedToken == null)
             return false;
 

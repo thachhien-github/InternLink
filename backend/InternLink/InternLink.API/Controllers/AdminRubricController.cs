@@ -1,6 +1,7 @@
 using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
+using InternLink.Shared.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace InternLink.API.Controllers;
 
 /// <summary>
 /// Admin controller for managing evaluation rubrics per semester.
-/// Includes CRUD, submit for approval, approve/reject workflow.
+/// Admin is the highest authority in this deployment: saving a rubric applies it immediately.
 /// </summary>
 [ApiController]
 [Route("api/Admin/semesters/{semesterId}/rubric")]
@@ -64,7 +65,10 @@ public class AdminRubricController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token." });
 
             var rubric = await _rubricService.CreateAsync(semesterId, request, userId.Value);
-            return CreatedAtAction(nameof(GetRubric), new { semesterId }, rubric);
+            return CreatedAtAction(
+                nameof(GetRubric),
+                new { semesterId },
+                ApiResponse<RubricDto>.Ok(rubric));
         }
         catch (InvalidOperationException ex)
         {
@@ -91,11 +95,15 @@ public class AdminRubricController : ControllerBase
             if (existing == null)
                 return NotFound(new { message = "Không tìm thấy rubric." });
 
-            var rubric = await _rubricService.UpdateAsync(existing.Id, request);
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "User ID not found in token." });
+
+            var rubric = await _rubricService.UpdateAsync(existing.Id, request, userId.Value);
             if (rubric == null)
                 return NotFound(new { message = "Không tìm thấy rubric." });
 
-            return Ok(rubric);
+            return Ok(ApiResponse<RubricDto>.Ok(rubric));
         }
         catch (InvalidOperationException ex)
         {

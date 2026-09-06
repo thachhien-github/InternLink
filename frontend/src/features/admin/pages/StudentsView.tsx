@@ -41,7 +41,7 @@ import { adminStudentsService } from "../../../services/adminStudents.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
 import { exportService } from "../../../services/export.service";
 import { useAdminStudentsPage } from "../../../hooks/useAdminStudentsPage";
-import { useSemester } from "../../../contexts/SemesterContext";
+import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
 export const StudentsView = ({
   onShowToast,
   onNavigateTab,
@@ -51,7 +51,7 @@ export const StudentsView = ({
 }) => {
   const { selectedSemester } = useSemester();
   const [searchParams] = useSearchParams();
-  const apiPage = useAdminStudentsPage(selectedSemester?.id, onShowToast);
+  const apiPage = useAdminStudentsPage(toApiSemesterId(selectedSemester?.id), onShowToast);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<AdminStudentRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminStudentRow | null>(null);
@@ -70,6 +70,7 @@ export const StudentsView = ({
   const [classFilter, setClassFilter] = useState("all");
   const [accountStatusFilter, setAccountStatusFilter] = useState("all");
   const [internshipFilter, setInternshipFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("ten");
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
@@ -185,6 +186,19 @@ export const StudentsView = ({
       const matchIntern =
         internshipFilter === "all" || s.internshipStatus === internshipFilter;
       return matchSearch && matchClass && matchAccount && matchIntern;
+    }).sort((a, b) => {
+      if (sortBy === "mssv") {
+        return a.mssv.localeCompare(b.mssv, undefined, {
+          numeric: true,
+        });
+      }
+      if (sortBy === "class") {
+        const byClass = a.classCode.localeCompare(b.classCode, "vi");
+        if (byClass !== 0) return byClass;
+      }
+      // Mặc định: A-Z theo TÊN (tên gọi), rồi đến họ — như cách sắp xếp thông thường.
+      return (a.ten || a.fullName).localeCompare(b.ten || b.fullName, "vi") ||
+        (a.ho || "").localeCompare(b.ho || "", "vi");
     });
   }, [
     students,
@@ -192,6 +206,7 @@ export const StudentsView = ({
     classFilter,
     accountStatusFilter,
     internshipFilter,
+    sortBy,
   ]);
   const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
   const paginatedStudents = useMemo(() => {
@@ -324,7 +339,7 @@ export const StudentsView = ({
 
   const handleExportInternshipList = async () => {
     try {
-      await exportService.downloadInternshipExcel(selectedSemester?.id);
+      await exportService.downloadInternshipExcel(toApiSemesterId(selectedSemester?.id));
       onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
@@ -456,6 +471,19 @@ export const StudentsView = ({
               <option value="locked">Tài khoản bị khóa</option>
             </select>
 
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-blue-50/80 border border-blue-200 rounded-md font-bold text-blue-900 outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
+            >
+              <option value="ten">Sắp xếp: Tên A-Z</option>
+              <option value="mssv">Sắp xếp: MSSV</option>
+              <option value="class">Sắp xếp: Lớp</option>
+            </select>
+
             {selectedIds.length > 0 && (
               <button
                 onClick={handleBatchGenerateAccounts}
@@ -481,10 +509,11 @@ export const StudentsView = ({
                     className="rounded text-blue-600 cursor-pointer"
                   />
                 </th>
-                <th className="py-2.5 px-3">Sinh viên</th>
+                <th className="py-2.5 px-3 text-center w-10">STT</th>
+                <th className="py-2.5 px-3">Họ & tên</th>
                 <th className="py-2.5 px-3">MSSV & Lớp</th>
-                <th className="py-2.5 px-3">Doanh nghiệp thực tập</th>
-                <th className="py-2.5 px-3">GV Hướng dẫn</th>
+                <th className="py-2.5 px-3">GVHD</th>
+                <th className="py-2.5 px-3">Doanh nghiệp</th>
                 <th className="py-2.5 px-3 text-center">Trạng thái TK</th>
                 <th className="py-2.5 px-3 text-center">Thao tác</th>
               </tr>
@@ -494,6 +523,7 @@ export const StudentsView = ({
                 Array.from({ length: 6 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
                     <td className="py-3 px-3 text-center"><SkeletonBox className="h-4 w-4 mx-auto" /></td>
+                    <td className="py-3 px-3 text-center"><SkeletonBox className="h-3.5 w-6 mx-auto" /></td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2.5">
                         <SkeletonBox className="w-8 h-8 rounded-full shrink-0" />
@@ -512,7 +542,7 @@ export const StudentsView = ({
                 ))
               ) : paginatedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-4">
+                  <td colSpan={8} className="p-4">
                     <EmptyState
                       title="Không tìm thấy sinh viên phù hợp"
                       description="Hãy thử đổi bộ lọc lớp, trạng thái tài khoản hoặc từ khóa tìm kiếm."
@@ -528,7 +558,7 @@ export const StudentsView = ({
                   </td>
                 </tr>
               ) : (
-                paginatedStudents.map((st) => {
+                paginatedStudents.map((st, idx) => {
                   const isSelected = selectedIds.includes(st.id);
                   return (
                     <tr
@@ -544,24 +574,32 @@ export const StudentsView = ({
                         />
                       </td>
 
-                      {/* Name & Gender */}
+                      {/* STT */}
+                      <td className="py-3 px-3 text-center text-slate-400 font-mono font-bold">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
+                      {/* Họ & tên */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
                             {st.fullName.split(" ").slice(-1)[0][0]}
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-900">
+                          <div className="min-w-0">
+                            <p
+                              className="font-bold text-slate-900 truncate leading-tight"
+                              title={st.fullName}
+                            >
                               {st.fullName}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-medium">
-                              {st.gender} • {st.dateOfBirth}
+                            <p className="text-[10px] text-slate-400 font-medium truncate leading-tight">
+                              {st.email}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      {/* MSSV & Class */}
+                      {/* MSSV & Lớp */}
                       <td className="py-3 px-3">
                         <p className="font-mono font-bold text-slate-800">
                           {st.mssv}
@@ -571,19 +609,19 @@ export const StudentsView = ({
                         </p>
                       </td>
 
-                      {/* Company */}
+                      {/* GVHD */}
+                      <td className="py-3 px-3">
+                        <p className="font-bold text-slate-800">
+                          {st.assignedLecturer}
+                        </p>
+                      </td>
+
+                      {/* Doanh nghiệp */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1.5 font-bold text-slate-800">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>{st.companyName}</span>
                         </div>
-                      </td>
-
-                      {/* Lecturer */}
-                      <td className="py-3 px-3">
-                        <p className="font-bold text-slate-800">
-                          {st.assignedLecturer}
-                        </p>
                       </td>
 
                       {/* Account Status Badge */}
@@ -929,7 +967,7 @@ export const StudentsView = ({
         onClose={() => setIsImportModalOpen(false)}
         onShowToast={onShowToast}
         onSuccess={() => void reloadStudents()}
-        currentSemesterId={selectedSemester?.id}
+        currentSemesterId={toApiSemesterId(selectedSemester?.id)}
       />
 
       {/* CREATE STUDENT MODAL */}
@@ -957,6 +995,8 @@ export const StudentsView = ({
               Xóa sinh viên{" "}
               <strong className="text-slate-900">{deleteTarget.fullName}</strong> (
               {deleteTarget.mssv})? Hành động không thể hoàn tác.
+              Sinh viên đã phát sinh hoạt động thực tập (báo cáo, bài nộp, chấm
+              điểm, hồ sơ) sẽ bị chặn xóa.
             </>
           ) : null
         }

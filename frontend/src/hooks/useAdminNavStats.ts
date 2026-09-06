@@ -42,9 +42,9 @@ export function useAdminNavStats(
     try {
       const [students, lecturers, companies, campaigns, mine, allAssignments] =
         await Promise.all([
-          adminStudentsService.getAll(),
-          adminLecturersService.getAll(),
-          adminCompaniesService.getAll(),
+          adminStudentsService.getAll(0, 500, semesterId ?? undefined),
+          adminLecturersService.getAll(0, 500, semesterId ?? undefined),
+          adminCompaniesService.getAll(0, 500, semesterId ?? undefined),
           adminNotificationsService.getCampaigns(20).catch(() => []),
           notificationService.getMine().catch(() => []),
           adminAssignmentsService

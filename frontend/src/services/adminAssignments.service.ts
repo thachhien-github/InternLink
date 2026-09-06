@@ -20,14 +20,14 @@ export const adminAssignmentsService = {
   },
 
   getAll(semesterId?: string) {
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<LecturerAssignmentItemDto[]>(
       `/api/Admin/assignments${qs}`,
     );
   },
 
   getByLecturer(lecturerId: string, semesterId?: string) {
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<LecturerAssignmentItemDto[]>(
       `/api/Admin/assignments/by-lecturer/${lecturerId}${qs}`,
     );
@@ -54,7 +54,7 @@ export const adminAssignmentsService = {
   },
 
   downloadExport(semesterId?: string) {
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
       `/api/Admin/assignments/export${qs}`,
       "Danh-sach-phan-cong-GVHD.xlsx",
@@ -63,7 +63,7 @@ export const adminAssignmentsService = {
 
   // Company Allocation
   getCompanyAllocations(semesterId?: string) {
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<CompanyAllocationItemDto[]>(
       `/api/Admin/assignments/company-allocation${qs}`,
     );
@@ -79,7 +79,7 @@ export const adminAssignmentsService = {
   importCompanyAllocations(file: File, semesterId?: string) {
     const formData = new FormData();
     formData.append("file", file);
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<CompanyAllocationImportResultDto>(
       `/api/Admin/assignments/company-allocation/import${qs}`,
       {
@@ -90,7 +90,7 @@ export const adminAssignmentsService = {
   },
 
   downloadCompanyAllocationExport(semesterId?: string) {
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return downloadAuthenticatedFile(
       `/api/Admin/assignments/company-allocation/export${qs}`,
       "DanhSachPhanBoDoanhNghiep.xlsx",
@@ -108,7 +108,7 @@ export const adminAssignmentsService = {
   importLecturerAssignments(file: File, semesterId?: string) {
     const formData = new FormData();
     formData.append("file", file);
-    const qs = semesterId ? `?semesterId=${semesterId}` : "";
+    const qs = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
     return apiRequest<LecturerAssignmentImportResultDto>(
       `/api/Admin/assignments/import${qs}`,
       {

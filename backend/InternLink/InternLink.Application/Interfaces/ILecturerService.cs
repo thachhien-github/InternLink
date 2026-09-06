@@ -27,6 +27,7 @@ public interface ILecturerService
     Task<List<WeeklyTrendDto>> GetWeeklyTrendAsync(Guid userId, Guid? semesterId = null);
     Task<GradeDistributionDto> GetGradeDistributionAsync(Guid userId, Guid? semesterId = null);
     Task<List<CompanyStatsDto>> GetCompanyStatsAsync(Guid userId, Guid? semesterId = null);
+    Task<CompanyDetailDto?> GetCompanyDetailAsync(Guid companyId, Guid userId, Guid? semesterId = null);
     Task<LecturerActivityStatsDto> GetActivityStatsAsync(Guid userId, Guid? semesterId = null);
 }
 

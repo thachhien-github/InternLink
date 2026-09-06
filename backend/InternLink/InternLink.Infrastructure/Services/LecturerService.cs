@@ -97,6 +97,15 @@ public class LecturerService : ILecturerService
 
         if (semesterId.HasValue)
             query = query.Where(i => i.SemesterId == semesterId.Value);
+        else
+        {
+            var activeSemesterId = await _db.Semesters
+                .Where(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
+                .Select(s => (Guid?)s.Id)
+                .FirstOrDefaultAsync();
+            if (activeSemesterId.HasValue)
+                query = query.Where(i => i.SemesterId == activeSemesterId.Value);
+        }
 
         var internships = await query
             .Include(i => i.Submissions)
@@ -286,9 +295,17 @@ public class LecturerService : ILecturerService
             .AsQueryable();
 
         if (semesterId.HasValue)
+        {
             query = query.Where(i => i.SemesterId == semesterId.Value);
+        }
         else
-            query = query.Where(i => i.Semester!.Status == SemesterStatus.Active);
+        {
+            // Try Active semester first; if none exists, return all internships
+            var hasActive = await _db.Semesters.AnyAsync(s => s.Status == SemesterStatus.Active && !s.IsDeleted);
+            if (hasActive)
+                query = query.Where(i => i.Semester!.Status == SemesterStatus.Active);
+            // else: no filter — return all internships for this lecturer
+        }
 
         var internships = await query
             .Include(i => i.Student)
@@ -782,16 +799,25 @@ public class LecturerService : ILecturerService
 
         if (semesterId.HasValue)
             query = query.Where(i => i.SemesterId == semesterId.Value);
+        else
+        {
+            var activeSemesterId = await _db.Semesters
+                .Where(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
+                .Select(s => (Guid?)s.Id)
+                .FirstOrDefaultAsync();
+            if (activeSemesterId.HasValue)
+                query = query.Where(i => i.SemesterId == activeSemesterId.Value);
+        }
 
         var internships = await query.ToListAsync();
         var totalStudents = internships.Count;
 
         // Group weekly reports by week number
         var allReports = internships.SelectMany(i => i.WeeklyReports.Where(wr => !wr.IsDeleted)).ToList();
-        var maxWeek = allReports.Any() ? allReports.Max(r => r.WeekNumber) : 12;
+        const int internshipWeeks = 6;
 
         var trend = new List<WeeklyTrendDto>();
-        for (var week = 1; week <= Math.Min(maxWeek, 16); week++)
+        for (var week = 1; week <= internshipWeeks; week++)
         {
             var weekReports = allReports.Where(r => r.WeekNumber == week).ToList();
             var onTime = weekReports.Count(r => r.Status == WeeklyReportStatus.Approved || r.Status == WeeklyReportStatus.Submitted);
@@ -928,6 +954,71 @@ public class LecturerService : ILecturerService
             TotalStudentsCount = totalStudents,
             AverageResponseDays = 1.2m,
             ComplianceRate = totalCompliance
+        };
+    }
+
+    public async Task<CompanyDetailDto?> GetCompanyDetailAsync(Guid companyId, Guid userId, Guid? semesterId = null)
+    {
+        var lecturerId = await ResolveLecturerIdAsync(userId);
+        if (lecturerId == null)
+            return null;
+
+        var internships = _db.Internships
+            .Where(i => i.LecturerId == lecturerId.Value && !i.IsDeleted && i.CompanyId == companyId)
+            .AsQueryable();
+
+        if (semesterId.HasValue)
+            internships = internships.Where(i => i.SemesterId == semesterId.Value);
+
+        internships = internships
+            .Include(i => i.Student)
+            .Include(i => i.Company)
+            .Include(i => i.Submissions)
+            .Include(i => i.WeeklyReports);
+
+        var list = await internships.ToListAsync();
+        if (list.Count == 0)
+            return null;
+
+        var company = list.First().Company;
+        if (company == null || company.IsDeleted)
+            return null;
+
+        var internshipIds = list.Select(i => i.Id).ToList();
+        var totalSubmissions = list.Sum(i => i.Submissions.Count(s => !s.IsDeleted));
+        var totalWeeklyReports = list.Sum(i => i.WeeklyReports.Count(w => !w.IsDeleted));
+        var pendingReviews = list.Sum(i => i.Submissions.Count(s => !s.IsDeleted && s.Status == SubmissionStatus.Submitted))
+                           + list.Sum(i => i.WeeklyReports.Count(w => !w.IsDeleted && w.Status == WeeklyReportStatus.Submitted));
+
+        var items = list.Select(i => new InternshipListItemDto
+        {
+            Id = i.Id,
+            StudentId = i.StudentId,
+            StudentName = i.Student?.FullName ?? string.Empty,
+            CompanyId = i.CompanyId,
+            CompanyName = i.Company?.CompanyName,
+            StartDate = i.StartDate,
+            EndDate = i.EndDate,
+            Status = i.Status.ToString(),
+            Position = i.Position,
+            SubmissionCount = i.Submissions?.Count ?? 0,
+            CreatedAt = i.CreatedAt
+        }).ToList();
+
+        return new CompanyDetailDto
+        {
+            Id = company.Id,
+            CompanyName = company.CompanyName,
+            Industry = company.Industry,
+            ContactPerson = company.ContactPerson,
+            ContactEmail = company.ContactEmail,
+            ContactPhone = company.ContactPhone,
+            Address = company.Address,
+            AssignedStudentsCount = list.Count,
+            TotalSubmissions = totalSubmissions,
+            TotalWeeklyReports = totalWeeklyReports,
+            PendingReviewsCount = pendingReviews,
+            Internships = items
         };
     }
 

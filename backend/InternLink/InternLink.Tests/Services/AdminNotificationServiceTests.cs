@@ -92,4 +92,31 @@ public class AdminNotificationServiceTests
         campaigns.First().Title.Should().Be("Alert");
         campaigns.First().RecipientCount.Should().Be(2);
     }
+
+    [Fact]
+    public async Task GetCampaignsAsync_ShouldReturnStableIdAcrossCalls()
+    {
+        var db = GetDb();
+        var user1 = new User { Id = Guid.NewGuid(), Username = "user1", PasswordHash = "hash", Role = Role.Student, CreatedAt = DateTime.UtcNow };
+        var sentTime = DateTime.UtcNow;
+        await db.Users.AddAsync(user1);
+        await db.Notifications.AddAsync(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = user1.Id,
+            User = user1,
+            Title = "Alert",
+            Content = "Alert Body",
+            CreatedAt = sentTime
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var first = (await service.GetCampaignsAsync()).Single();
+        var second = (await service.GetCampaignsAsync()).Single();
+
+        first.Id.Should().NotBeNullOrWhiteSpace();
+        first.Id.Should().StartWith("campaign-");
+        first.Id.Should().Be(second.Id);
+    }
 }

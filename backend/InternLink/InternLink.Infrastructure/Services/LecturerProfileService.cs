@@ -56,10 +56,19 @@ public class LecturerProfileService : ILecturerProfileService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<LecturerDto>> GetAllAsync(int skip = 0, int take = 100)
+    public async Task<IEnumerable<LecturerDto>> GetAllAsync(int skip = 0, int take = 100, Guid? semesterId = null)
     {
-        var items = await _db.Lecturers
-            .Where(l => !l.IsDeleted)
+        var query = _db.Lecturers
+            .Where(l => !l.IsDeleted);
+
+        if (semesterId.HasValue && semesterId != Guid.Empty)
+        {
+            query = query.Where(l =>
+                l.SemesterLecturers.Any(sl => sl.SemesterId == semesterId && !sl.IsDeleted) ||
+                l.Internships.Any(i => !i.IsDeleted && i.SemesterId == semesterId));
+        }
+
+        var items = await query
             .OrderBy(l => l.FullName)
             .Skip(skip)
             .Take(take)
@@ -237,7 +246,7 @@ public class LecturerProfileService : ILecturerProfileService
         };
     }
 
-    public async Task<LecturerImportResultDto> ImportFromExcelAsync(Stream excelStream)
+    public async Task<LecturerImportResultDto> ImportFromExcelAsync(Stream excelStream, Guid? semesterId = null)
     {
         if (excelStream == null || !excelStream.CanRead)
             throw new ArgumentException("Excel file stream is required");
@@ -284,7 +293,10 @@ public class LecturerProfileService : ILecturerProfileService
             var hoTen = GetCell(row, columnMap, Col.FullName);
             var ho = GetCell(row, columnMap, Col.Ho);
             var ten = GetCell(row, columnMap, Col.Ten);
-            var fullName = TemplateHelper.CombineFullName(ho, ten, hoTen);
+            // Prefer structured Họ + Tên columns; only fall back to a combined name column.
+            var fullName = ho != null || ten != null
+                ? TemplateHelper.CombineFullName(ho, ten, null)
+                : TemplateHelper.CombineFullName(null, null, hoTen);
             var email = GetCell(row, columnMap, Col.Email);
             var phone = GetCell(row, columnMap, Col.Phone);
             var department = GetCell(row, columnMap, Col.Department);
@@ -326,10 +338,14 @@ public class LecturerProfileService : ILecturerProfileService
 
             var existingLecturer = await _db.Lecturers
                 .Include(l => l.User)
-                .FirstOrDefaultAsync(l => l.StaffCode == staffCode && !l.IsDeleted);
+                .FirstOrDefaultAsync(l => l.StaffCode == staffCode);
 
             if (existingLecturer != null)
             {
+                // The StaffCode index is unique across deleted rows too, so re-importing a
+                // soft-deleted lecturer must restore it instead of inserting a duplicate
+                // (which used to throw DbUpdateException -> 500 "An unexpected error occurred.").
+                existingLecturer.IsDeleted = false;
                 existingLecturer.FullName = fullName;
                 if (!string.IsNullOrWhiteSpace(email))
                     existingLecturer.Email = email.Trim();
@@ -341,6 +357,12 @@ public class LecturerProfileService : ILecturerProfileService
 
                 if (existingLecturer.User != null)
                 {
+                    // Revive the login account that was soft-deleted together with the lecturer.
+                    if (existingLecturer.User.IsDeleted)
+                    {
+                        existingLecturer.User.IsDeleted = false;
+                        existingLecturer.User.IsActive = true;
+                    }
                     existingLecturer.User.FullName = fullName;
                     if (!string.IsNullOrWhiteSpace(email))
                         existingLecturer.User.Email = email.Trim();
@@ -425,6 +447,38 @@ public class LecturerProfileService : ILecturerProfileService
             await _db.Lecturers.AddRangeAsync(created);
         }
         await _db.SaveChangesAsync();
+
+        // Link imported lecturers to the semester (so the semester's lecturer roster is known
+        // right after import, even before students are assigned).
+        if (semesterId.HasValue && semesterId.Value != Guid.Empty && allProcessedLecturers.Count > 0)
+        {
+            var semesterExists = await _db.Semesters.AnyAsync(s => s.Id == semesterId.Value && !s.IsDeleted);
+            if (semesterExists)
+            {
+                var lecturerIds = allProcessedLecturers.Select(l => l.Id).Distinct().ToList();
+                var existingLinks = await _db.SemesterLecturers
+                    .Where(sl => sl.SemesterId == semesterId.Value && lecturerIds.Contains(sl.LecturerId) && !sl.IsDeleted)
+                    .Select(sl => sl.LecturerId)
+                    .ToListAsync();
+
+                var linksToAdd = lecturerIds
+                    .Where(id => !existingLinks.Contains(id))
+                    .Select(id => new SemesterLecturer
+                    {
+                        Id = Guid.NewGuid(),
+                        SemesterId = semesterId.Value,
+                        LecturerId = id,
+                        CreatedAt = DateTime.UtcNow
+                    })
+                    .ToList();
+
+                if (linksToAdd.Count > 0)
+                {
+                    await _db.SemesterLecturers.AddRangeAsync(linksToAdd);
+                    await _db.SaveChangesAsync();
+                }
+            }
+        }
 
         foreach (var invite in pendingInvitations)
         {
@@ -532,15 +586,25 @@ public class LecturerProfileService : ILecturerProfileService
 
     private async Task<(Guid UserId, bool CreatedNew, string? TemporaryPassword)> EnsureLecturerUserAsync(string username, string fullName, string? email)
     {
-        var existing = await _db.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
+        var existing = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (existing != null)
         {
             if (existing.Role != Role.Lecturer)
                 throw new InvalidOperationException($"Username '{username}' exists but is not a Lecturer account");
 
-            var linked = await _db.Lecturers.AnyAsync(l => l.UserId == existing.Id && !l.IsDeleted);
+            // Include soft-deleted lecturers: the UserId index covers deleted rows too, so a
+            // user already attached to any lecturer row (even a deleted one) cannot be reused.
+            var linked = await _db.Lecturers.AnyAsync(l => l.UserId == existing.Id);
             if (linked)
                 throw new InvalidOperationException($"Username '{username}' is already linked to a lecturer profile");
+
+            if (existing.IsDeleted)
+            {
+                // Reuse a soft-deleted login account instead of leaving an orphan duplicate.
+                existing.IsDeleted = false;
+                existing.IsActive = true;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
 
             return (existing.Id, CreatedNew: false, TemporaryPassword: null);
         }

@@ -21,9 +21,10 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
-import { apiRequest } from "../../../lib/apiClient";
+import { lecturerAnalyticsService } from "../../../services/lecturerAnalytics.service";
 import { lecturerExportService } from "../../../services/lecturerExport.service";
-import { useSemester } from "../../../contexts/SemesterContext";
+import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 
 interface DashboardStatsDto {
   totalStudents: number;
@@ -36,77 +37,45 @@ interface DashboardStatsDto {
   statusDistribution: Record<string, number>;
 }
 
-interface WeeklyTrendItem {
-  weekNumber: number;
-  label: string;
-  onTimeCount: number;
-  lateCount: number;
-  missingCount: number;
-  totalStudents: number;
-  complianceRate: number;
-}
-
-interface GradeDistribution {
-  excellentCount: number;
-  goodCount: number;
-  fairCount: number;
-  averageCount: number;
-  failCount: number;
-  notYetGradedCount: number;
-  overallAverage: number;
-  totalStudents: number;
-}
-
-interface CompanyStatItem {
-  companyName: string;
-  studentCount: number;
-  positions: string;
-  averageGrade: number;
-  partnershipLevel: string;
-}
-
-interface ActivityStats {
-  reviewedReportsCount: number;
-  pendingReportsCount: number;
-  completedStudentsCount: number;
-  totalStudentsCount: number;
-  averageResponseDays: number;
-  complianceRate: number;
-}
-
 export const LecturerAnalytics = () => {
-  const { semesters, selectedSemesterId, selectedSemester, selectSemester } = useSemester();
-  const [selectedClass, setSelectedClass] = useState("Tất cả lớp");
+  const { semesters, selectedSemester, selectSemester } = useSemester();
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("Tất cả doanh nghiệp");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<DashboardStatsDto | null>(null);
-  const [weeklyTrend, setWeeklyTrend] = useState<WeeklyTrendItem[]>([]);
-  const [gradeDist, setGradeDist] = useState<GradeDistribution | null>(null);
-  const [companyStats, setCompanyStats] = useState<CompanyStatItem[]>([]);
-  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
+  const [weeklyTrend, setWeeklyTrend] = useState<LecturerWeeklyTrendDto[]>([]);
+  const [gradeDist, setGradeDist] = useState<LecturerGradeDistributionDto | null>(null);
+  const [companyStats, setCompanyStats] = useState<LecturerCompanyStatDto[]>([]);
+  const [activityStats, setActivityStats] = useState<LecturerActivityStatsDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const semesterId = toApiSemesterId(selectedSemester?.id);
+
+  const filteredCompanyStats =
+    selectedCompanyFilter === "Tất cả doanh nghiệp"
+      ? companyStats
+      : companyStats.filter((c) => c.companyName === selectedCompanyFilter);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
-    const qs = selectedSemesterId ? `?semesterId=${selectedSemesterId}` : "";
     try {
       const [stats, trend, grade, company, activity] = await Promise.all([
-        apiRequest<DashboardStatsDto>("/api/Lecturer/stats"),
-        apiRequest<WeeklyTrendItem[]>(`/api/Lecturer/analytics/weekly-trend${qs}`),
-        apiRequest<GradeDistribution>(`/api/Lecturer/analytics/grade-distribution${qs}`),
-        apiRequest<CompanyStatItem[]>(`/api/Lecturer/analytics/company-stats${qs}`),
-        apiRequest<ActivityStats>(`/api/Lecturer/analytics/activity-stats${qs}`),
+        lecturerAnalyticsService.getStats(semesterId),
+        lecturerAnalyticsService.getWeeklyTrend(semesterId),
+        lecturerAnalyticsService.getGradeDistribution(semesterId),
+        lecturerAnalyticsService.getCompanyStats(semesterId),
+        lecturerAnalyticsService.getActivityStats(semesterId),
       ]);
       setStatsData(stats);
       setWeeklyTrend(trend);
       setGradeDist(grade);
       setCompanyStats(company);
       setActivityStats(activity);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Analytics fetch error:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSemesterId]);
+  }, [semesterId]);
 
   useEffect(() => {
     fetchData();
@@ -130,24 +99,40 @@ export const LecturerAnalytics = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast(`Đã tải xuống ${filename}`);
-    } catch {
-      showToast("Xuất Excel thất bại.");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
     }
   };
 
-  const handleExportPDF = () => {
-    showToast("Đang xuất Báo cáo Thống kê định dạng PDF...");
+  const handleExportPDF = async () => {
+    try {
+      showToast("Đang xuất Báo cáo Thống kê định dạng PDF...");
+      const { blob, filename } = await lecturerExportService.downloadEndOfTermPdf();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Đã tải xuống ${filename}`);
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const totalStudents = statsData ? statsData.totalStudents : 0;
-  const interningStudents = statsData ? statsData.interningCount : 0;
-  const overdueCount = statsData ? statsData.overdueReportsCount : 0;
-  const avgGrade = statsData ? statsData.averageGrade : 0;
-  const complianceRate = totalStudents > 0 ? `${Math.round(((totalStudents - overdueCount) / totalStudents) * 100)}%` : "100%";
+  const totalStudents = statsData?.totalStudents ?? 0;
+  const interningStudents = statsData?.interningCount ?? 0;
+  const overdueCount = statsData?.overdueReportsCount ?? 0;
+  const avgGrade = statsData?.averageGrade ?? 0;
+  const complianceRate = totalStudents > 0
+    ? `${Math.round(((totalStudents - overdueCount) / totalStudents) * 100)}%`
+    : "100%";
 
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto animate-in fade-in duration-200 pb-12 font-sans">
@@ -193,7 +178,6 @@ export const LecturerAnalytics = () => {
           icon={Users}
           footer="100% Đã phân công giảng viên"
           onClick={() => {
-            setSelectedClass("Tất cả lớp");
             if (semesters.length > 0) selectSemester(semesters[0].id);
           }}
         />
@@ -233,12 +217,10 @@ export const LecturerAnalytics = () => {
             </h2>
           </div>
 
-          {(selectedSemesterId !== "" ||
-            selectedClass !== "Tất cả lớp") && (
+          {selectedSemester?.id !== "all" && (
             <button
               onClick={() => {
-                if (semesters.length > 0) selectSemester(semesters[0].id);
-                setSelectedClass("Tất cả lớp");
+                selectSemester("all");
               }}
               className="text-xs text-blue-600 hover:text-blue-800 font-bold"
             >
@@ -250,47 +232,38 @@ export const LecturerAnalytics = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
           <div>
             <select
-              value={selectedSemesterId}
+              value={selectedSemester?.id ?? "all"}
               onChange={(e) => selectSemester(e.target.value)}
               className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
-              {semesters.length === 0 ? (
-                <option value="">Chưa có kỳ thực tập</option>
-              ) : (
-                semesters.map((sem) => (
-                  <option key={sem.id} value={sem.id}>
-                    {sem.name} — [{sem.status === "active" ? "Đang chạy" : sem.status === "upcoming" ? "Sắp tới" : "Đã đóng"}]
-                  </option>
-                ))
-              )}
+              <option value="all">Tất cả học kỳ</option>
+              {semesters.map((sem) => (
+                <option key={sem.id} value={sem.id}>
+                  {sem.name} — [{sem.status === "active" ? "Đang chạy" : sem.status === "upcoming" ? "Sắp tới" : "Đã đóng"}]
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
-            >
-              <option value="Tất cả lớp">Tất cả Lớp hướng dẫn</option>
-              <option value="C24A.TH1">Lớp C24A.TH1 (28 SV)</option>
-              <option value="CNTT-K15A">Lớp CNTT-K15A (14 SV)</option>
-              <option value="CNTT-K15B">Lớp CNTT-K15B (14 SV)</option>
-            </select>
+            <span className="text-xs text-slate-400">Lọc theo lớp: sắp có</span>
           </div>
 
           <div>
             <select
-              defaultValue="Tất cả doanh nghiệp"
+              value={selectedCompanyFilter}
+              onChange={(e) => setSelectedCompanyFilter(e.target.value)}
               className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
             >
               <option value="Tất cả doanh nghiệp">
                 Tất cả Doanh nghiệp đối tác
               </option>
-              <option value="FPT Software">FPT Software</option>
-              <option value="Viettel Telecom">Viettel Telecom</option>
-              <option value="VNG Corporation">VNG Corporation</option>
-              <option value="MISA">MISA Joint Stock Co.</option>
+              {companyStats.map((c) => (
+                <option key={c.companyName} value={c.companyName}>{c.companyName} ({c.studentCount} SV)</option>
+              ))}
+              {companyStats.length === 0 && (
+                <option value="" disabled>Chưa có dữ liệu</option>
+              )}
             </select>
           </div>
         </div>
@@ -312,7 +285,7 @@ export const LecturerAnalytics = () => {
               </p>
             </div>
             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-lg border border-emerald-200 shrink-0">
-              89.3% Tuân thủ
+              {complianceRate} Tuân thủ
             </span>
           </div>
 
@@ -356,22 +329,30 @@ export const LecturerAnalytics = () => {
           </div>
 
           <div className="flex items-center justify-between text-[11px] pt-3 border-t border-slate-100 text-slate-600">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />
-                Nộp đúng hạn (89.3%)
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" />
-                Trễ 1-3 ngày (7.1%)
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="w-3 h-3 rounded-sm bg-rose-500 inline-block" />
-                Quá hạn / Thiếu (3.6%)
-              </span>
-            </div>
+            {(() => {
+              const totOnTime = weeklyTrend.reduce((a, w) => a + w.onTimeCount, 0);
+              const totLate = weeklyTrend.reduce((a, w) => a + w.lateCount, 0);
+              const totMissing = weeklyTrend.reduce((a, w) => a + w.missingCount, 0);
+              const totAll = totOnTime + totLate + totMissing || 1;
+              return (
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />
+                    Nộp đúng hạn ({((totOnTime / totAll) * 100).toFixed(1)}%)
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" />
+                    Trễ 1-3 ngày ({((totLate / totAll) * 100).toFixed(1)}%)
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span className="w-3 h-3 rounded-sm bg-rose-500 inline-block" />
+                    Quá hạn / Thiếu ({((totMissing / totAll) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+              );
+            })()}
             <span className="font-bold text-blue-600">
-              Tổng 12 báo cáo tuần / SV
+              Tổng {weeklyTrend.length > 0 ? weeklyTrend.length : 12} báo cáo tuần / SV
             </span>
           </div>
         </div>
@@ -385,7 +366,7 @@ export const LecturerAnalytics = () => {
                 Phân bố Phổ điểm Đánh giá
               </h3>
               <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                28 Sinh viên
+                {gradeDist?.totalStudents ?? totalStudents} Sinh viên
               </span>
             </div>
 
@@ -422,7 +403,11 @@ export const LecturerAnalytics = () => {
 
           <div className="bg-slate-50 p-3 rounded-md border border-slate-200 text-xs text-slate-600 font-medium flex items-center justify-between">
             <span>Tỷ lệ xếp loại Khá - Giỏi - Xuất sắc:</span>
-            <strong className="text-emerald-700 font-bold">89.3%</strong>
+            <strong className="text-emerald-700 font-bold">
+              {gradeDist && gradeDist.totalStudents > 0
+                ? ((((gradeDist.excellentCount + gradeDist.goodCount + gradeDist.fairCount) / gradeDist.totalStudents) * 100).toFixed(1)) + "%"
+                : "—"}
+            </strong>
           </div>
         </div>
       </div>
@@ -511,7 +496,7 @@ export const LecturerAnalytics = () => {
             </p>
           </div>
           <span className="px-3 py-1 bg-blue-50 text-blue-700 font-bold text-xs rounded-lg border border-blue-200">
-            6 Doanh nghiệp đối tác chính
+            {companyStats.length} Doanh nghiệp · {filteredCompanyStats.length} đang lọc
           </span>
         </div>
 
@@ -528,10 +513,10 @@ export const LecturerAnalytics = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-              {companyStats.length === 0 ? (
+              {filteredCompanyStats.length === 0 ? (
                 <tr><td colSpan={5} className="p-6 text-center text-slate-400 text-xs">Chưa có dữ liệu doanh nghiệp</td></tr>
               ) : (
-                companyStats.map((item, index) => (
+                filteredCompanyStats.map((item, index) => (
                   <tr key={index} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-slate-400" />
@@ -564,47 +549,17 @@ export const LecturerAnalytics = () => {
         </div>
       </div>
 
-      {/* 5. AI PLAGIARISM & ORIGINALITY SUMMARY */}
-      <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 text-sm">
-              Kiểm tra Trùng lặp AI &amp; Độ nguyên bản báo cáo
-            </h3>
-          </div>
-          <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            94.2% Nguyên bản Trung bình
-          </span>
+      {/* 5. AI PLAGIARISM & ORIGINALITY — Chưa tích hợp */}
+      <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+          <ShieldCheck className="w-5 h-5 text-slate-400" />
+          <h3 className="font-bold text-slate-400 text-sm">
+            Kiểm tra Trùng lặp AI &amp; Độ nguyên bản báo cáo
+          </h3>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-md space-y-1.5">
-            <p className="font-bold text-slate-900 flex items-center justify-between">
-              <span>Báo cáo tuần 12 - Lớp C24A.TH1</span>
-              <span className="text-emerald-600 font-bold">
-                An toàn (&lt; 10%)
-              </span>
-            </p>
-            <p className="text-slate-500 leading-relaxed">
-              Tất cả 26 bài nộp đúng hạn đều đạt chỉ số trùng lặp thấp, không
-              phát hiện sao chép từ kho tài liệu khóa trước.
-            </p>
-          </div>
-
-          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-md space-y-1.5">
-            <p className="font-bold text-amber-900 flex items-center justify-between">
-              <span>Báo cáo Giữa kỳ - 2 bài cần lưu ý</span>
-              <span className="text-amber-700 font-bold">
-                Trùng lặp 24% - 32%
-              </span>
-            </p>
-            <p className="text-amber-800 leading-relaxed">
-              Phát hiện một số đoạn trích dẫn tài liệu kỹ thuật từ Viettel chưa
-              ghi rõ nguồn tham khảo. Giảng viên đã nhắc nhở chỉnh sửa.
-            </p>
-          </div>
-        </div>
+        <p className="text-xs text-slate-400 text-center py-6">
+          Chức năng đang phát triển — sẽ tích hợp trong phiên bản tiếp theo.
+        </p>
       </div>
     </div>
   );

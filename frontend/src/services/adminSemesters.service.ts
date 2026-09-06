@@ -70,9 +70,21 @@ export const adminSemestersService = {
     });
   },
 
+  start(id: string): Promise<BackendSemesterDto> {
+    return apiRequest<BackendSemesterDto>(`/api/Admin/semesters/${id}/start`, {
+      method: "POST",
+    });
+  },
+
   delete(id: string): Promise<{ message: string }> {
     return apiRequest<{ message: string }>(`/api/Admin/semesters/${id}`, {
       method: "DELETE",
     });
+  },
+};
+
+export const semesterPortalService = {
+  getCurrent(): Promise<BackendSemesterDto> {
+    return apiRequest<BackendSemesterDto>("/api/Semesters/current");
   },
 };

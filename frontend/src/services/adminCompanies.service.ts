@@ -2,9 +2,10 @@ import { apiRequest, downloadAuthenticatedFile } from "../lib/apiClient";
 import type { CompanyDto, CompanyImportResultDto } from "../types/api";
 
 export const adminCompaniesService = {
-  getAll(skip = 0, take = 500): Promise<CompanyDto[]> {
+  getAll(skip = 0, take = 500, semesterId?: string): Promise<CompanyDto[]> {
+    const qs = semesterId && semesterId !== "all" ? `&semesterId=${semesterId}` : "";
     return apiRequest<CompanyDto[]>(
-      `/api/Admin/companies?skip=${skip}&take=${take}`,
+      `/api/Admin/companies?skip=${skip}&take=${take}${qs}`,
     );
   },
 
@@ -50,6 +51,21 @@ export const adminCompaniesService = {
     });
   },
 
+  /** Link / unlink a company for a semester ("ngưng liên kết" = isLinked false). */
+  setSemesterLink(
+    id: string,
+    semesterId: string,
+    isLinked: boolean,
+  ): Promise<{ isLinked: boolean }> {
+    return apiRequest<{ isLinked: boolean }>(
+      `/api/Admin/companies/${id}/semester/${semesterId}`,
+      {
+        method: "PUT",
+        body: { isLinked },
+      },
+    );
+  },
+
   importExcel(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -72,4 +88,29 @@ export const adminCompaniesService = {
       "danh-sach-doanh-nghiep.xlsx",
     );
   },
+
+  /** Admin company detail: master data + hosted internships. */
+  getDetail(id: string): Promise<AdminCompanyDetailDto> {
+    return apiRequest<AdminCompanyDetailDto>(`/api/Admin/companies/${id}/detail`);
+  },
 };
+
+/** Admin company detail payload. */
+export interface AdminCompanyDetailDto {
+  company: CompanyDto;
+  internships: InternshipListItemDto[];
+}
+
+export interface InternshipListItemDto {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  companyId?: string;
+  companyName?: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  position?: string;
+  submissionCount: number;
+  createdAt: string;
+}

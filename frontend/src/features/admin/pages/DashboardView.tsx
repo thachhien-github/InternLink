@@ -22,7 +22,7 @@ import {
 import { useAdminDashboardStats } from "../../../hooks/useAdminDashboardStats";
 import { exportAdminDashboardReport } from "../../../lib/adminDashboardExport";
 import { exportService } from "../../../services/export.service";
-import { useSemester } from "../../../contexts/SemesterContext";
+import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
 
 export const DashboardView = ({
   onShowToast,
@@ -36,7 +36,7 @@ export const DashboardView = ({
   const { selectedSemester } = useSemester();
   const { stats, isLoading, updatedAt, reload } = useAdminDashboardStats(
     true,
-    selectedSemester?.id,
+    toApiSemesterId(selectedSemester?.id),
     onShowToast,
   );
 
@@ -49,7 +49,7 @@ export const DashboardView = ({
   const handleExportInternshipList = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadInternshipExcel(selectedSemester?.id);
+      await exportService.downloadInternshipExcel(toApiSemesterId(selectedSemester?.id));
       onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
     } catch (err) {
       onShowToast("Xuất danh sách thực tập thất bại. Đang tải báo cáo tổng quan...");
@@ -62,7 +62,7 @@ export const DashboardView = ({
   const handleExportSummaryReport = async () => {
     setIsExporting(true);
     try {
-      await exportService.downloadSummaryReportWord(selectedSemester?.id);
+      await exportService.downloadSummaryReportWord(toApiSemesterId(selectedSemester?.id));
       onShowToast("Đã tải xuống Báo cáo tổng kết thực tập (.docx)");
     } catch (err) {
       onShowToast("Xuất báo cáo tổng kết Word thất bại.");

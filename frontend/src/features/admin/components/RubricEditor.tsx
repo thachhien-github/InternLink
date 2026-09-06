@@ -1,13 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Trash2,
   GripVertical,
   Save,
-  Send,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
   FileText,
   Sliders,
   ChevronDown,
@@ -91,8 +87,7 @@ export const RubricEditor = ({
   const [criteria, setCriteria] = useState<CriterionDraft[]>(DEFAULT_CRITERIA);
   const [isExpanded, setIsExpanded] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
+  const saveInFlightRef = useRef(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -130,8 +125,7 @@ export const RubricEditor = ({
 
   const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0);
   const isValidTotal = Math.abs(totalWeight - 100) < 0.01;
-  const isEditable =
-    !rubric || rubric.status === "Draft" || rubric.status === "Rejected";
+  const isEditable = !rubric || rubric.status !== "Locked";
 
   const addCriterion = () => {
     const newOrder = criteria.length + 1;
@@ -185,6 +179,8 @@ export const RubricEditor = ({
   };
 
   const handleSave = async () => {
+    if (saveInFlightRef.current) return;
+
     if (!isValidTotal) {
       showToast(`Tổng trọng số phải bằng 100%. Hiện tại: ${totalWeight}%`);
       return;
@@ -194,6 +190,7 @@ export const RubricEditor = ({
       return;
     }
 
+    saveInFlightRef.current = true;
     setIsSaving(true);
     try {
       const payload = {
@@ -219,59 +216,7 @@ export const RubricEditor = ({
     } catch (err: any) {
       showToast(err?.message || "Lỗi khi lưu rubric.");
     } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSubmitForApproval = async () => {
-    if (!isValidTotal) {
-      showToast(`Tổng trọng số phải bằng 100%. Hiện tại: ${totalWeight}%`);
-      return;
-    }
-    setIsSaving(true);
-    try {
-      // Save first if needed
-      if (!rubric || criteria !== DEFAULT_CRITERIA) {
-        await handleSave();
-      }
-      const result = await rubricService.submitForApproval(semesterId);
-      setRubric(result);
-      showToast("Đã gửi rubric chờ phê duyệt!");
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi khi gửi duyệt.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    setIsSaving(true);
-    try {
-      const result = await rubricService.approve(semesterId);
-      setRubric(result);
-      showToast("Đã phê duyệt rubric!");
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi khi phê duyệt.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      showToast("Vui lòng nhập lý do từ chối.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const result = await rubricService.reject(semesterId, rejectReason);
-      setRubric(result);
-      setShowRejectModal(false);
-      setRejectReason("");
-      showToast("Đã từ chối rubric.");
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi khi từ chối.");
-    } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
   };
@@ -541,55 +486,15 @@ export const RubricEditor = ({
                   {isSaving ? "Đang lưu..." : "Lưu"}
                 </button>
 
-                {rubric?.status !== "Approved" && rubric?.status !== "Locked" && (
-                  <button
-                    onClick={handleSubmitForApproval}
-                    disabled={isSaving || !isValidTotal}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Gửi phê duyệt
-                  </button>
-                )}
               </div>
             )}
 
-            {/* Approval Actions (SuperAdmin) */}
-            {rubric?.status === "PendingApproval" && (
-              <div className="flex items-center gap-2 pt-3 border-t border-amber-100 bg-amber-50/50 -mx-4 -mb-4 px-4 pb-4 rounded-b-lg">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-xs text-amber-800 font-medium">
-                  Rubric đang chờ phê duyệt
-                  {rubric.submittedAt
-                    ? ` · Gửi lúc ${new Date(rubric.submittedAt).toLocaleString("vi-VN")}`
-                    : ""}
-                </span>
-                <div className="flex-1" />
-                <button
-                  onClick={handleApprove}
-                  disabled={isSaving}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md flex items-center gap-1.5 transition-colors"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Phê duyệt
-                </button>
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={isSaving}
-                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-md border border-rose-200 flex items-center gap-1.5 transition-colors"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                  Từ chối
-                </button>
-              </div>
-            )}
-
-            {/* Read-only info for Approved/Locked */}
+            {/* Applied/locked status */}
             {(rubric?.status === "Approved" || rubric?.status === "Locked") && (
               <div className="flex items-center gap-2 pt-3 border-t border-emerald-100 bg-emerald-50/50 -mx-4 -mb-4 px-4 pb-4 rounded-b-lg">
                 <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span className="text-xs text-emerald-800 font-medium">
-                  Rubric đã được phê duyệt
+                  {rubric.status === "Locked" ? "Rubric đã khóa" : "Rubric đang được áp dụng ngay"}
                   {rubric.approvedAt
                     ? ` · Duyệt lúc ${new Date(rubric.approvedAt).toLocaleString("vi-VN")}`
                     : ""}
@@ -603,41 +508,6 @@ export const RubricEditor = ({
         )}
       </Panel>
 
-      {/* Reject Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <XCircle className="w-4 h-4 text-rose-500" />
-              Từ chối rubric
-            </h3>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Nhập lý do từ chối..."
-              rows={3}
-              className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-blue-500"
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason("");
-                }}
-                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-md"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleReject}
-                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-md"
-              >
-                Từ chối
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

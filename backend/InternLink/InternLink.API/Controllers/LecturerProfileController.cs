@@ -19,12 +19,12 @@ public class LecturerProfileController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? semesterId = null)
     {
         if (skip < 0 || take < 1 || take > 1000)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid pagination" }));
 
-        var items = await _service.GetAllAsync(skip, take);
+        var items = await _service.GetAllAsync(skip, take, semesterId);
         return Ok(ApiResponse<IEnumerable<LecturerDto>>.Ok(items));
     }
 
@@ -111,7 +111,7 @@ public class LecturerProfileController : ControllerBase
     [Authorize(Policy = "RequireSuperAdmin")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> Import(IFormFile file)
+    public async Task<IActionResult> Import(IFormFile file, [FromQuery] Guid? semesterId = null)
     {
         try
         {
@@ -122,7 +122,7 @@ public class LecturerProfileController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Only .xlsx files are supported" }));
 
             await using var stream = file.OpenReadStream();
-            var result = await _service.ImportFromExcelAsync(stream);
+            var result = await _service.ImportFromExcelAsync(stream, semesterId);
             return Ok(ApiResponse<LecturerImportResultDto>.Ok(result));
         }
         catch (InvalidOperationException ex)

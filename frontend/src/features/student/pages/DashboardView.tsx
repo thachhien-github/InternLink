@@ -49,7 +49,8 @@ export const DashboardView = ({
   onShowToast?: (msg: string, type?: string) => void;
 }) => {
   const { profile, internshipId } = useStudentPortal();
-  const { selectedSemester } = useSemester();
+  const { selectedSemester, activeSemesterId } = useSemester();
+  const hasActiveSemester = !!activeSemesterId;
   const { reports, loading: reportsLoading, error: reportsError } = useWeeklyReports();
   const { notifications, loading: notificationsLoading } = useStudentNotifications();
   const [showEmptyState, setShowEmptyState] = useState(false);
@@ -248,6 +249,15 @@ export const DashboardView = ({
           </div>
           <span className="px-2.5 py-0.5 bg-slate-200 text-slate-700 font-bold rounded text-[10px] shrink-0">
             Hồ sơ đã lưu trữ
+          </span>
+        </div>
+      )}
+
+      {!hasActiveSemester && (
+        <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 flex items-center gap-2.5">
+          <CalendarIcon className="w-4 h-4 text-blue-600 shrink-0" />
+          <span>
+            Chưa có kỳ thực tập nào đang hoạt động. Dữ liệu sẽ tự động hiển thị khi Quản trị viên bắt đầu kỳ thực tập.
           </span>
         </div>
       )}

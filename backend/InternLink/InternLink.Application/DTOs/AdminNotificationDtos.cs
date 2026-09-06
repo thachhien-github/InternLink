@@ -21,6 +21,11 @@ public sealed class AdminBroadcastNotificationResultDto
 
 public sealed class AdminNotificationCampaignDto
 {
+    /// <summary>
+    /// Stable identifier derived from the campaign content so the client can persist read state
+    /// across reloads (must not change between requests).
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string Audience { get; set; } = null!;

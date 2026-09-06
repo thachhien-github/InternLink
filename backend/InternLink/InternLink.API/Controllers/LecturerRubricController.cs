@@ -59,6 +59,113 @@ public class LecturerRubricController : ControllerBase
     }
 
     /// <summary>
+    /// Ensure a draft evaluation exists for an internship, then save rubric-based scores.
+    /// This is the recommended endpoint for rubric grading: it creates an evaluation
+    /// automatically when needed, so the UI does not have to guess legacy scores.
+    /// </summary>
+    [HttpPost("evaluation/scores")]
+    [ProducesResponseType(typeof(EvaluationScoresResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<EvaluationScoresResponse>> SaveRubricScores(
+        [FromBody] SaveRubricScoresRequest request)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "User ID not found in token." });
+
+            if (!request.InternshipId.HasValue)
+                return BadRequest(new { message = "Không tìm thấy thực tập." });
+
+            if (request.CriteriaScores == null || request.CriteriaScores.Count == 0)
+                return BadRequest(new { message = "Không có tiêu chí điểm." });
+
+            // Validate total weight
+            var totalWeight = request.CriteriaScores.Sum(c => c.Weight);
+            if (Math.Abs(totalWeight - 100) > 0.01m)
+                return BadRequest(new { message = $"Tổng trọng số phải bằng 100%. Hiện tại: {totalWeight}%" });
+
+            // Validate individual scores
+            foreach (var score in request.CriteriaScores)
+            {
+                if (score.Score < 0 || score.Score > score.MaxScore)
+                    return BadRequest(new { message = $"Điểm '{score.CriterionName}' phải từ 0 đến {score.MaxScore}." });
+            }
+
+            var internship = await _context.Internships
+                .Include(i => i.Lecturer)
+                .FirstOrDefaultAsync(i => i.Id == request.InternshipId.Value && !i.IsDeleted);
+
+            if (internship == null)
+                return NotFound(new { message = "Không tìm thấy thực tập." });
+
+            var canGradeInternship = internship.Lecturer?.UserId == userId
+                || await _context.Users.AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!canGradeInternship)
+                return Forbid();
+
+            Evaluation evaluation;
+            var existing = await _context.Evaluations
+                .FirstOrDefaultAsync(e => e.InternshipId == request.InternshipId.Value && !e.IsDeleted);
+
+            if (existing != null)
+            {
+                if (existing.IsFinalized)
+                    return BadRequest(new { message = "Đánh giá đã chốt, không thể chỉnh sửa." });
+
+                evaluation = existing;
+            }
+            else
+            {
+                evaluation = new Evaluation
+                {
+                    Id = Guid.NewGuid(),
+                    InternshipId = request.InternshipId.Value,
+                    EvaluatedById = userId,
+                    EvaluatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    IsFinalized = request.Finalize ?? false
+                };
+
+                _context.Evaluations.Add(evaluation);
+            }
+
+            var scoresJson = JsonSerializer.Serialize(request.CriteriaScores);
+            evaluation.CriteriaScoresJson = scoresJson;
+            evaluation.Comments = request.Comments;
+            evaluation.CalculateFinalGradeFromCriteria();
+            evaluation.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            var response = new EvaluationScoresResponse
+            {
+                EvaluationId = evaluation.Id,
+                CriteriaScores = request.CriteriaScores.Select(c => new CriterionScoreDto
+                {
+                    CriterionId = c.CriterionId,
+                    CriterionName = c.CriterionName,
+                    Weight = c.Weight,
+                    MaxScore = c.MaxScore,
+                    Score = c.Score,
+                    Comment = c.Comment,
+                    OrderIndex = 0
+                }).ToList(),
+                FinalGrade = evaluation.FinalGrade,
+                IsFinalized = evaluation.IsFinalized
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving rubric scores");
+            return StatusCode(500, new { message = "Lỗi khi lưu điểm." });
+        }
+    }
+
+    /// <summary>
     /// Save evaluation scores for a student (creates or updates, with dynamic criteria)
     /// </summary>
     [HttpPut("evaluation/{evaluationId}/scores")]
@@ -75,10 +182,17 @@ public class LecturerRubricController : ControllerBase
                 return Unauthorized(new { message = "User ID not found in token." });
 
             var evaluation = await _context.Evaluations
+                .Include(e => e.Internship)
+                    .ThenInclude(i => i.Lecturer)
                 .FirstOrDefaultAsync(e => e.Id == evaluationId && !e.IsDeleted);
 
             if (evaluation == null)
                 return NotFound(new { message = "Không tìm thấy đánh giá." });
+
+            var canGradeEvaluation = evaluation.Internship?.Lecturer?.UserId == userId
+                || await _context.Users.AnyAsync(u => u.Id == userId && u.Role == Domain.Enums.Role.SuperAdmin && !u.IsDeleted);
+            if (!canGradeEvaluation)
+                return Forbid();
 
             if (evaluation.IsFinalized)
                 return BadRequest(new { message = "Đánh giá đã chốt, không thể chỉnh sửa." });
@@ -172,7 +286,7 @@ public class LecturerRubricController : ControllerBase
     /// Get all students assigned to the current lecturer for a semester,
     /// with their evaluation status (graded/ungraded/draft).
     /// </summary>
-    [HttpGet("students")]
+    [HttpGet("evaluation-students")]
     [ProducesResponseType(typeof(IEnumerable<LecturerEvaluationStudentDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<LecturerEvaluationStudentDto>>> GetLecturerStudents(
         [FromQuery] Guid? semesterId)
@@ -229,6 +343,7 @@ public class LecturerRubricController : ControllerBase
                     WeeklyReportCount = i.WeeklyReports.Count,
                     PendingReportCount = 0,
                     SubmissionCount = 0,
+                    EvaluationId = ev?.Id,
                     FinalGrade = ev?.FinalGrade,
                     EvaluatedAt = ev?.EvaluatedAt,
                     HasEvaluation = ev != null,
@@ -271,6 +386,7 @@ public class LecturerEvaluationStudentDto
     public int WeeklyReportCount { get; set; }
     public int PendingReportCount { get; set; }
     public int SubmissionCount { get; set; }
+    public Guid? EvaluationId { get; set; }
     public decimal? FinalGrade { get; set; }
     public DateTime? EvaluatedAt { get; set; }
     public bool HasEvaluation { get; set; }

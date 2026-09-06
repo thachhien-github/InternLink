@@ -39,10 +39,16 @@ export const EditStudentModal = ({
   onSave,
 }: EditStudentModalProps) => {
   const [form, setForm] = useState<EditStudentFormPayload>(emptyFromStudent(student));
+  const [ho, setHo] = useState("");
+  const [ten, setTen] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (isOpen && student) setForm(emptyFromStudent(student));
+    if (isOpen && student) {
+      setForm(emptyFromStudent(student));
+      setHo(student.ho || "");
+      setTen(student.ten || "");
+    }
   }, [isOpen, student]);
 
   if (!isOpen || !student) return null;
@@ -53,7 +59,11 @@ export const EditStudentModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fullName = form.fullName.trim();
+    const fullName = [ho.trim(), ten.trim()].filter(Boolean).join(" ");
+    if (!ten.trim()) {
+      onShowToast("Vui lòng nhập Tên sinh viên!");
+      return;
+    }
     if (!fullName) {
       onShowToast("Vui lòng nhập họ và tên sinh viên!");
       return;
@@ -108,17 +118,32 @@ export const EditStudentModal = ({
               className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md font-mono font-bold text-slate-500"
             />
           </div>
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Họ tên <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={form.fullName}
-              onChange={(e) => setField("fullName", e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-semibold outline-none focus:bg-white focus:border-blue-500"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Họ & tên đệm
+              </label>
+              <input
+                type="text"
+                value={ho}
+                onChange={(e) => setHo(e.target.value)}
+                placeholder="Nguyễn Văn"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-semibold outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Tên <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={ten}
+                onChange={(e) => setTen(e.target.value)}
+                placeholder="An"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold outline-none focus:bg-white focus:border-blue-500"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

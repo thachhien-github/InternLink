@@ -54,8 +54,12 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "RefreshToken is required" }));
 
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var result = await _auth.RevokeTokenAsync(request.RefreshToken, ipAddress);
+        var result = await _auth.RevokeTokenAsync(request.RefreshToken, userId.Value, ipAddress);
         if (!result)
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Token not found or already revoked" }));
 

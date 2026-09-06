@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Search, User, Building2 } from "lucide-react";
+import { Search, User, Building2, CalendarDays } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
+import { useSemester } from "../../../contexts/SemesterContext";
 import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
 
 import type { UserRole } from "../../../types/common";
@@ -65,17 +66,8 @@ export const Header = ({
           </span>
         </div>
 
-        {/* Company & Internship Status Badge */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
-          <Building2 className="w-3.5 h-3.5 text-blue-600" />
-          <span className="truncate max-w-[220px]">
-            {profile.company} • {profile.position}
-          </span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1" />
-          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-bold">
-            {profile.statusBadge}
-          </span>
-        </div>
+        {/* Semester & Company Info */}
+        <StudentSemesterBadge profile={profile} />
       </div>
 
       {/* Right Controls: Role Switcher, Search, Notifications, Profile */}
@@ -172,5 +164,30 @@ export const Header = ({
     </header>
   );
 };
+
+function StudentSemesterBadge({ profile }: { profile: { company: string; position: string; statusBadge: string } }) {
+  const { selectedSemester, activeSemesterId } = useSemester();
+  const semesterLabel = activeSemesterId
+    ? `${selectedSemester.term} (${selectedSemester.academicYear})`
+    : "Chưa có kỳ hoạt động";
+
+  return (
+    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
+      <CalendarDays className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+      <span className="truncate max-w-[160px]">
+        {semesterLabel}
+      </span>
+      <span className="text-slate-300">•</span>
+      <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+      <span className="truncate max-w-[200px]">
+        {profile.company} • {profile.position}
+      </span>
+      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1" />
+      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-bold">
+        {profile.statusBadge}
+      </span>
+    </div>
+  );
+}
 
 export { Header as StudentHeader };

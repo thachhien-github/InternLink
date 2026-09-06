@@ -22,11 +22,6 @@ export const CreateSemesterModal = ({ isOpen, onClose, onShowToast, onCreate }: 
   const [endDate, setEndDate] = useState("2026-12-15");
   const [targetStudents, setTargetStudents] = useState("1350");
   if (!isOpen) return null;
-  const formatDate = (d: string) => {
-    if (!d) return "—";
-    const [y, m, day] = d.split("-");
-    return `${day}/${m}/${y}`;
-  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (onCreate) {
@@ -34,8 +29,8 @@ export const CreateSemesterModal = ({ isOpen, onClose, onShowToast, onCreate }: 
         name: semesterName,
         term,
         academicYear,
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
+        startDate,
+        endDate,
         targetStudents: parseInt(targetStudents) || 0,
       });
     }

@@ -11,13 +11,20 @@ export function useRealAppState(
   showToast: (msg: string) => void,
   semesterId?: string | null,
 ): AppState {
-  const { selectedSemester } = useSemester();
+  const { selectedSemester, activeSemesterId } = useSemester();
   const lecturerName = user?.name ?? "Giảng viên";
+
+  // For lecturer/student: prefer the active semester, fall back to selectedSemesterId
+  const effectiveSemesterId =
+    (role === "lecturer" || role === "student")
+      ? (activeSemesterId || (semesterId && semesterId !== "all" ? semesterId : undefined))
+      : semesterId;
+
   const lecturerPortal = useLecturerPortalData(
     role === "lecturer" && isLoggedIn,
     lecturerName,
     showToast,
-    semesterId,
+    effectiveSemesterId,
   );
 
   const currentLecturer = user?.name ?? "Giảng viên";
@@ -97,8 +104,17 @@ export function useRealAppState(
             assignedStudents.reduce((acc, s) => acc + s.progress, 0) / total,
           )
         : 0;
-    return { total, interning, pending, overdue, completed, avgProg };
-  }, [assignedStudents]);
+    const apiStats = lecturerPortal.dashboardStats;
+    return {
+      total: apiStats?.totalStudents ?? total,
+      interning: apiStats?.interningCount ?? interning,
+      pending: apiStats?.pendingReviewsCount ?? pending,
+      overdue: apiStats?.overdueReportsCount ?? overdue,
+      completed: apiStats?.completedCount ?? completed,
+      avgProg,
+      statusDistribution: apiStats?.statusDistribution ?? {},
+    };
+  }, [assignedStudents, lecturerPortal.dashboardStats]);
 
   const handleUpdateSubmissionStatus = (
     id: string,
@@ -117,6 +133,14 @@ export function useRealAppState(
   };
 
   const weeklyTrendData = useMemo(() => {
+    if (lecturerPortal.weeklyTrend.length > 0) {
+      return lecturerPortal.weeklyTrend.map((week) => ({
+        label: week.label || `Tuần ${week.weekNumber}`,
+        value: week.onTimeCount,
+        late: week.lateCount,
+        missing: week.missingCount,
+      }));
+    }
     const weekMap = new Map<number, { submitted: number; approved: number }>();
     for (const r of lecturerPortal.weeklyReports) {
       const wk = r.weekNumber ?? 0;
@@ -128,7 +152,7 @@ export function useRealAppState(
     const weeks = Array.from(weekMap.entries()).sort((a, b) => a[0] - b[0]);
     if (weeks.length === 0) {
       // Generate placeholder weeks 1-10
-      return Array.from({ length: 10 }, (_, i) => ({
+      return Array.from({ length: 6 }, (_, i) => ({
         label: `T${i + 1}`,
         value: 0,
         target: assignedStudents.length || 0,
@@ -139,7 +163,7 @@ export function useRealAppState(
       value: counts.submitted,
       target: assignedStudents.length || 0,
     }));
-  }, [lecturerPortal.weeklyReports, assignedStudents]);
+  }, [assignedStudents, lecturerPortal.weeklyReports, lecturerPortal.weeklyTrend]);
 
   return {
     currentLecturer,
@@ -153,19 +177,31 @@ export function useRealAppState(
       const start = new Date(selectedSemester.startDate);
       const end = new Date(selectedSemester.endDate);
       const now = new Date();
-      const totalWeeks = Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      const week3 = new Date(start.getTime() + 3 * 7 * 24 * 60 * 60 * 1000);
-      const week8 = new Date(start.getTime() + 8 * 7 * 24 * 60 * 60 * 1000);
-      const weekEnd = end;
       const fmt = (d: Date) => ({ day: String(d.getDate()), month: `Th${d.getMonth() + 1}` });
       const daysLeft = (d: Date) => {
         const diff = Math.ceil((d.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
         return diff > 0 ? `Còn ${diff} ngày` : "Đã hết hạn";
       };
+      const weeklyMilestones = Array.from({ length: 6 }, (_, index) => {
+        const week = index + 1;
+        const date = new Date(start.getTime() + week * 7 * 24 * 60 * 60 * 1000);
+        return {
+          id: `dl-week-${week}`,
+          title: `Báo cáo tuần ${week}`,
+          ...fmt(date),
+          subtitle: `Tuần ${week} / 6 – ${daysLeft(date)}`,
+          studentCount: assignedStudents.length,
+        };
+      });
       return [
-        { id: "dl-1", title: "Hạn nộp Đề cương & Kế hoạch thực tập", ...fmt(week3), subtitle: `Tuần 3 – ${daysLeft(week3)}`, studentCount: assignedStudents.length },
-        { id: "dl-2", title: "Báo cáo tiến độ thực tập giữa kỳ", ...fmt(week8), subtitle: `Tuần 8 – ${daysLeft(week8)}`, studentCount: assignedStudents.length },
-        { id: "dl-3", title: "Nộp Báo cáo tổng kết & Sản phẩm cuối kỳ", ...fmt(weekEnd), subtitle: `Tuần ${totalWeeks} – ${daysLeft(weekEnd)}`, studentCount: assignedStudents.length },
+        ...weeklyMilestones,
+        {
+          id: "dl-defense",
+          title: "Bảo vệ luận án / thực tập",
+          ...fmt(end),
+          subtitle: `Kết thúc học kỳ – ${daysLeft(end)}`,
+          studentCount: assignedStudents.length,
+        },
       ];
     })(),
     stats,

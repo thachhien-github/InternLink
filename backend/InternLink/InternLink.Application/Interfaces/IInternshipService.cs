@@ -51,7 +51,7 @@ public interface IInternshipService
     /// <summary>
     /// Assign or change company for an internship
     /// </summary>
-    Task<InternshipDetailFullDto?> AssignCompanyAsync(Guid id, AssignCompanyRequest request);
+    Task<InternshipDetailFullDto?> AssignCompanyAsync(Guid id, AssignCompanyRequest request, Guid? lecturerId = null);
 
     /// <summary>
     /// Delete an internship

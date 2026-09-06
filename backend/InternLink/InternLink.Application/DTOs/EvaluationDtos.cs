@@ -1,3 +1,5 @@
+using InternLink.Domain.Enums;
+
 namespace InternLink.Application.DTOs;
 
 /// <summary>
@@ -127,8 +129,20 @@ public class EvaluationDetailDto
     public DateTime EvaluatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public bool IsFinalized { get; set; }
+    public DateTime? DefenseDate { get; set; }
+    public DefenseStatus DefenseStatus { get; set; }
+    public string? DefenseCouncilName { get; set; }
+    public string? DefenseExaminerName { get; set; }
     public UserSummaryDto? EvaluatedBy { get; set; }
     public InternshipSummaryDto? Internship { get; set; }
+}
+
+public class UpdateDefenseRequest
+{
+    public DateTime? DefenseDate { get; set; }
+    public DefenseStatus DefenseStatus { get; set; }
+    public string? DefenseCouncilName { get; set; }
+    public string? DefenseExaminerName { get; set; }
 }
 
 /// <summary>

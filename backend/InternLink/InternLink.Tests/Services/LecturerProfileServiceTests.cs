@@ -267,6 +267,101 @@ public class LecturerProfileServiceTests
     }
 
     [Fact]
+    public async Task ImportFromExcelAsync_WithSemesterId_ShouldLinkLecturersToSemester()
+    {
+        var db = GetDb();
+        var service = CreateService(db);
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Fall 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Semesters.Add(semester);
+        await db.SaveChangesAsync();
+
+        using var stream = CreateExcel(("GV300", "Giang Vien A", "a@uni.edu.vn", "0901", "CNTT", null));
+        var result = await service.ImportFromExcelAsync(stream, semester.Id);
+
+        result.SuccessCount.Should().Be(1);
+        (await db.SemesterLecturers.CountAsync()).Should().Be(1);
+        var lecturer = await db.Lecturers.FirstAsync(l => l.StaffCode == "GV300");
+        var link = await db.SemesterLecturers.FirstAsync();
+        link.SemesterId.Should().Be(semester.Id);
+        link.LecturerId.Should().Be(lecturer.Id);
+        link.IsDeleted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_WithSemesterIdTwice_ShouldNotDuplicateLinks()
+    {
+        var db = GetDb();
+        var service = CreateService(db);
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Fall 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Semesters.Add(semester);
+        await db.SaveChangesAsync();
+
+        using var stream = CreateExcel(("GV301", "Giang Vien B", "b@uni.edu.vn", "0901", "CNTT", null));
+        await service.ImportFromExcelAsync(stream, semester.Id);
+        await service.ImportFromExcelAsync(stream, semester.Id);
+
+        (await db.SemesterLecturers.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithSemesterId_ShouldReturnOnlyLinkedOrAssignedLecturers()
+    {
+        var db = GetDb();
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Fall 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        var linkedLecturer = new Lecturer
+        {
+            Id = Guid.NewGuid(),
+            StaffCode = "GV400",
+            FullName = "GV Trong Ky",
+            CreatedAt = DateTime.UtcNow
+        };
+        var otherLecturer = new Lecturer
+        {
+            Id = Guid.NewGuid(),
+            StaffCode = "GV401",
+            FullName = "GV Khac Ky",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Semesters.Add(semester);
+        db.Lecturers.AddRange(linkedLecturer, otherLecturer);
+        db.SemesterLecturers.Add(new SemesterLecturer
+        {
+            Id = Guid.NewGuid(),
+            SemesterId = semester.Id,
+            LecturerId = linkedLecturer.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var items = (await service.GetAllAsync(skip: 0, take: 100, semesterId: semester.Id)).ToList();
+
+        items.Should().ContainSingle(l => l.Id == linkedLecturer.Id);
+        items.Should().NotContain(l => l.Id == otherLecturer.Id);
+    }
+
+    [Fact]
     public async Task ImportFromExcelAsync_WithSwappedEmailAndPhone_ShouldAutoDetectAndSucceed()
     {
         var db = GetDb();
@@ -282,6 +377,68 @@ public class LecturerProfileServiceTests
         lecturer.Should().NotBeNull();
         lecturer!.Email.Should().Be("gv999@uni.edu.vn");
         lecturer.Phone.Should().Be("0901234567");
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_AfterLecturerSoftDeleted_ShouldRestoreInsteadOfDuplicate()
+    {
+        var db = GetDb();
+        var email = new Mock<IEmailService>();
+        email.Setup(e => e.SendInvitationAsync(It.IsAny<InvitationEmailRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InvitationEmailRequest r, CancellationToken _) => SendEmailResult.Ok(r.ToEmail));
+        var service = CreateService(db, email.Object);
+
+        using var stream = CreateExcel(("GV500", "Giang Vien Da Xoa", "gv500@uni.edu.vn", "0901", "CNTT", "gv500"));
+        var first = await service.ImportFromExcelAsync(stream);
+        first.SuccessCount.Should().Be(1);
+
+        // Admin deleted the lecturer (soft delete keeps the row so the unique
+        // StaffCode index still holds the value).
+        var lecturer = await db.Lecturers.FirstAsync(l => l.StaffCode == "GV500");
+        var userId = lecturer.UserId!.Value;
+        lecturer.IsDeleted = true;
+        var user = await db.Users.FirstAsync(u => u.Id == userId);
+        user.IsDeleted = true;
+        user.IsActive = false;
+        await db.SaveChangesAsync();
+
+        // Re-importing the same file used to throw DbUpdateException (500)
+        // because a new row collided with the unique StaffCode index.
+        var second = await service.ImportFromExcelAsync(stream);
+
+        second.SuccessCount.Should().Be(1);
+        second.Errors.Should().BeEmpty();
+        (await db.Lecturers.CountAsync(l => l.StaffCode == "GV500")).Should().Be(1);
+        (await db.Users.CountAsync(u => u.Username == "gv500")).Should().Be(1);
+
+        var restored = await db.Lecturers.FirstAsync(l => l.StaffCode == "GV500");
+        restored.IsDeleted.Should().BeFalse();
+        restored.Id.Should().Be(lecturer.Id);
+        var revivedUser = await db.Users.FirstAsync(u => u.Username == "gv500");
+        revivedUser.IsDeleted.Should().BeFalse();
+        revivedUser.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_AfterLecturerSoftDeletedWithoutUser_ShouldRestoreAndKeepSingleRow()
+    {
+        var db = GetDb();
+        var service = CreateService(db);
+
+        using var stream = CreateExcel(("GV501", "Giang Vien Khong Tai Khoan", "", "0901", "CNTT", null));
+        var first = await service.ImportFromExcelAsync(stream);
+        first.SuccessCount.Should().Be(1);
+
+        var lecturer = await db.Lecturers.FirstAsync(l => l.StaffCode == "GV501");
+        lecturer.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        var second = await service.ImportFromExcelAsync(stream);
+
+        second.SuccessCount.Should().Be(1);
+        second.Errors.Should().BeEmpty();
+        (await db.Lecturers.CountAsync(l => l.StaffCode == "GV501")).Should().Be(1);
+        (await db.Lecturers.SingleAsync(l => l.StaffCode == "GV501")).IsDeleted.Should().BeFalse();
     }
 
     private static MemoryStream CreateExcel(params (string Code, string Name, string? Email, string? Phone, string? Dept, string? Username)[] rows)

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Search, User } from "lucide-react";
+import { Search, User, CalendarDays } from "lucide-react";
 import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
+import { useSemester } from "../../../contexts/SemesterContext";
 import type { UserRole } from "../../../types/common";
 
 export const Header = ({
@@ -72,12 +73,7 @@ export const Header = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-          <span className="truncate max-w-[180px] sm:max-w-none">
-            GV: {currentLecturer} • {assignedStudentsCount} SV HD
-          </span>
-        </div>
+        <SemesterBadge currentLecturer={currentLecturer} assignedStudentsCount={assignedStudentsCount} />
       </div>
 
       <div className="flex items-center gap-3">
@@ -163,3 +159,26 @@ export const Header = ({
     </header>
   );
 };
+
+function SemesterBadge({
+  currentLecturer,
+  assignedStudentsCount,
+}: {
+  currentLecturer?: string;
+  assignedStudentsCount?: number;
+}) {
+  const { selectedSemester, activeSemesterId } = useSemester();
+  const semesterLabel = activeSemesterId
+    ? `${selectedSemester.term} (${selectedSemester.academicYear})`
+    : "Chưa có kỳ hoạt động";
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
+      <span className={`w-2 h-2 rounded-full shrink-0 ${activeSemesterId ? "bg-emerald-500" : "bg-slate-400"}`} />
+      <span className="truncate max-w-[280px] sm:max-w-none flex items-center gap-1.5">
+        <CalendarDays className="w-3 h-3 text-slate-400 shrink-0" />
+        {semesterLabel} · GV: {currentLecturer} · {assignedStudentsCount} SV HD
+      </span>
+    </div>
+  );
+}

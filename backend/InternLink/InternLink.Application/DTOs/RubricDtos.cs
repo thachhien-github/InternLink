@@ -104,6 +104,14 @@ public class EvaluationScoresResponse
     public bool IsFinalized { get; set; }
 }
 
+public class SaveRubricScoresRequest
+{
+    public Guid? InternshipId { get; set; }
+    public List<CriterionScoreInput> CriteriaScores { get; set; } = new();
+    public string? Comments { get; set; }
+    public bool? Finalize { get; set; }
+}
+
 public class CriterionScoreDto
 {
     public Guid? CriterionId { get; set; }

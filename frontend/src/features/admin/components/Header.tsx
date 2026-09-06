@@ -135,6 +135,28 @@ export const Header = ({
                 </span>
               </div>
               <div className="mt-1 space-y-1 max-h-60 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectSemester("all");
+                    setShowSemesterMenu(false);
+                    onShowToast("Đã chuyển sang chế độ: Tất cả học kỳ");
+                  }}
+                  className={`w-full text-left p-2 rounded-md text-xs flex items-center justify-between transition-colors ${
+                    selectedSemesterId === "all"
+                      ? "bg-blue-50 text-blue-700 font-bold border border-blue-200"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="truncate pr-2">
+                    <p className="truncate font-medium">Tất cả học kỳ</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Hiển thị toàn bộ dữ liệu</p>
+                  </div>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full whitespace-nowrap bg-blue-100 text-blue-700">
+                    Tất cả
+                  </span>
+                </button>
+                <div className="border-t border-slate-100 my-1" />
                 {semesters.map((sem) => (
                   <button
                     key={sem.id}

@@ -43,6 +43,8 @@ public class UpdateInternshipStatusRequest
 public class AssignCompanyRequest
 {
     public Guid CompanyId { get; set; }
+    public string? SupervisorName { get; set; }
+    public string? Position { get; set; }
 }
 
 /// <summary>

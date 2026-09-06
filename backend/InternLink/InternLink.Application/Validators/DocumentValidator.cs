@@ -26,7 +26,6 @@ public class CreateDocumentRequestValidator : AbstractValidator<CreateDocumentRe
             .NotEmpty().WithMessage("Internship ID is required");
 
         RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Document title is required")
             .MaximumLength(300).WithMessage("Document title must not exceed 300 characters");
 
         RuleFor(x => x.Description)

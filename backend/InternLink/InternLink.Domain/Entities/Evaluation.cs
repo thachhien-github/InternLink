@@ -1,3 +1,5 @@
+using InternLink.Domain.Enums;
+
 namespace InternLink.Domain.Entities;
 
 /// <summary>
@@ -66,6 +68,11 @@ public class Evaluation : BaseEntity
     /// Flag indicating if this evaluation has been finalized
     /// </summary>
     public bool IsFinalized { get; set; } = false;
+
+    public DateTime? DefenseDate { get; set; }
+    public DefenseStatus DefenseStatus { get; set; } = DefenseStatus.NotScheduled;
+    public string? DefenseCouncilName { get; set; }
+    public string? DefenseExaminerName { get; set; }
 
     /// <summary>
     /// The rubric used when this evaluation was created.

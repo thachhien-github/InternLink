@@ -53,6 +53,7 @@ public interface IEvaluationService
     /// Finalize an evaluation (marks as complete)
     /// </summary>
     Task<EvaluationDetailDto?> FinalizeEvaluationAsync(Guid id, Guid? actorUserId = null);
+    Task<EvaluationDetailDto?> UpdateDefenseAsync(Guid id, UpdateDefenseRequest request, Guid actorUserId);
 
     /// <summary>
     /// Delete an evaluation (only if not finalized)

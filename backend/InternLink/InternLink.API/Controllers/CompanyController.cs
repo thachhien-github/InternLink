@@ -69,10 +69,11 @@ public class CompanyController : ControllerBase
     }
 
     /// <summary>
-    /// Get all active companies with pagination (read-only).
+    /// Get all active companies with pagination (read-only). Pass semesterId to scope
+    /// to the term's partner roster (companies marked "ngưng liên kết" are excluded).
     /// </summary>
     [HttpGet("active")]
-    public async Task<IActionResult> GetActiveCompanies([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    public async Task<IActionResult> GetActiveCompanies([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? semesterId = null)
     {
         try
         {
@@ -82,7 +83,7 @@ public class CompanyController : ControllerBase
             if (take < 1 || take > 1000)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-            var companies = await _companyService.GetActiveCompaniesAsync(skip, take);
+            var companies = await _companyService.GetActiveCompaniesAsync(skip, take, semesterId);
             return Ok(ApiResponse<IEnumerable<CompanyDto>>.Ok(companies));
         }
         catch (Exception ex)

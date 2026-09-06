@@ -36,11 +36,31 @@ public class RubricService : IRubricService
         if (semester == null)
             throw new InvalidOperationException("Kỳ thực tập không tồn tại.");
 
-        // Check if rubric already exists for this semester
+        // Treat create as an idempotent Admin save. This also handles a stale UI
+        // that has not loaded the existing rubric yet.
         var existing = await _context.Set<EvaluationRubric>()
-            .AnyAsync(r => r.SemesterId == semesterId && !r.IsDeleted);
-        if (existing)
-            throw new InvalidOperationException("Kỳ thực tập này đã có rubric. Vui lòng chỉnh sửa thay vì tạo mới.");
+            .Where(r => r.SemesterId == semesterId && !r.IsDeleted)
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+        if (existing != Guid.Empty)
+        {
+            var updateRequest = new UpdateRubricRequest
+            {
+                Name = request.Name,
+                ApplicationMode = request.ApplicationMode,
+                Criteria = request.Criteria.Select(c => new UpdateRubricCriterionRequest
+                {
+                    Name = c.Name,
+                    Description = c.Description,
+                    Weight = c.Weight,
+                    MaxScore = c.MaxScore,
+                    OrderIndex = c.OrderIndex
+                }).ToList()
+            };
+
+            return await UpdateAsync(existing, updateRequest, createdByUserId)
+                ?? throw new InvalidOperationException("Không thể cập nhật rubric hiện tại.");
+        }
 
         // Validate criteria weights sum to 100
         var totalWeight = request.Criteria.Sum(c => c.Weight);
@@ -59,7 +79,12 @@ public class RubricService : IRubricService
             ApplicationMode = request.ApplicationMode == "LecturerCustom"
                 ? RubricApplicationMode.LecturerCustom
                 : RubricApplicationMode.Required,
-            Status = RubricStatus.Draft,
+            // Admin is the highest authority in this deployment: saving a rubric applies it immediately.
+            Status = RubricStatus.Approved,
+            SubmittedById = createdByUserId,
+            SubmittedAt = DateTime.UtcNow,
+            ApprovedById = createdByUserId,
+            ApprovedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             Criteria = request.Criteria.Select((c, idx) => new EvaluationRubricCriterion
             {
@@ -80,7 +105,7 @@ public class RubricService : IRubricService
         return await GetBySemesterAsync(semesterId) ?? MapToDto(rubric);
     }
 
-    public async Task<RubricDto?> UpdateAsync(Guid rubricId, UpdateRubricRequest request)
+    public async Task<RubricDto?> UpdateAsync(Guid rubricId, UpdateRubricRequest request, Guid updatedByUserId)
     {
         var rubric = await _context.Set<EvaluationRubric>()
             .Where(r => r.Id == rubricId && !r.IsDeleted)
@@ -88,8 +113,8 @@ public class RubricService : IRubricService
             .FirstOrDefaultAsync();
 
         if (rubric == null) return null;
-        if (rubric.Status != RubricStatus.Draft && rubric.Status != RubricStatus.Rejected)
-            throw new InvalidOperationException("Chỉ có thể chỉnh sửa rubric ở trạng thái Nháp hoặc Bị từ chối.");
+        if (rubric.Status == RubricStatus.Locked)
+            throw new InvalidOperationException("Rubric đã khóa, không thể chỉnh sửa.");
 
         if (request.Name != null) rubric.Name = request.Name;
         if (request.ApplicationMode != null)
@@ -106,11 +131,12 @@ public class RubricService : IRubricService
             if (Math.Abs(totalWeight - 100) > 0.01m)
                 throw new InvalidOperationException($"Tổng trọng số phải bằng 100%. Hiện tại: {totalWeight}%");
 
-            // Remove existing criteria
+            // Delete old rows explicitly before inserting the replacement set.
+            // This avoids EF tracking conflicts when an Admin saves a loaded rubric.
             _context.Set<EvaluationRubricCriterion>().RemoveRange(rubric.Criteria);
+            await _context.SaveChangesAsync();
 
-            // Add new criteria
-            rubric.Criteria = request.Criteria.Select((c, idx) => new EvaluationRubricCriterion
+            var replacementCriteria = request.Criteria.Select((c, idx) => new EvaluationRubricCriterion
             {
                 Id = Guid.NewGuid(),
                 RubricId = rubricId,
@@ -121,9 +147,14 @@ public class RubricService : IRubricService
                 OrderIndex = (c.OrderIndex ?? 0) > 0 ? c.OrderIndex!.Value : idx + 1,
                 CreatedAt = DateTime.UtcNow
             }).ToList();
+            _context.Set<EvaluationRubricCriterion>().AddRange(replacementCriteria);
         }
 
         rubric.UpdatedAt = DateTime.UtcNow;
+        rubric.Status = RubricStatus.Approved;
+        rubric.ApprovedById = updatedByUserId;
+        rubric.ApprovedAt = DateTime.UtcNow;
+        rubric.RejectionReason = null;
         await _context.SaveChangesAsync();
 
         return await GetBySemesterAsync(rubric.SemesterId);

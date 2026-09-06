@@ -10,7 +10,7 @@ public interface ICompanyService
     /// <summary>
     /// Get all companies with optional pagination
     /// </summary>
-    Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync(int skip = 0, int take = 100);
+    Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync(int skip = 0, int take = 100, Guid? semesterId = null);
 
     /// <summary>
     /// Get companies with filtering and pagination
@@ -23,9 +23,21 @@ public interface ICompanyService
     Task<CompanyDto?> GetCompanyByIdAsync(Guid id);
 
     /// <summary>
-    /// Get all active companies
+    /// Get company detail for admin: master data + internships hosted.
     /// </summary>
-    Task<IEnumerable<CompanyDto>> GetActiveCompaniesAsync(int skip = 0, int take = 100);
+    Task<AdminCompanyDetailDto?> GetAdminCompanyDetailAsync(Guid id);
+
+    /// <summary>
+    /// Get all active companies (optionally scoped to a semester: companies marked
+    /// "ngưng liên kết" for that term are excluded).
+    /// </summary>
+    Task<IEnumerable<CompanyDto>> GetActiveCompaniesAsync(int skip = 0, int take = 100, Guid? semesterId = null);
+
+    /// <summary>
+    /// Link or unlink a company for a semester ("ngưng liên kết" = isLinked false).
+    /// Absence of a link row means the company is linked by default.
+    /// </summary>
+    Task SetCompanySemesterStatusAsync(Guid companyId, Guid semesterId, bool isLinked);
 
     /// <summary>
     /// Create a new company

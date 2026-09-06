@@ -1,6 +1,8 @@
 import { apiRequest } from "../lib/apiClient";
 
 export interface AdminNotificationCampaignDto {
+  /** Stable id derived from campaign content — must not change between requests. */
+  id: string;
   title: string;
   content: string;
   audience: string;

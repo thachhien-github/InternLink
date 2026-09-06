@@ -188,6 +188,7 @@
 | `POST` | `/api/Lecturer/evaluations/{id}/finalize` | Khóa điểm |
 | `PUT` | `/api/Lecturer/evaluation/{id}/scores` | Lưu điểm rubric chi tiết |
 | `GET` | `/api/Lecturer/evaluation/{id}/scores` | Xem điểm rubric |
+| `POST` | `/api/Lecturer/evaluation/scores` | Lưu điểm rubric (tự tạo đánh giá nếu chưa có) |
 | `GET` | `/api/Lecturer/documents` | Danh sách tài liệu |
 | `POST` | `/api/Lecturer/documents/upload` | Upload tài liệu |
 | `GET` | `/api/Lecturer/documents/{id}/download` | Tải tài liệu |

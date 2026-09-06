@@ -281,10 +281,10 @@ public class InternshipController : ControllerBase
     }
 
     /// <summary>
-    /// Assign or change company for an internship (Admin only)
+    /// Assign or change company for an internship (Lecturer or Admin)
     /// </summary>
     [HttpPut("{id}/company")]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize(Policy = "RequireLecturerOrAdmin")]
     public async Task<IActionResult> AssignCompany(Guid id, [FromBody] AssignCompanyRequest request)
     {
         try
@@ -292,7 +292,11 @@ public class InternshipController : ControllerBase
             if (!ModelState.IsValid)
                 return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Invalid input" }));
 
-            var internship = await _internshipService.AssignCompanyAsync(id, request);
+            var (isLecturer, lecturerId) = await ResolveLecturerScopeAsync();
+            if (isLecturer && lecturerId == Guid.Empty)
+                return Forbid();
+
+            var internship = await _internshipService.AssignCompanyAsync(id, request, lecturerId);
             if (internship == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Internship not found" }));
 

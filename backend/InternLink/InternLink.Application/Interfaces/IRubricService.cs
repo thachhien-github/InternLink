@@ -14,14 +14,14 @@ public interface IRubricService
     Task<RubricDto?> GetBySemesterAsync(Guid semesterId);
 
     /// <summary>
-    /// Create a new rubric for a semester (status = Draft)
+    /// Create a new rubric for a semester (status = Approved for Admin-created rubrics)
     /// </summary>
     Task<RubricDto> CreateAsync(Guid semesterId, CreateRubricRequest request, Guid createdByUserId);
 
     /// <summary>
-    /// Update an existing draft/rejected rubric
+    /// Update an existing rubric unless it is Locked. Admin changes remain applied immediately.
     /// </summary>
-    Task<RubricDto?> UpdateAsync(Guid rubricId, UpdateRubricRequest request);
+    Task<RubricDto?> UpdateAsync(Guid rubricId, UpdateRubricRequest request, Guid updatedByUserId);
 
     /// <summary>
     /// Delete a rubric (only if Draft or Rejected)

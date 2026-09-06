@@ -17,6 +17,7 @@ import {
   Layers,
   CheckSquare,
   Sliders,
+  PlayCircle,
 } from "lucide-react";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { RubricEditor } from "../components/RubricEditor";
@@ -55,7 +56,9 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
     selectSemester,
     createSemester,
     closeSemester,
+    startSemester,
     duplicateSemester,
+    refreshApiCounts,
   } = useSemester();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [importType, setImportType] = useState(null);
@@ -115,6 +118,9 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
 
   const handleCloseSemester = (semId: string, _semName: string) => {
     closeSemester(semId, onShowToast);
+  };
+  const handleStartSemester = (semId: string) => {
+    void startSemester(semId, onShowToast);
   };
   const activeSem = currentActiveSem;
   const hasRealSemester = !!currentActiveSem.id;
@@ -252,6 +258,16 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
                 </button>
 
                 {currentActiveSem.id && (
+                  <>
+                    {(activeSem.status === "upcoming" || activeSem.status === "draft") && (
+                      <button
+                        onClick={() => handleStartSemester(currentActiveSem.id)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md border border-emerald-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <PlayCircle className="w-3.5 h-3.5" />
+                        <span>Bắt đầu kỳ</span>
+                      </button>
+                    )}
                 <button
                   onClick={() =>
                     handleCloseSemester(
@@ -264,6 +280,7 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
                   <Lock className="w-3.5 h-3.5" />
                   <span>Đóng đợt</span>
                 </button>
+                  </>
                 )}
               </div>
             </div>
@@ -492,6 +509,16 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
                             <Copy className="w-3.5 h-3.5" />
                           </button>
 
+                          {(sem.status === "upcoming" || sem.status === "draft") && (
+                            <button
+                              onClick={() => handleStartSemester(sem.id)}
+                              className="p-1.5 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer"
+                              title="Bắt đầu kỳ"
+                            >
+                              <PlayCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           {sem.status !== "completed" && (
                             <button
                               onClick={() =>
@@ -622,7 +649,10 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
         isOpen={importType === "students"}
         onClose={() => setImportType(null)}
         onShowToast={onShowToast}
-        onSuccess={() => setImportType(null)}
+        onSuccess={() => {
+          setImportType(null);
+          void refreshApiCounts();
+        }}
         currentSemesterId={currentActiveSem?.id}
       />
 
@@ -630,7 +660,11 @@ export const SemestersView = ({ onShowToast, onNavigateTab }: { onShowToast: (ms
         isOpen={importType === "lecturers"}
         onClose={() => setImportType(null)}
         onShowToast={onShowToast}
-        onSuccess={() => setImportType(null)}
+        onSuccess={() => {
+          setImportType(null);
+          void refreshApiCounts();
+        }}
+        currentSemesterId={currentActiveSem?.id}
       />
     </div>
   );

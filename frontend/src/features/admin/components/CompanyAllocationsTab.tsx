@@ -53,8 +53,9 @@ export const CompanyAllocationsTab = ({
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      const effectiveSemesterId = selectedSemesterId === "all" || !selectedSemesterId ? undefined : selectedSemesterId;
       const [allocData, compData] = await Promise.all([
-        adminAssignmentsService.getCompanyAllocations(selectedSemesterId ?? undefined),
+        adminAssignmentsService.getCompanyAllocations(effectiveSemesterId),
         adminCompaniesService.getAll().catch(() => []),
       ]);
       setAllocations(allocData);
@@ -136,7 +137,8 @@ export const CompanyAllocationsTab = ({
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      await adminAssignmentsService.downloadCompanyAllocationExport(selectedSemesterId ?? undefined);
+      const effectiveSemesterId = selectedSemesterId === "all" || !selectedSemesterId ? undefined : selectedSemesterId;
+      await adminAssignmentsService.downloadCompanyAllocationExport(effectiveSemesterId);
       onShowToast("Đã xuất danh sách phân bổ doanh nghiệp (.xlsx)");
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
@@ -158,7 +160,7 @@ export const CompanyAllocationsTab = ({
         onShowToast("Vui lòng chọn doanh nghiệp");
         return;
       }
-      await apiRequest(`/api/Internship/${assignTarget.internshipId}/assign-company`, {
+      await apiRequest(`/api/Internship/${assignTarget.internshipId}/company`, {
         method: "PUT",
         body: { companyId: selectedCompanyId },
       });
@@ -463,7 +465,7 @@ export const CompanyAllocationsTab = ({
           setShowImportModal(false);
           loadData();
         }}
-        currentSemesterId={selectedSemesterId}
+        currentSemesterId={selectedSemesterId === "all" ? undefined : selectedSemesterId}
       />
 
       {/* QUICK ASSIGN MODAL */}

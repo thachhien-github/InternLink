@@ -15,7 +15,7 @@ namespace InternLink.API.Controllers;
 [ApiController]
 [Route("api/Admin/semesters")]
 [Route("api/Semesters")]
-[Authorize]
+[Authorize(Policy = "RequireAdmin")]
 public class AdminSemestersController : ControllerBase
 {
     private readonly ISemesterService _semesterService;
@@ -79,6 +79,24 @@ public class AdminSemestersController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Semester not found" }));
 
         return Ok(ApiResponse<object>.Ok(new { message = "Semester closed and student accounts archived successfully" }));
+    }
+
+    [HttpPost("{id:guid}/start")]
+    [Authorize(Policy = "RequireAdmin")]
+    public async Task<IActionResult> Start(Guid id)
+    {
+        try
+        {
+            var started = await _semesterService.StartSemesterAsync(id);
+            if (started == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Semester not found" }));
+
+            return Ok(ApiResponse<SemesterDto>.Ok(started));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 
     [HttpDelete("{id:guid}")]

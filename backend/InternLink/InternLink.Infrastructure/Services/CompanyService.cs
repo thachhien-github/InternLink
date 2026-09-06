@@ -17,17 +17,19 @@ public class CompanyService : ICompanyService
     private readonly IMapper _mapper;
     private readonly IExcelService _excelService;
 
-    // Fuzzy matching definitions for company columns
+    // Fuzzy matching definitions for company columns.
+    // Mirrors the SV/GV importers: CompanyCode (MaDN) is the business key, just like MSSV/MaGV.
     private static readonly Dictionary<string, ColumnDefinition> CompanyColumns = new()
     {
-        [nameof(CompanyColumn.CompanyName)] = new("tendn", "ten dn", "companyname", "company name", "ten doanh nghiep", "doanh nghiep", "name", "ten cong ty", "cong ty", "ten don vi", "don vi", "organization"),
-        [nameof(CompanyColumn.Industry)] = new("nganh", "ngành", "industry", "linh vuc", "lĩnh vực", "linh vuc hoat dong", "nganh nghe", "sector"),
-        [nameof(CompanyColumn.ContactPerson)] = new("nguoilienhe", "nguoi lien he", "contactperson", "contact person", "contactname", "nguoi dai dien", "lien he", "ho ten nguoi lien he", "representative"),
-        [nameof(CompanyColumn.ContactEmail)] = new("email", "e-mail", "contactemail", "contact email", "email lien he", "email address"),
-        [nameof(CompanyColumn.ContactPhone)] = new("phone", "sdt", "sđt", "dien thoai", "điện thoại", "contactphone", "contact phone", "so dien thoai", "số điện thoại", "phone number", "sdt lien he"),
-        [nameof(CompanyColumn.Address)] = new("diachi", "dia chi", "address", "dia chi tru so", "dia chi chi nhanh", "dia diem"),
-        [nameof(CompanyColumn.Website)] = new("website", "web", "trang web", "trang chu", "url", "homepage"),
-        [nameof(CompanyColumn.Capacity)] = new("succhua", "suc chua", "capacity", "so luong", "so luong sv", "so luong tiep nhan", "chi tieu", "so luong tiep nhan sv", "so luong tuyen", "tieu chi", "slsv"),
+        [nameof(CompanyColumn.CompanyCode)] = new("ma doanh nghiep", "ma dn", "ma doanh nghiep lien ket", "companycode", "company code", "code", "code doanh nghiep", "ma so doanh nghiep", "msdn"),
+        [nameof(CompanyColumn.CompanyName)] = new("ten cong ty", "ten doanh nghiep", "ten dn", "tendn", "companyname", "company name", "ten don vi", "don vi", "cong ty", "doanh nghiep", "name", "organization"),
+        [nameof(CompanyColumn.Industry)] = new("nganh", "industry", "linh vuc", "linh vuc hoat dong", "nganh nghe", "sector", "linh vuc kinh doanh"),
+        [nameof(CompanyColumn.ContactPerson)] = new("nguoi lien he", "nguoilienhe", "contactperson", "contact person", "contactname", "nguoi dai dien", "lien he", "ho ten nguoi lien he", "representative"),
+        [nameof(CompanyColumn.ContactEmail)] = new("email", "e-mail", "contactemail", "contact email", "email lien he", "email address", "thu dien tu"),
+        [nameof(CompanyColumn.ContactPhone)] = new("sdt", "phone", "dien thoai", "contactphone", "contact phone", "so dien thoai", "phone number", "sdt lien he"),
+        [nameof(CompanyColumn.Address)] = new("dia chi", "diachi", "address", "dia chi tru so", "dia chi chi nhanh", "dia diem", "dia chi cong ty"),
+        [nameof(CompanyColumn.Website)] = new("website", "web", "trang web", "trang chu", "url", "homepage", "website cong ty"),
+        [nameof(CompanyColumn.Capacity)] = new("so luong tiep nhan", "so luong tiep nhan sv", "suc chua", "succhua", "capacity", "so luong", "so luong sv", "chi tieu", "so luong tuyen", "slsv", "so luong tiep nhan thuc tap"),
     };
 
     public CompanyService(AppDbContext db, IMapper mapper, IExcelService excelService)
@@ -37,16 +39,49 @@ public class CompanyService : ICompanyService
         _excelService = excelService;
     }
 
-    public async Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync(int skip = 0, int take = 100)
+    public async Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync(int skip = 0, int take = 100, Guid? semesterId = null)
     {
-        var companies = await _db.Companies
-            .Where(c => !c.IsDeleted)
+        var query = _db.Companies
+            .Where(c => !c.IsDeleted);
+
+        var companies = await query
             .OrderBy(c => c.CompanyName)
             .Skip(skip)
             .Take(take)
             .ToListAsync();
 
-        return _mapper.Map<List<CompanyDto>>(companies);
+        var dtos = _mapper.Map<List<CompanyDto>>(companies);
+        if (dtos.Count == 0)
+            return dtos;
+
+        var companyIds = companies.Select(c => c.Id).ToList();
+
+        // Student counts: scoped to the selected semester when one is provided.
+        var internshipQuery = _db.Internships
+            .Where(i => !i.IsDeleted && i.CompanyId != null && companyIds.Contains(i.CompanyId.Value));
+        if (semesterId.HasValue && semesterId != Guid.Empty)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == semesterId.Value);
+        var studentCounts = await internshipQuery
+            .GroupBy(i => i.CompanyId)
+            .Select(g => new { CompanyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(k => k.CompanyId, v => v.Count);
+        foreach (var dto in dtos)
+            dto.StudentCount = studentCounts.GetValueOrDefault(dto.Id);
+
+        // Per-semester link status: companies are linked by default; a row with
+        // IsActive = false means the admin marked the company as "ngưng liên kết".
+        if (semesterId.HasValue && semesterId != Guid.Empty)
+        {
+            var unlinked = await _db.SemesterCompanies
+                .Where(sc => sc.SemesterId == semesterId.Value && !sc.IsActive && companyIds.Contains(sc.CompanyId))
+                .Select(sc => sc.CompanyId)
+                .ToListAsync();
+            var unlinkedSet = unlinked.ToHashSet();
+            foreach (var dto in dtos)
+                dto.IsSemesterLinked = !unlinkedSet.Contains(dto.Id);
+        }
+
+        return dtos;
     }
 
     public async Task<PaginatedResponse<CompanyDto>> GetCompaniesWithFilterAsync(CompanyFilterRequest filter)
@@ -93,29 +128,141 @@ public class CompanyService : ICompanyService
         return company == null ? null : _mapper.Map<CompanyDto>(company);
     }
 
-    public async Task<IEnumerable<CompanyDto>> GetActiveCompaniesAsync(int skip = 0, int take = 100)
+    public async Task<AdminCompanyDetailDto?> GetAdminCompanyDetailAsync(Guid id)
     {
-        var companies = await _db.Companies
-            .Where(c => c.IsActive && !c.IsDeleted)
+        var company = await _db.Companies
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (company == null)
+            return null;
+
+        var internships = await _db.Internships
+            .Where(i => i.CompanyId == id && !i.IsDeleted)
+            .Include(i => i.Student)
+            .Include(i => i.Company)
+            .Include(i => i.Submissions)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync();
+
+        var items = internships.Select(i => new InternshipListItemDto
+        {
+            Id = i.Id,
+            StudentId = i.StudentId,
+            StudentName = i.Student?.FullName ?? string.Empty,
+            CompanyId = i.CompanyId,
+            CompanyName = i.Company?.CompanyName,
+            StartDate = i.StartDate,
+            EndDate = i.EndDate,
+            Status = i.Status.ToString(),
+            Position = i.Position,
+            SubmissionCount = i.Submissions?.Count(s => !s.IsDeleted) ?? 0,
+            CreatedAt = i.CreatedAt
+        }).ToList();
+
+        return new AdminCompanyDetailDto
+        {
+            Company = _mapper.Map<CompanyDto>(company),
+            Internships = items
+        };
+    }
+
+    public async Task<IEnumerable<CompanyDto>> GetActiveCompaniesAsync(int skip = 0, int take = 100, Guid? semesterId = null)
+    {
+        var query = _db.Companies
+            .Where(c => c.IsActive && !c.IsDeleted);
+
+        if (semesterId.HasValue && semesterId != Guid.Empty)
+        {
+            // Exclude companies the admin marked "ngưng liên kết" for this semester,
+            // so new assignments only pick from the term's partner roster.
+            query = query.Where(c => !_db.SemesterCompanies
+                .Any(sc => sc.SemesterId == semesterId.Value && sc.CompanyId == c.Id && !sc.IsActive));
+        }
+
+        var companies = await query
             .OrderBy(c => c.CompanyName)
             .Skip(skip)
             .Take(take)
             .ToListAsync();
 
-        return _mapper.Map<List<CompanyDto>>(companies);
+        var dtos = _mapper.Map<List<CompanyDto>>(companies);
+        if (dtos.Count == 0)
+            return dtos;
+
+        var companyIds = companies.Select(c => c.Id).ToList();
+        var internshipQuery = _db.Internships
+            .Where(i => !i.IsDeleted && i.CompanyId != null && companyIds.Contains(i.CompanyId.Value));
+
+        if (semesterId.HasValue && semesterId != Guid.Empty)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == semesterId.Value);
+
+        var studentCounts = await internshipQuery
+            .GroupBy(i => i.CompanyId)
+            .Select(g => new { CompanyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(item => item.CompanyId, item => item.Count);
+
+        foreach (var dto in dtos)
+        {
+            dto.StudentCount = studentCounts.GetValueOrDefault(dto.Id);
+            if (semesterId.HasValue && semesterId != Guid.Empty)
+                dto.IsSemesterLinked = true;
+        }
+
+        return dtos;
+    }
+
+    public async Task SetCompanySemesterStatusAsync(Guid companyId, Guid semesterId, bool isLinked)
+    {
+        var companyExists = await _db.Companies.AnyAsync(c => c.Id == companyId && !c.IsDeleted);
+        if (!companyExists)
+            throw new InvalidOperationException("Company not found");
+
+        var semesterExists = await _db.Semesters.AnyAsync(s => s.Id == semesterId && !s.IsDeleted);
+        if (!semesterExists)
+            throw new InvalidOperationException("Semester not found");
+
+        var link = await _db.SemesterCompanies
+            .FirstOrDefaultAsync(sc => sc.SemesterId == semesterId && sc.CompanyId == companyId);
+
+        if (link == null)
+        {
+            // Absence of a row means "linked by default": only create a row when unlinking.
+            if (!isLinked)
+            {
+                _db.SemesterCompanies.Add(new SemesterCompany
+                {
+                    Id = Guid.NewGuid(),
+                    SemesterId = semesterId,
+                    CompanyId = companyId,
+                    IsActive = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _db.SaveChangesAsync();
+            }
+            return;
+        }
+
+        link.IsActive = isLinked;
+        link.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
     }
 
     public async Task<CompanyDto> CreateCompanyAsync(CreateCompanyRequest request)
     {
+        var companyCode = NullIfWhiteSpace(request.CompanyCode);
         var existingCompany = await _db.Companies
             .FirstOrDefaultAsync(c => c.CompanyName == request.CompanyName && !c.IsDeleted);
 
         if (existingCompany != null)
             throw new InvalidOperationException($"Company name '{request.CompanyName}' already exists");
 
+        if (companyCode != null && await CompanyCodeExistsAsync(companyCode))
+            throw new InvalidOperationException($"Company code '{request.CompanyCode}' already exists");
+
         var company = new Company
         {
             Id = Guid.NewGuid(),
+            CompanyCode = companyCode,
             CompanyName = request.CompanyName.Trim(),
             Address = NullIfWhiteSpace(request.Address),
             Website = NullIfWhiteSpace(request.Website),
@@ -151,6 +298,15 @@ public class CompanyService : ICompanyService
                 throw new InvalidOperationException($"Company name '{request.CompanyName}' already exists");
         }
 
+        var companyCode = NullIfWhiteSpace(request.CompanyCode);
+        if (companyCode != null &&
+            !string.Equals(company.CompanyCode, companyCode, StringComparison.OrdinalIgnoreCase) &&
+            await CompanyCodeExistsAsync(companyCode, excludeId: id))
+        {
+            throw new InvalidOperationException($"Company code '{request.CompanyCode}' already exists");
+        }
+
+        company.CompanyCode = companyCode;
         company.CompanyName = request.CompanyName.Trim();
         company.Address = NullIfWhiteSpace(request.Address);
         company.Website = NullIfWhiteSpace(request.Website);
@@ -199,6 +355,16 @@ public class CompanyService : ICompanyService
         return await query.AnyAsync();
     }
 
+    public async Task<bool> CompanyCodeExistsAsync(string code, Guid? excludeId = null)
+    {
+        var query = _db.Companies.Where(c => c.CompanyCode == code && !c.IsDeleted);
+
+        if (excludeId.HasValue)
+            query = query.Where(c => c.Id != excludeId.Value);
+
+        return await query.AnyAsync();
+    }
+
     public async Task<IEnumerable<CompanyDto>> GetCompaniesByIndustryAsync(string industry, int skip = 0, int take = 100)
     {
         var companies = await _db.Companies
@@ -224,18 +390,43 @@ public class CompanyService : ICompanyService
         if (usedRange == null)
             throw new InvalidOperationException("Excel file is empty");
 
+        // Header detection mirrors the SV/GV importers: the header row must expose both the
+        // business key (MaDN/CompanyCode) and the name (TenDN/CompanyName). Title rows such as
+        // "DANH SÁCH DOANH NGHIỆP LIÊN KẾT" and plain STT columns are therefore skipped safely.
         var headerRow = TemplateHelper.FindHeaderRow(worksheet, row =>
-            BuildColumnMap(row).ContainsKey(CompanyColumn.CompanyName)) ?? usedRange.FirstRow();
+        {
+            var map = BuildColumnMap(row);
+            return map.ContainsKey(CompanyColumn.CompanyCode) && map.ContainsKey(CompanyColumn.CompanyName);
+        }) ?? usedRange.FirstRow();
 
         var columnMap = BuildColumnMap(headerRow);
-        if (!columnMap.ContainsKey(CompanyColumn.CompanyName))
-            throw new InvalidOperationException("Excel must include TenDN (CompanyName) column");
+        if (!columnMap.ContainsKey(CompanyColumn.CompanyCode) || !columnMap.ContainsKey(CompanyColumn.CompanyName))
+            throw new InvalidOperationException("Excel must include MaDN (CompanyCode) and TenDN (CompanyName) columns");
 
         var errors = new List<CompanyImportErrorDto>();
         var created = new List<Company>();
-        var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var updated = new List<Company>();
+        var seenCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var totalRows = 0;
-        var skippedDuplicates = 0;
+
+        // Cache existing (non-deleted) companies so repeated imports update the same row instead of
+        // failing: matched by CompanyCode first (like MSSV/MaGV), falling back to normalized name so
+        // records created before the MaDN column existed can be adopted on the first import.
+        var existingCompanies = await _db.Companies
+            .Where(c => !c.IsDeleted)
+            .ToListAsync();
+        var existingByCode = new Dictionary<string, Company>(StringComparer.OrdinalIgnoreCase);
+        var existingByName = new Dictionary<string, Company>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in existingCompanies)
+        {
+            if (!string.IsNullOrWhiteSpace(c.CompanyCode) && !existingByCode.ContainsKey(c.CompanyCode!))
+                existingByCode[c.CompanyCode!] = c;
+
+            var nameKey = NormalizeName(c.CompanyName);
+            if (!string.IsNullOrEmpty(nameKey) && !existingByName.ContainsKey(nameKey))
+                existingByName[nameKey] = c;
+        }
 
         foreach (var row in usedRange.RowsUsed())
         {
@@ -243,6 +434,7 @@ public class CompanyService : ICompanyService
                 continue;
 
             var rowNumber = row.RowNumber();
+            var companyCode = GetCell(row, columnMap, CompanyColumn.CompanyCode);
             var companyName = GetCell(row, columnMap, CompanyColumn.CompanyName);
             var industry = GetCell(row, columnMap, CompanyColumn.Industry);
             var contactPerson = GetCell(row, columnMap, CompanyColumn.ContactPerson);
@@ -254,10 +446,16 @@ public class CompanyService : ICompanyService
 
             (contactEmail, contactPhone) = TemplateHelper.SanitizeEmailAndPhone(contactEmail, contactPhone);
 
-            if (IsBlankRow(companyName, industry, contactPerson, contactEmail, contactPhone, address, website, capacityText))
+            if (IsBlankRow(companyCode, companyName, industry, contactPerson, contactEmail, contactPhone, address, website, capacityText))
                 continue;
 
             totalRows++;
+
+            if (string.IsNullOrWhiteSpace(companyCode))
+            {
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, Message = "Company code (MaDN) is required" });
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(companyName))
             {
@@ -265,38 +463,30 @@ public class CompanyService : ICompanyService
                 continue;
             }
 
+            companyCode = companyCode.Trim();
             companyName = companyName.Trim();
 
-            if (companyName.Length > 255)
+            if (companyCode.Length > 50)
             {
-                errors.Add(new CompanyImportErrorDto
-                {
-                    RowNumber = rowNumber,
-                    CompanyName = companyName,
-                    Message = "Company name must not exceed 255 characters"
-                });
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, Message = "Company code must not exceed 50 characters" });
+                continue;
+            }
+
+            if (companyName.Length > 250)
+            {
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, Message = "Company name must not exceed 250 characters" });
                 continue;
             }
 
             if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
             {
-                errors.Add(new CompanyImportErrorDto
-                {
-                    RowNumber = rowNumber,
-                    CompanyName = companyName,
-                    Message = "Invalid contact email format"
-                });
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, CompanyName = companyName, Message = "Invalid contact email format" });
                 continue;
             }
 
             if (!string.IsNullOrWhiteSpace(website) && !IsValidUrl(website))
             {
-                errors.Add(new CompanyImportErrorDto
-                {
-                    RowNumber = rowNumber,
-                    CompanyName = companyName,
-                    Message = "Invalid website URL"
-                });
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, CompanyName = companyName, Message = "Invalid website URL" });
                 continue;
             }
 
@@ -305,44 +495,90 @@ public class CompanyService : ICompanyService
             {
                 if (!int.TryParse(capacityText, out var parsed) || parsed <= 0)
                 {
-                    errors.Add(new CompanyImportErrorDto
-                    {
-                        RowNumber = rowNumber,
-                        CompanyName = companyName,
-                        Message = "Capacity must be a positive integer"
-                    });
+                    errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, CompanyName = companyName, Message = "Capacity must be a positive integer" });
                     continue;
                 }
 
                 capacity = parsed;
             }
 
-            if (!seenInFile.Add(companyName))
+            if (!seenCodes.Add(companyCode))
             {
-                errors.Add(new CompanyImportErrorDto
-                {
-                    RowNumber = rowNumber,
-                    CompanyName = companyName,
-                    Message = "Duplicate company name in file"
-                });
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, CompanyName = companyName, Message = "Duplicate company code in file" });
                 continue;
             }
 
-            if (await CompanyNameExistsAsync(companyName))
+            var normalizedName = NormalizeName(companyName);
+            if (!seenNames.Add(normalizedName))
             {
-                skippedDuplicates++;
-                errors.Add(new CompanyImportErrorDto
-                {
-                    RowNumber = rowNumber,
-                    CompanyName = companyName,
-                    Message = "Company name already exists in system"
-                });
+                errors.Add(new CompanyImportErrorDto { RowNumber = rowNumber, CompanyCode = companyCode, CompanyName = companyName, Message = "Duplicate company name in file" });
                 continue;
             }
 
-            created.Add(new Company
+            existingByCode.TryGetValue(companyCode, out var existingCompany);
+            existingByName.TryGetValue(normalizedName, out var nameMatch);
+
+            if (existingCompany == null && nameMatch != null)
+            {
+                if (!string.IsNullOrWhiteSpace(nameMatch.CompanyCode)
+                    && !string.Equals(nameMatch.CompanyCode, companyCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(new CompanyImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        CompanyCode = companyCode,
+                        CompanyName = companyName,
+                        Message = $"Company name already exists with company code '{nameMatch.CompanyCode}'"
+                    });
+                    continue;
+                }
+
+                // Legacy record created before the MaDN column: adopt it under the incoming code.
+                existingCompany = nameMatch;
+            }
+
+            if (existingCompany != null)
+            {
+                // Renaming onto a name that another (different) company already uses?
+                if (nameMatch != null && nameMatch != existingCompany)
+                {
+                    errors.Add(new CompanyImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        CompanyCode = companyCode,
+                        CompanyName = companyName,
+                        Message = $"Company name already exists with company code '{nameMatch.CompanyCode ?? "?"}'"
+                    });
+                    continue;
+                }
+
+                // Upsert: refresh contact info (mirrors student/lecturer imports).
+                existingCompany.CompanyCode = companyCode;
+                existingCompany.CompanyName = companyName;
+                if (!string.IsNullOrWhiteSpace(industry))
+                    existingCompany.Industry = industry.Trim();
+                if (!string.IsNullOrWhiteSpace(contactPerson))
+                    existingCompany.ContactPerson = contactPerson.Trim();
+                if (!string.IsNullOrWhiteSpace(contactEmail))
+                    existingCompany.ContactEmail = contactEmail.Trim();
+                if (!string.IsNullOrWhiteSpace(contactPhone))
+                    existingCompany.ContactPhone = contactPhone.Trim();
+                if (!string.IsNullOrWhiteSpace(address))
+                    existingCompany.Address = address.Trim();
+                if (!string.IsNullOrWhiteSpace(website))
+                    existingCompany.Website = website.Trim();
+                if (capacity.HasValue)
+                    existingCompany.Capacity = capacity;
+                existingCompany.IsActive = true;
+                existingCompany.UpdatedAt = DateTime.UtcNow;
+                updated.Add(existingCompany);
+                continue;
+            }
+
+            var company = new Company
             {
                 Id = Guid.NewGuid(),
+                CompanyCode = companyCode,
                 CompanyName = companyName,
                 Industry = NullIfWhiteSpace(industry),
                 ContactPerson = NullIfWhiteSpace(contactPerson),
@@ -353,22 +589,35 @@ public class CompanyService : ICompanyService
                 Capacity = capacity,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            created.Add(company);
+            existingByCode[companyCode] = company;
+            existingByName[normalizedName] = company;
         }
 
         if (created.Count > 0)
         {
             await _db.Companies.AddRangeAsync(created);
+        }
+        if (updated.Count > 0)
+        {
+            _db.Companies.UpdateRange(updated);
+        }
+        if (created.Count > 0 || updated.Count > 0)
+        {
             await _db.SaveChangesAsync();
         }
 
         return new CompanyImportResultDto
         {
             TotalRows = totalRows,
-            SuccessCount = created.Count,
+            SuccessCount = created.Count + updated.Count,
+            CreatedCount = created.Count,
+            UpdatedCount = updated.Count,
             FailedCount = errors.Count,
-            SkippedDuplicateCount = skippedDuplicates,
+            SkippedDuplicateCount = 0,
             CreatedCompanies = _mapper.Map<List<CompanyDto>>(created),
+            UpdatedCompanies = _mapper.Map<List<CompanyDto>>(updated),
             Errors = errors
         };
     }
@@ -380,25 +629,34 @@ public class CompanyService : ICompanyService
             using var workbook = new XLWorkbook();
             var sheet = workbook.Worksheets.Add("Companies");
 
-            sheet.Cell(1, 1).Value = "TenDN";
-            sheet.Cell(1, 2).Value = "Nganh";
-            sheet.Cell(1, 3).Value = "NguoiLienHe";
-            sheet.Cell(1, 4).Value = "Email";
-            sheet.Cell(1, 5).Value = "SDT";
-            sheet.Cell(1, 6).Value = "DiaChi";
-            sheet.Cell(1, 7).Value = "Website";
-            sheet.Cell(1, 8).Value = "SucChua";
+            sheet.Cell(1, 1).Value = "DANH SÁCH DOANH NGHIỆP LIÊN KẾT";
+            sheet.Range(1, 1, 1, 10).Merge();
 
-            sheet.Cell(2, 1).Value = "FPT Software";
-            sheet.Cell(2, 2).Value = "Cong nghe thong tin";
-            sheet.Cell(2, 3).Value = "Ms. Linh Tran";
-            sheet.Cell(2, 4).Value = "linh.tran@fptsoftware.com";
-            sheet.Cell(2, 5).Value = "0909123456";
-            sheet.Cell(2, 6).Value = "Phu My Hung, Q7, TP.HCM";
-            sheet.Cell(2, 7).Value = "https://fptsoftware.com";
-            sheet.Cell(2, 8).Value = 10;
+            // Row 2 = headers, row 3 = example (mirrors the physical Mau-danh-sach-doanh-nghiep.xlsx).
+            sheet.Cell(2, 1).Value = "STT";
+            sheet.Cell(2, 2).Value = "Mã doanh nghiệp";
+            sheet.Cell(2, 3).Value = "Tên công ty";
+            sheet.Cell(2, 4).Value = "Ngành";
+            sheet.Cell(2, 5).Value = "Người liên hệ";
+            sheet.Cell(2, 6).Value = "Email";
+            sheet.Cell(2, 7).Value = "SĐT";
+            sheet.Cell(2, 8).Value = "Địa chỉ";
+            sheet.Cell(2, 9).Value = "Website";
+            sheet.Cell(2, 10).Value = "Số lượng tiếp nhận";
+
+            sheet.Cell(3, 1).Value = 1;
+            sheet.Cell(3, 2).Value = 12;
+            sheet.Cell(3, 3).Value = "FPT Software";
+            sheet.Cell(3, 4).Value = "Cong nghe thong tin";
+            sheet.Cell(3, 5).Value = "Ms. Linh Tran";
+            sheet.Cell(3, 6).Value = "linh.tran@fptsoftware.com";
+            sheet.Cell(3, 7).Value = "0909123456";
+            sheet.Cell(3, 8).Value = "Phu My Hung, Q7, TP.HCM";
+            sheet.Cell(3, 9).Value = "https://fptsoftware.com";
+            sheet.Cell(3, 10).Value = 10;
 
             sheet.Row(1).Style.Font.Bold = true;
+            sheet.Row(2).Style.Font.Bold = true;
             sheet.Columns().AdjustToContents();
 
             using var stream = new MemoryStream();
@@ -418,27 +676,29 @@ public class CompanyService : ICompanyService
         var mappings = new Dictionary<string, Func<Company, object?>>
         {
             ["STT"] = c => companies.IndexOf(c) + 1,
-            ["Tên Doanh Nghiệp"] = c => c.CompanyName,
-            ["Lĩnh Vực / Ngành"] = c => c.Industry ?? "-",
-            ["Người Đại Diện / Liên Hệ"] = c => c.ContactPerson ?? "-",
-            ["Email Liên Hệ"] = c => c.ContactEmail ?? "-",
-            ["Số Điện Thoại"] = c => c.ContactPhone ?? "-",
-            ["Địa Chỉ"] = c => c.Address ?? "-",
+            ["Mã doanh nghiệp"] = c => c.CompanyCode,
+            ["Tên công ty"] = c => c.CompanyName,
+            ["Ngành"] = c => c.Industry ?? "-",
+            ["Người liên hệ"] = c => c.ContactPerson ?? "-",
+            ["Email"] = c => c.ContactEmail ?? "-",
+            ["SĐT"] = c => c.ContactPhone ?? "-",
+            ["Địa chỉ"] = c => c.Address ?? "-",
             ["Website"] = c => c.Website ?? "-",
-            ["Sức Chứa (SV)"] = c => c.Capacity,
+            ["Số lượng tiếp nhận"] = c => c.Capacity,
             ["Số SV Đang Tiếp Nhận"] = c => c.Internships.Count(i => !i.IsDeleted),
             ["Trạng Thái Hợp Tác"] = c => c.IsActive ? "Đang hoạt động" : "Tạm ngưng",
         };
 
         return _excelService.ExportToExcel(
             "DanhSachDoanhNghiep",
-            "DANH SÁCH DOANH NGHIỆP ĐỐI TÁC TIẾP NHẬN THỰC TẬP",
+            "DANH SÁCH DOANH NGHIỆP LIÊN KẾT",
             companies,
             mappings);
     }
 
     private enum CompanyColumn
     {
+        CompanyCode,
         CompanyName,
         Industry,
         ContactPerson,
@@ -461,11 +721,23 @@ public class CompanyService : ICompanyService
             if (Enum.TryParse<CompanyColumn>(kvp.Key, out var col))
                 map[col] = kvp.Value;
         }
+
         return map;
     }
 
-    private static string NormalizeHeader(string value) =>
-        FuzzyColumnMatcher.NormalizeHeader(value);
+    private static string NormalizeName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var formD = value.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
+        foreach (var ch in formD)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                sb.Append(ch);
+        }
+        var res = sb.ToString().Normalize(NormalizationForm.FormC).Replace('đ', 'd').Replace('Đ', 'D');
+        return Regex.Replace(res, @"\s+", " ");
+    }
 
     private static string? GetCell(IXLRangeRow row, Dictionary<CompanyColumn, int> map, CompanyColumn column)
     {

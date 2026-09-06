@@ -12,4 +12,9 @@ public class Lecturer : BaseEntity
     public string? Department { get; set; }
 
     public ICollection<Internship> Internships { get; set; } = new List<Internship>();
+
+    /// <summary>
+    /// Semester memberships (imported/registered for a term).
+    /// </summary>
+    public ICollection<SemesterLecturer> SemesterLecturers { get; set; } = new List<SemesterLecturer>();
 }

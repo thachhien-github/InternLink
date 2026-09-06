@@ -245,6 +245,193 @@ public class StudentServiceTests
     }
 
     [Fact]
+    public async Task DeleteStudentAsync_WithNotStartedInternshipNoActivity_ShouldSoftDeleteStudentAndInternship()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Fall 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2421160100",
+            FullName = "Fresh Import",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Semesters.Add(semester);
+        db.Students.Add(student);
+        var internshipId = Guid.NewGuid();
+        db.Internships.Add(new Internship
+        {
+            Id = internshipId,
+            StudentId = student.Id,
+            SemesterId = semester.Id,
+            Status = InternshipStatus.NotStarted,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var result = await service.DeleteStudentAsync(student.Id);
+
+        result.Should().BeTrue();
+        var deletedStudent = await db.Students.FindAsync(student.Id);
+        deletedStudent!.IsDeleted.Should().BeTrue();
+        (await db.Internships.CountAsync(i => i.StudentId == student.Id)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeleteStudentAsync_WithWeeklyReportActivity_ShouldThrow()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2421160101",
+            FullName = "Active Student",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Students.Add(student);
+        var internship = new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            Status = InternshipStatus.InProgress,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Internships.Add(internship);
+        db.WeeklyReports.Add(new WeeklyReport
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = internship.Id,
+            WeekNumber = 1,
+            Title = "Week 1",
+            Content = "Progress",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var act = async () => await service.DeleteStudentAsync(student.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Không thể xóa sinh viên*");
+        (await db.Students.FindAsync(student.Id))!.IsDeleted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteStudentAsync_WithEvaluationActivity_ShouldThrow()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2421160102",
+            FullName = "Graded Student",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Students.Add(student);
+        var internship = new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            Status = InternshipStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Internships.Add(internship);
+        db.Evaluations.Add(new Evaluation
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = internship.Id,
+            TechnicalScore = 8,
+            CommunicationScore = 8,
+            TeamworkScore = 8,
+            InitiativeScore = 8,
+            FinalGrade = 8,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var act = async () => await service.DeleteStudentAsync(student.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Không thể xóa sinh viên*");
+        (await db.Students.FindAsync(student.Id))!.IsDeleted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteStudentAsync_WithInProgressInternship_ShouldThrow()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            StudentCode = "2421160103",
+            FullName = "Interning Student",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Students.Add(student);
+        db.Internships.Add(new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            Status = InternshipStatus.InProgress,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var act = async () => await service.DeleteStudentAsync(student.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Không thể xóa sinh viên*");
+    }
+
+    [Fact]
+    public async Task GetAllStudentsAsync_WithSemesterId_ShouldOnlyReturnStudentsOfThatSemesterOrUnenrolled()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+        var semesterA = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Ky A",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        var semesterB = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Ky B",
+            Term = "Học kỳ II",
+            AcademicYear = "2026 - 2027",
+            CreatedAt = DateTime.UtcNow
+        };
+        var inA = new Student { Id = Guid.NewGuid(), StudentCode = "SVA001", FullName = "In A", CreatedAt = DateTime.UtcNow };
+        var inB = new Student { Id = Guid.NewGuid(), StudentCode = "SVB001", FullName = "In B", CreatedAt = DateTime.UtcNow };
+        var unenrolled = new Student { Id = Guid.NewGuid(), StudentCode = "SVC001", FullName = "No Internship", CreatedAt = DateTime.UtcNow };
+        db.Semesters.AddRange(semesterA, semesterB);
+        db.Students.AddRange(inA, inB, unenrolled);
+        db.Internships.AddRange(
+            new Internship { Id = Guid.NewGuid(), StudentId = inA.Id, SemesterId = semesterA.Id, CreatedAt = DateTime.UtcNow },
+            new Internship { Id = Guid.NewGuid(), StudentId = inB.Id, SemesterId = semesterB.Id, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var result = (await service.GetAllStudentsAsync(skip: 0, take: 100, semesterId: semesterA.Id)).ToList();
+
+        result.Select(s => s.Id).Should().Contain(inA.Id);
+        result.Select(s => s.Id).Should().NotContain(inB.Id);
+        result.Select(s => s.Id).Should().Contain(unenrolled.Id);
+    }
+
+    [Fact]
     public async Task StudentCodeExistsAsync_WithExistingNumber_ShouldReturnTrue()
     {
         var db = GetInMemoryDbContext();
@@ -516,6 +703,51 @@ public class StudentServiceTests
 
         result.Errors.Should().BeEmpty();
         result.SuccessCount.Should().BeGreaterThan(0);
+
+        // The physical template has separate Họ (col C) and Tên (col D) headers;
+        // the sample row must be combined into a single full name (regression for
+        // the bug where the Họ column was dropped and only "A" was stored).
+        var student = await db.Students.FirstOrDefaultAsync(s => s.StudentCode == "2421160052");
+        student.Should().NotBeNull();
+        student!.FullName.Should().Be("Nguyen Van A");
+    }
+
+    [Fact]
+    public async Task ImportStudentsFromExcelAsync_WithSeparateHoAndTenColumns_ShouldCombineFullName()
+    {
+        var db = GetInMemoryDbContext();
+        var service = CreateService(db);
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Students");
+        sheet.Cell(1, 1).Value = "DANH SÁCH SINH VIÊN THỰC TẬP";
+        sheet.Cell(2, 1).Value = "STT";
+        sheet.Cell(2, 2).Value = "MSSV";
+        sheet.Cell(2, 3).Value = "Họ";
+        sheet.Cell(2, 4).Value = "Tên";
+        sheet.Cell(2, 5).Value = "Lớp";
+        sheet.Cell(2, 6).Value = "Ngành";
+        sheet.Cell(2, 7).Value = "Email";
+        sheet.Cell(2, 8).Value = "SĐT";
+        sheet.Cell(3, 1).Value = 1;
+        sheet.Cell(3, 2).Value = "2421160053";
+        sheet.Cell(3, 3).Value = "Thạch";
+        sheet.Cell(3, 4).Value = "Hiền";
+        sheet.Cell(3, 5).Value = "DH24TIN06";
+        sheet.Cell(3, 6).Value = "CNTT";
+        sheet.Cell(3, 7).Value = "hien@student.edu.vn";
+        sheet.Cell(3, 8).Value = "0901234567";
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var result = await service.ImportStudentsFromExcelAsync(stream);
+
+        result.Errors.Should().BeEmpty();
+        result.SuccessCount.Should().Be(1);
+        var student = await db.Students.FirstOrDefaultAsync(s => s.StudentCode == "2421160053");
+        student.Should().NotBeNull();
+        student!.FullName.Should().Be("Thạch Hiền");
     }
 
     [Fact]

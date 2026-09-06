@@ -32,11 +32,12 @@ export function useAdminAssignmentMatrix(
     if (!enabled) return;
     setIsLoading(true);
     try {
+      const effectiveSemesterId = semesterId === "all" || !semesterId ? undefined : semesterId;
       const [lecturerDtos, studentDtos, allAssignments] = await Promise.all([
-        adminLecturersService.getAll(),
-        adminStudentsService.getAll(),
+        adminLecturersService.getAll(0, 500, effectiveSemesterId),
+        adminStudentsService.getAll(0, 500, effectiveSemesterId),
         adminAssignmentsService
-          .getAll(semesterId ?? undefined)
+          .getAll(effectiveSemesterId)
           .catch(() => []),
       ]);
 

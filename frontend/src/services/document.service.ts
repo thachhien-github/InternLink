@@ -18,26 +18,20 @@ export const documentService = {
     );
   },
 
-  upload(params: {
+  uploadSimple(params: {
     internshipId: string;
-    title: string;
-    description?: string;
-    category?: string;
-    isRequired?: boolean;
-    file: File;
-  }): Promise<DocumentDetailDto> {
+    files: File[];
+  }): Promise<{ count: number; documents: DocumentDetailDto[] }> {
     const form = new FormData();
     form.append("InternshipId", params.internshipId);
-    form.append("Title", params.title);
-    if (params.description) form.append("Description", params.description);
-    if (params.category) form.append("Category", params.category);
-    form.append("IsRequired", String(params.isRequired ?? false));
-    form.append("File", params.file);
-    return apiRequest<DocumentDetailDto>("/api/Document/upload", {
+    params.files.forEach((f) => form.append("Files", f));
+    return apiRequest<{ count: number; documents: DocumentDetailDto[] }>("/api/Document/upload", {
       method: "POST",
       body: form,
     });
   },
+
+
 
   update(
     id: string,

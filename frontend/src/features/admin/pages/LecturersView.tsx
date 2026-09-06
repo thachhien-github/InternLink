@@ -42,6 +42,7 @@ import {
 import { adminAssignmentsService } from "../../../services/adminAssignments.service";
 import { adminLecturersService } from "../../../services/adminLecturers.service";
 import { adminUsersService } from "../../../services/adminUsers.service";
+import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
 export const LecturersView = ({
   onShowToast,
   onNavigateTab,
@@ -49,6 +50,7 @@ export const LecturersView = ({
   onShowToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
 }) => {
+  const { selectedSemester } = useSemester();
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLecturer, setEditingLecturer] = useState<LecturerRowForEdit | null>(null);
@@ -69,9 +71,10 @@ export const LecturersView = ({
   const [pageSize, setPageSize] = useState(10);
 
   const fetchLecturerRows = async () => {
+    const semesterId = toApiSemesterId(selectedSemester?.id);
     const [dtos, allAssignments] = await Promise.all([
-      adminLecturersService.getAll(),
-      adminAssignmentsService.getAll().catch(() => []),
+      adminLecturersService.getAll(0, 500, semesterId),
+      adminAssignmentsService.getAll(semesterId).catch(() => []),
     ]);
     const { lecturerCounts } = buildAssignmentMaps(dtos, allAssignments);
     return dtos.map((l) =>
@@ -100,7 +103,7 @@ export const LecturersView = ({
     return () => {
       cancelled = true;
     };
-  }, [onShowToast]);
+  }, [onShowToast, selectedSemester?.id]);
 
   const handleAddLecturer = async (payload: CreateLecturerFormPayload) => {
 
@@ -917,6 +920,7 @@ export const LecturersView = ({
         onClose={() => setIsImportModalOpen(false)}
         onShowToast={onShowToast}
         onSuccess={() => void reloadLecturers()}
+        currentSemesterId={toApiSemesterId(selectedSemester?.id)}
       />
 
       {/* CREATE LECTURER MODAL */}

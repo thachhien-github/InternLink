@@ -125,22 +125,14 @@ export const NotificationsView = ({
     return items.slice(0, 4);
   }, [weeklyReports]);
   const handleMarkAllRead = async () => {
-    {
-      try {
-        await notificationService.markAllRead();
-        const rows = await notificationService.getMine();
-        setNotifications(rows.map(mapNotificationDtoToStudentUi));
-        onShowToast("Đã đánh dấu tất cả thông báo là đã đọc.");
-        return;
-      } catch (err) {
-        onShowToast(getApiErrorMessage(err));
-        return;
-      }
+    try {
+      await notificationService.markAllRead();
+      const rows = await notificationService.getMine();
+      setNotifications(rows.map(mapNotificationDtoToStudentUi));
+      onShowToast?.("Đã đánh dấu tất cả thông báo là đã đọc.");
+    } catch (err) {
+      onShowToast?.(getApiErrorMessage(err));
     }
-    setNotifications((prev) => prev.map((n) => ({ ...n, isUnread: false })));
-    onShowToast(
-      "\u0110\xE3 \u0111\xE1nh d\u1EA5u t\u1EA5t c\u1EA3 th\xF4ng b\xE1o l\xE0 \u0110\xE3 \u0111\u1ECDc!",
-    );
   };
   const handleMarkSingleRead = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();

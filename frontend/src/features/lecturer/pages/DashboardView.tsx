@@ -3,6 +3,8 @@ import {
   RefreshCw,
   ArrowUpRight,
   AlertTriangle,
+  CalendarDays,
+  Clock,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
@@ -38,21 +40,53 @@ export const DashboardView = ({
     overdue: number;
     completed: number;
     avgProg: number;
+    statusDistribution?: Record<string, number>;
   };
-  weeklyTrendData?: { label: string; value: number; target?: number }[];
+  weeklyTrendData?: { label: string; value: number; target?: number; late?: number; missing?: number }[];
   onShowToast: (msg: string) => void;
   onNavigate: (tab: string) => void;
   onRefresh?: () => Promise<void> | void;
 }) => {
-  const { selectedSemester } = useSemester();
+  const { selectedSemester, activeSemesterId } = useSemester();
   const statusSlices = buildLecturerStatusSlices(stats);
+  const hasActiveSemester = !!activeSemesterId;
+
+  // Empty state: no active semester
+  if (!hasActiveSemester && stats.total === 0) {
+    return (
+      <div className="space-y-5 max-w-[1500px] mx-auto">
+        <PageHeader
+          icon={LayoutDashboard}
+          title="Tổng quan"
+          subtitle="Cổng Giảng viên hướng dẫn"
+        />
+        <Panel className="p-10 text-center space-y-5 max-w-2xl mx-auto">
+          <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <CalendarDays className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-slate-800">
+              Chưa có kỳ thực tập đang hoạt động
+            </h3>
+            <p className="text-sm text-slate-600 max-w-md mx-auto">
+              Hiện tại chưa có kỳ thực tập nào được kích hoạt. Vui lòng chờ Quản trị viên tạo và bắt đầu kỳ thực tập mới.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+            <Clock className="w-4 h-4 text-slate-400" />
+            <span>Dữ liệu sẽ tự động hiển thị khi kỳ thực tập được bắt đầu.</span>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
         icon={LayoutDashboard}
         title="Tổng quan"
-        subtitle={`Số liệu nhóm hướng dẫn · ${selectedSemester?.name || "Chưa chọn kỳ"}`}
+        subtitle={`Số liệu nhóm hướng dẫn · ${selectedSemester?.name || "Kỳ thực tập hiện tại"}`}
         actions={[
           {
             label: "Làm mới",
@@ -72,6 +106,7 @@ export const DashboardView = ({
         pendingResponseCount={stats.pending}
         overdueCount={stats.overdue}
         avgProgress={stats.avgProg}
+        semesterName={selectedSemester?.name}
         onCardClick={() => onNavigate("students")}
       />
 
@@ -79,11 +114,11 @@ export const DashboardView = ({
         <Panel className="lg:col-span-8">
           <DashboardTrendChart
             title="Báo cáo tuần — nhóm của bạn"
-            subtitle="Số bài nộp / tuần so với chỉ tiêu"
+            subtitle="Theo dõi 6 tuần thực tập: đúng hạn, trễ và chưa nộp"
             data={weeklyTrendData}
-            valueLabel="Đã nộp"
-            targetLabel="Chỉ tiêu"
+            valueLabel="Đúng hạn / đã nộp"
             variant="bar"
+            stacked
           />
         </Panel>
         <Panel className="lg:col-span-4">
@@ -207,7 +242,7 @@ export const DashboardView = ({
               </span>
             </div>
             <ul className="divide-y divide-slate-100">
-              {deadlines.slice(0, 4).map((d) => (
+              {deadlines.map((d) => (
                 <li
                   key={d.id}
                   className="py-3 flex items-start gap-3 text-xs"

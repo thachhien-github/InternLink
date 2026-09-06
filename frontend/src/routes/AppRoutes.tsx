@@ -30,6 +30,7 @@ import { AssignmentsView as AdminAssignmentsView } from "../features/admin/pages
 import { LecturersView as AdminLecturersView } from "../features/admin/pages/LecturersView";
 import { StudentsView as AdminStudentsView } from "../features/admin/pages/StudentsView";
 import { CompaniesView as AdminCompaniesView } from "../features/admin/pages/CompaniesView";
+import { CompaniesDetailView as AdminCompaniesDetailView } from "../features/admin/pages/CompaniesDetailView";
 import { UsersView as AdminUsersView } from "../features/admin/pages/UsersView";
 import { AccountRequestsView as AdminAccountRequestsView } from "../features/admin/pages/AccountRequestsView";
 import { NotificationsView as AdminNotificationsView } from "../features/admin/pages/NotificationsView";
@@ -41,12 +42,14 @@ import { DashboardView as LecturerDashboardView } from "../features/lecturer/pag
 import { ExportView as LecturerExportView } from "../features/lecturer/pages/ExportView";
 import { StudentsView as LecturerStudentsView } from "../features/lecturer/pages/StudentsView";
 import { EnterprisesView as LecturerEnterprisesView } from "../features/lecturer/pages/EnterprisesView";
+import { EnterprisesDetailView as LecturerEnterprisesDetailView } from "../features/lecturer/pages/EnterprisesDetailView";
 import { TemplatesView as LecturerTemplatesView } from "../features/lecturer/pages/TemplatesView";
 import { ReportsView as LecturerReportsView } from "../features/lecturer/pages/ReportsView";
 import { AnalyticsView as LecturerAnalyticsView } from "../features/lecturer/pages/AnalyticsView";
 import { EvaluationsView as LecturerEvaluationsView } from "../features/lecturer/pages/EvaluationsView";
 import { NotificationsView as LecturerNotificationsView } from "../features/lecturer/pages/NotificationsView";
 import { AccountView as LecturerAccountView } from "../features/lecturer/pages/AccountView";
+import { StudentWorkspace as LecturerStudentWorkspace } from "../features/lecturer/components/StudentWorkspace";
 
 // Student Pages
 import { DashboardView as StudentDashboardView } from "../features/student/pages/DashboardView";
@@ -74,7 +77,10 @@ export function AppRoutes() {
   const realState = useRealAppState(role, isLoggedIn, user, showToast, selectedSemesterId);
   const appState = realState;
 
-  const currentTabFromPath = location.pathname.split("/").pop() || "dashboard";
+  const currentTabFromPath =
+    location.pathname.startsWith("/lecturer/")
+      ? location.pathname.split("/")[2] || "dashboard"
+      : location.pathname.split("/").pop() || "dashboard";
 
   return (
     <Routes>
@@ -162,6 +168,14 @@ export function AppRoutes() {
                 <Route
                   path="companies"
                   element={<AdminCompaniesView onShowToast={showToast} />}
+                />
+                <Route
+                  path="companies/detail"
+                  element={<Navigate to="/admin/companies" replace />}
+                />
+                <Route
+                  path="companies/:id"
+                  element={<AdminCompaniesDetailView />}
                 />
                 <Route
                   path="users"
@@ -287,29 +301,36 @@ export function AppRoutes() {
                   element={
                     <LecturerStudentsView
                       students={appState.assignedStudents}
-                      enterprises={appState.lecturerEnterprises}
-                      onSendReminder={(s) => {
-                        lecturerInternshipsService.remindStudent(s.id)
-                          .then(() => showToast(`Đã gửi nhắc nhở đến ${s.name}`))
-                          .catch(() => showToast(`Gửi nhắc nhở ${s.name} thất bại`));
-                      }}
-
+                      onRefresh={appState.refresh}
                     />
                   }
+                />
+                <Route
+                  path="students/:internshipId"
+                  element={<LecturerStudentWorkspace onRefreshParent={appState.refresh} onShowToast={showToast} />}
                 />
                 <Route
                   path="enterprises"
                   element={
                     <LecturerEnterprisesView
                       enterprises={appState.lecturerEnterprises}
+                      onRefresh={appState.refresh}
                       readOnly
                     />
                   }
                 />
+                <Route
+                  path="enterprises/:companyId"
+                  element={<LecturerEnterprisesDetailView />}
+                />
                 <Route path="templates" element={<LecturerTemplatesView />} />
                 <Route
                   path="evaluations"
-                  element={<LecturerEvaluationsView />}
+                  element={<LecturerEvaluationsView onShowToast={showToast} />}
+                />
+                <Route
+                  path="evaluations/:internshipId"
+                  element={<LecturerEvaluationsView onShowToast={showToast} />}
                 />
                 <Route
                   path="export"

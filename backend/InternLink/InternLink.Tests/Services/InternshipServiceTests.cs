@@ -188,4 +188,84 @@ public class InternshipServiceTests
         items.Should().ContainSingle();
         items.First().StudentId.Should().Be(student.Id);
     }
+
+    [Fact]
+    public async Task AssignCompanyAsync_AssignedLecturer_ShouldAssignActiveCompany()
+    {
+        var db = GetDb();
+        var (_, _, _, _, _, currentCompany, internship) = await SeedDataAsync(db);
+        var lecturerId = (await db.Lecturers.SingleAsync()).Id;
+        var newCompany = new Company
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "New Partner",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        await db.Companies.AddAsync(newCompany);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var result = await service.AssignCompanyAsync(
+            internship.Id,
+            new AssignCompanyRequest { CompanyId = newCompany.Id, Position = "QA Intern" },
+            lecturerId);
+
+        result.Should().NotBeNull();
+        result!.CompanyId.Should().Be(newCompany.Id);
+        result.Position.Should().Be("QA Intern");
+        currentCompany.Id.Should().NotBe(newCompany.Id);
+    }
+
+    [Fact]
+    public async Task AssignCompanyAsync_UnassignedLecturer_ShouldNotModifyInternship()
+    {
+        var db = GetDb();
+        var (_, _, _, _, _, company, internship) = await SeedDataAsync(db);
+        var otherLecturer = new Lecturer
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            StaffCode = "GV002",
+            FullName = "Other Lecturer",
+            CreatedAt = DateTime.UtcNow
+        };
+        await db.Lecturers.AddAsync(otherLecturer);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var result = await service.AssignCompanyAsync(
+            internship.Id,
+            new AssignCompanyRequest { CompanyId = company.Id },
+            otherLecturer.Id);
+
+        result.Should().BeNull();
+        (await db.Internships.FindAsync(internship.Id))!.CompanyId.Should().Be(company.Id);
+    }
+
+    [Fact]
+    public async Task AssignCompanyAsync_InactiveCompany_ShouldRejectAssignment()
+    {
+        var db = GetDb();
+        var (_, _, _, _, _, _, internship) = await SeedDataAsync(db);
+        var lecturerId = (await db.Lecturers.SingleAsync()).Id;
+        var inactiveCompany = new Company
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "Inactive Partner",
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await db.Companies.AddAsync(inactiveCompany);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var act = async () => await service.AssignCompanyAsync(
+            internship.Id,
+            new AssignCompanyRequest { CompanyId = inactiveCompany.Id },
+            lecturerId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*ngưng hoạt động*");
+    }
 }

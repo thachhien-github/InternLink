@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { adminSemestersService, type BackendSemesterDto } from "../services/adminSemesters.service";
+import { adminSemestersService, semesterPortalService, type BackendSemesterDto } from "../services/adminSemesters.service";
 import { getStoredToken } from "../lib/apiClient";
+import { useAuth } from "./AuthContext";
 
 export interface Semester {
   id: string;
@@ -61,8 +62,11 @@ interface SemesterContextType {
   semesters: Semester[];
   selectedSemesterId: string;
   selectedSemester: Semester;
+  /** The ID of the currently active semester (status=1), or empty string if none. */
+  activeSemesterId: string;
   selectSemester: (id: string) => void;
   createSemester: (data: Partial<Semester> & { name: string; term: string; academicYear: string }) => Promise<void>;
+  startSemester: (id: string, onShowToast?: (msg: string) => void) => Promise<void>;
   closeSemester: (id: string, onShowToast?: (msg: string) => void) => Promise<void>;
   duplicateSemester: (sem: Semester, onShowToast?: (msg: string) => void) => void;
   refreshApiCounts: () => Promise<void>;
@@ -70,26 +74,44 @@ interface SemesterContextType {
 
 const SemesterContext = createContext<SemesterContextType | undefined>(undefined);
 
+/**
+ * Convert selectedSemesterId to a value safe for API query params.
+ * Returns undefined when "all" or empty, otherwise the real GUID.
+ */
+export function toApiSemesterId(id: string | undefined | null): string | undefined {
+  if (!id || id === "all") return undefined;
+  return id;
+}
+
 export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { role } = useAuth();
   const [semesters, setSemesters] = useState<Semester[]>(DEFAULT_SEMESTERS);
 
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
 
   const refreshApiCounts = useCallback(async () => {
-    if (!getStoredToken()) return;
+    // Wait for AuthProvider to resolve the token before choosing the portal endpoint.
+    if (!getStoredToken() || !role) return;
     try {
-      const backendSemesters = await adminSemestersService.getAll().catch(() => null);
-      if (Array.isArray(backendSemesters) && backendSemesters.length > 0) {
-        const mapped = backendSemesters.map(mapBackendToFrontend);
-        setSemesters(mapped);
+      if (role === "admin") {
+        const backendSemesters = await adminSemestersService.getAll();
+        setSemesters(backendSemesters.map(mapBackendToFrontend));
+        return;
       }
+
+      const currentSemester = await semesterPortalService.getCurrent().catch(() => null);
+      setSemesters(currentSemester ? [mapBackendToFrontend(currentSemester)] : []);
     } catch (err) {
       console.warn("Error refreshing semester API counts:", err);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     refreshApiCounts();
+    const timer = window.setInterval(() => {
+      void refreshApiCounts();
+    }, 30000);
+    return () => window.clearInterval(timer);
   }, [refreshApiCounts]);
 
   useEffect(() => {
@@ -99,31 +121,61 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [semesters]);
 
   useEffect(() => {
+    if (semesters.length > 0 && !selectedSemesterId) {
+      const active = semesters.find((s) => s.status === "active");
+      const withStudents = semesters.find((s) => s.studentsCount > 0);
+      const best = active || withStudents || semesters[0];
+      if (best) setSelectedSemesterId("all");
+    }
+  }, [semesters, selectedSemesterId]);
+
+  useEffect(() => {
     try {
-      localStorage.setItem("internlink_admin_selected_semester_id", selectedSemesterId);
+      if (selectedSemesterId) {
+        localStorage.setItem("internlink_admin_selected_semester_id", selectedSemesterId);
+      }
     } catch {}
   }, [selectedSemesterId]);
 
+  const activeSemesterId = semesters.find((s) => s.status === "active")?.id ?? "";
+
   const selectedSemester =
-    semesters.find((s) => s.id === selectedSemesterId) ||
-    semesters.find((s) => s.status === "active") ||
-    semesters[0] ||
-    {
-      id: "",
-      name: "Đang tải…",
-      term: "",
-      academicYear: "",
-      startDate: "",
-      endDate: "",
-      lecturersCount: 0,
-      studentsCount: 0,
-      placedStudents: 0,
-      companiesCount: 0,
-      status: "upcoming" as const,
-      progressPercent: 0,
-      currentPhase: "",
-      description: "",
-    };
+    selectedSemesterId === "all"
+      ? {
+          id: "all",
+          name: "Tất cả học kỳ",
+          term: "",
+          academicYear: "",
+          startDate: "",
+          endDate: "",
+          lecturersCount: semesters.reduce((sum, s) => sum + s.lecturersCount, 0),
+          studentsCount: semesters.reduce((sum, s) => sum + s.studentsCount, 0),
+          placedStudents: semesters.reduce((sum, s) => sum + s.placedStudents, 0),
+          companiesCount: semesters.reduce((sum, s) => sum + s.companiesCount, 0),
+          status: "active" as const,
+          progressPercent: 0,
+          currentPhase: "",
+          description: "",
+        }
+      : semesters.find((s) => s.id === selectedSemesterId) ||
+        semesters.find((s) => s.status === "active") ||
+        semesters[0] ||
+        {
+          id: "",
+          name: "Đang tải…",
+          term: "",
+          academicYear: "",
+          startDate: "",
+          endDate: "",
+          lecturersCount: 0,
+          studentsCount: 0,
+          placedStudents: 0,
+          companiesCount: 0,
+          status: "upcoming" as const,
+          progressPercent: 0,
+          currentPhase: "",
+          description: "",
+        };
 
   const selectSemester = (id: string) => {
     setSelectedSemesterId(id);
@@ -138,6 +190,8 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         name: data.name,
         term: data.term,
         academicYear: data.academicYear,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
         status: statusNumber,
         description: data.description,
       });
@@ -209,6 +263,19 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const startSemester = async (id: string, onShowToast?: (msg: string) => void) => {
+    try {
+      const started = await adminSemestersService.start(id);
+      const mapped = mapBackendToFrontend(started);
+      setSemesters((prev) => prev.map((semester) => semester.id === id ? mapped : semester));
+      setSelectedSemesterId(id);
+      onShowToast?.(`Đã bắt đầu kỳ thực tập: "${mapped.name}".`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể bắt đầu kỳ thực tập.";
+      onShowToast?.(message);
+    }
+  };
+
   const duplicateSemester = (sem: Semester, onShowToast?: (msg: string) => void) => {
     const duplicated: Semester = {
       ...sem,
@@ -230,8 +297,10 @@ export const SemesterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         semesters,
         selectedSemesterId,
         selectedSemester,
+        activeSemesterId,
         selectSemester,
         createSemester,
+        startSemester,
         closeSemester,
         duplicateSemester,
         refreshApiCounts,

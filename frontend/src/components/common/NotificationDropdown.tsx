@@ -148,17 +148,34 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           } catch {}
         }
 
-        const campaignNotifs: AppNotification[] = (activeCampaigns || []).map((c: any) => ({
-          id: `campaign-${c.id || Date.now()}`,
-          title: `[Chiến dịch] ${c.title}`,
-          message: `Gửi đến: ${c.audienceLabel || (c.targetRole === "All" ? "Toàn trường" : c.targetRole === "Student" ? "Sinh viên" : "Giảng viên")} (${c.recipientCount || "Toàn bộ"} người nhận) - ${c.content}`,
-          category: "announcement",
-          priority: (c.priority === "urgent" || c.priority === "high") ? "urgent" : "normal",
-          timestamp: c.sentAt || "Vừa xong",
-          isRead: readIds.has(`campaign-${c.id}`),
-          targetTab: "admin-notifications",
-          sender: { name: "Ban Quản trị", role: "Chiến dịch" },
-        }));
+        const campaignNotifs: AppNotification[] = (activeCampaigns || []).map((c: any) => {
+          // Stable key: backend id (preferred) or, for legacy cached rows without an id,
+          // a content-derived key — never Date.now(), which would change every fetch.
+          const key = c.id
+            ? `campaign-${c.id}`
+            : `campaign-${(c.title || "")}-${(c.sentAt || "")}`;
+          const audienceLabel =
+            c.audience === "student"
+              ? "Sinh viên"
+              : c.audience === "lecturer"
+                ? "Giảng viên"
+                : c.audience === "all"
+                  ? "Toàn trường"
+                  : c.audienceLabel || "Toàn trường";
+          return {
+            id: key,
+            title: `[Chiến dịch] ${c.title}`,
+            message: `Gửi đến: ${audienceLabel} (${c.recipientCount || "Toàn bộ"} người nhận) - ${c.content}`,
+            category: "announcement",
+            priority: (c.priority === "urgent" || c.priority === "high") ? "urgent" : "normal",
+            timestamp: c.sentAt
+              ? new Date(c.sentAt).toLocaleString("vi-VN")
+              : "Vừa xong",
+            isRead: readIds.has(key),
+            targetTab: "admin-notifications",
+            sender: { name: "Ban Quản trị", role: "Chiến dịch" },
+          };
+        });
 
         const combinedMap = new Map<string, AppNotification>();
         campaignNotifs.forEach((item) => combinedMap.set(item.id, item));

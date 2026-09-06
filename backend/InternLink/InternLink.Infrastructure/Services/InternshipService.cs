@@ -374,21 +374,50 @@ public class InternshipService : IInternshipService
         return MapToDetailFullDto(internship);
     }
 
-    public async Task<InternshipDetailFullDto?> AssignCompanyAsync(Guid id, AssignCompanyRequest request)
+    public async Task<InternshipDetailFullDto?> AssignCompanyAsync(Guid id, AssignCompanyRequest request, Guid? lecturerId = null)
     {
         var internship = await _db.Internships
             .Include(i => i.Student)
             .Include(i => i.Company)
-            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted &&
+                (!lecturerId.HasValue || i.LecturerId == lecturerId.Value));
 
         if (internship == null)
             return null;
 
-        var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == request.CompanyId && !c.IsDeleted);
+        var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == request.CompanyId && c.IsActive && !c.IsDeleted);
         if (company == null)
-            throw new InvalidOperationException($"Company with ID {request.CompanyId} not found");
+            throw new InvalidOperationException("Doanh nghiệp không tồn tại hoặc đang ngưng hoạt động");
+
+        if (internship.SemesterId.HasValue)
+        {
+            var isUnlinked = await _db.SemesterCompanies.AnyAsync(sc =>
+                sc.SemesterId == internship.SemesterId.Value &&
+                sc.CompanyId == request.CompanyId &&
+                !sc.IsActive &&
+                !sc.IsDeleted);
+
+            if (isUnlinked)
+                throw new InvalidOperationException("Doanh nghiệp đã ngưng liên kết trong học kỳ này");
+
+            if (company.Capacity.HasValue && company.Capacity.Value > 0)
+            {
+                var assignedCount = await _db.Internships.CountAsync(i =>
+                    i.Id != id &&
+                    i.CompanyId == request.CompanyId &&
+                    i.SemesterId == internship.SemesterId.Value &&
+                    !i.IsDeleted);
+
+                if (assignedCount >= company.Capacity.Value)
+                    throw new InvalidOperationException("Doanh nghiệp đã đạt sức chứa trong học kỳ này");
+            }
+        }
 
         internship.CompanyId = request.CompanyId;
+        if (!string.IsNullOrWhiteSpace(request.SupervisorName))
+            internship.SupervisorName = request.SupervisorName;
+        if (!string.IsNullOrWhiteSpace(request.Position))
+            internship.Position = request.Position;
         internship.UpdatedAt = DateTime.UtcNow;
 
         _db.Internships.Update(internship);

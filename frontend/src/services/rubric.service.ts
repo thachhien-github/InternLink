@@ -1,4 +1,4 @@
-import { apiRequestRaw } from "../lib/apiClient";
+import { apiRequest, apiRequestRaw, ApiClientError } from "../lib/apiClient";
 import type {
   EvaluationRubricDto,
   EvaluationRubricCriterionDto,
@@ -96,10 +96,13 @@ export const rubricService = {
    */
   async getBySemester(semesterId: string): Promise<EvaluationRubricDto | null> {
     try {
-      const raw = await apiRequestRaw<RubricApiDto>(
+      const raw = await apiRequest<RubricApiDto>(
         `/api/Admin/semesters/${semesterId}/rubric`,
       );
-      return mapFromApi(raw);
+      if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+        return null;
+      }
+      return mapFromApi(raw as RubricApiDto);
     } catch {
       return null;
     }
@@ -114,8 +117,9 @@ export const rubricService = {
         `/api/Lecturer/rubric?semesterId=${semesterId}`,
       );
       return mapFromApi(raw);
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) return null;
+      throw error;
     }
   },
 
@@ -126,14 +130,17 @@ export const rubricService = {
     semesterId: string,
     request: CreateRubricRequest,
   ): Promise<EvaluationRubricDto> {
-    const raw = await apiRequestRaw<RubricApiDto>(
+    const raw = await apiRequest<RubricApiDto>(
       `/api/Admin/semesters/${semesterId}/rubric`,
       {
         method: "POST",
         body: request,
       },
     );
-    return mapFromApi(raw);
+    if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+      throw new Error("Phản hồi tạo rubric không hợp lệ");
+    }
+    return mapFromApi(raw as RubricApiDto);
   },
 
   /**
@@ -143,23 +150,27 @@ export const rubricService = {
     semesterId: string,
     request: UpdateRubricRequest,
   ): Promise<EvaluationRubricDto> {
-    const raw = await apiRequestRaw<RubricApiDto>(
+    const raw = await apiRequest<RubricApiDto>(
       `/api/Admin/semesters/${semesterId}/rubric`,
       {
         method: "PUT",
         body: request,
       },
     );
-    return mapFromApi(raw);
+    if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+      throw new Error("Phản hồi cập nhật rubric không hợp lệ");
+    }
+    return mapFromApi(raw as RubricApiDto);
   },
 
   /**
    * Delete rubric
    */
   async delete(semesterId: string): Promise<void> {
-    await apiRequestRaw(`/api/Admin/semesters/${semesterId}/rubric`, {
+    await apiRequest(`/api/Admin/semesters/${semesterId}/rubric`, {
       method: "DELETE",
     });
+    return;
   },
 
   /**
@@ -169,14 +180,17 @@ export const rubricService = {
     semesterId: string,
     note?: string,
   ): Promise<EvaluationRubricDto> {
-    const raw = await apiRequestRaw<RubricApiDto>(
+    const raw = await apiRequest<RubricApiDto>(
       `/api/Admin/semesters/${semesterId}/rubric/submit`,
       {
         method: "POST",
         body: { note },
       },
     );
-    return mapFromApi(raw);
+    if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+      throw new Error("Phản hồi gửi phê duyệt rubric không hợp lệ");
+    }
+    return mapFromApi(raw as RubricApiDto);
   },
 
   /**
@@ -186,14 +200,17 @@ export const rubricService = {
     semesterId: string,
     note?: string,
   ): Promise<EvaluationRubricDto> {
-    const raw = await apiRequestRaw<RubricApiDto>(
+    const raw = await apiRequest<RubricApiDto>(
       `/api/Admin/semesters/${semesterId}/rubric/approve`,
       {
         method: "POST",
         body: { note },
       },
     );
-    return mapFromApi(raw);
+    if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+      throw new Error("Phản hồi phê duyệt rubric không hợp lệ");
+    }
+    return mapFromApi(raw as RubricApiDto);
   },
 
   /**
@@ -203,21 +220,26 @@ export const rubricService = {
     semesterId: string,
     rejectionReason: string,
   ): Promise<EvaluationRubricDto> {
-    const raw = await apiRequestRaw<RubricApiDto>(
+    const raw = await apiRequest<RubricApiDto>(
       `/api/Admin/semesters/${semesterId}/rubric/reject`,
       {
         method: "POST",
         body: { rejectionReason },
       },
     );
-    return mapFromApi(raw);
+    if (!raw || typeof raw !== "object" || !("criteria" in raw) || !("id" in raw)) {
+      throw new Error("Phản hồi từ chối rubric không hợp lệ");
+    }
+    return mapFromApi(raw as RubricApiDto);
   },
 
   /**
-   * Save evaluation scores for a student (lecturer)
+   * Save rubric-based evaluation scores for a student.
+   * If an evaluation already exists it is updated; otherwise a draft evaluation
+   * is created first so rubric scoring does not depend on legacy score fields.
    */
   async saveScores(
-    evaluationId: string,
+    evaluationId: string | undefined,
     criteriaScores: {
       criterionId: string;
       criterionName: string;
@@ -227,16 +249,47 @@ export const rubricService = {
       comment?: string;
     }[],
     comments?: string,
+    internshipId?: string,
+    finalize?: boolean,
   ): Promise<{
     evaluationId: string;
     finalGrade: number;
     isFinalized: boolean;
   }> {
+    if (evaluationId) {
+      const saved = await apiRequestRaw<{
+        evaluationId: string;
+        finalGrade: number;
+        isFinalized: boolean;
+      }>(
+        `/api/Lecturer/evaluation/${evaluationId}/scores`,
+        {
+          method: "PUT",
+          body: { criteriaScores, comments },
+        },
+      );
+      if (finalize) {
+        return apiRequestRaw(`/api/Evaluation/${evaluationId}/finalize`, {
+          method: "POST",
+        });
+      }
+      return saved;
+    }
+
+    if (!internshipId) {
+      throw new Error("Không tìm thấy thực tập để lưu điểm rubric.");
+    }
+
     return apiRequestRaw(
-      `/api/Lecturer/evaluation/${evaluationId}/scores`,
+      `/api/Lecturer/evaluation/scores`,
       {
-        method: "PUT",
-        body: { criteriaScores, comments },
+        method: "POST",
+        body: {
+          internshipId,
+          criteriaScores,
+          comments,
+          finalize: finalize ?? false,
+        },
       },
     );
   },
@@ -283,6 +336,7 @@ export const rubricService = {
       position?: string | null;
       internshipStatus: string;
       weeklyReportCount: number;
+      evaluationId?: string | null;
       hasEvaluation: boolean;
       isEvaluationFinalized: boolean;
       finalGrade?: number | null;
@@ -290,6 +344,6 @@ export const rubricService = {
     }[]
   > {
     const qs = semesterId ? `?semesterId=${semesterId}` : "";
-    return apiRequestRaw(`/api/Lecturer/students${qs}`);
+    return apiRequestRaw(`/api/Lecturer/evaluation-students${qs}`);
   },
 };

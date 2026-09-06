@@ -53,7 +53,9 @@ export const ImportCompaniesModal = ({
       const res = await adminCompaniesService.importExcel(selectedFile);
       setResult(res);
       if (res.successCount > 0) {
-        onShowToast(`Import thành công ${res.successCount}/${res.totalRows} doanh nghiệp liên kết!`);
+        onShowToast(
+          `Import hoàn tất: ${res.createdCount} thêm mới, ${res.updatedCount} cập nhật, ${res.failedCount} lỗi`,
+        );
         onSuccess();
       } else {
         onShowToast(`Import hoàn tất với ${res.failedCount} lỗi. Vui lòng kiểm tra lại.`);
@@ -85,7 +87,7 @@ export const ImportCompaniesModal = ({
                 Import Danh Sách Doanh Nghiệp
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Đồng bộ đối tác doanh nghiệp tiếp nhận: STT, Mã DN, Tên công ty, Ngành, Người liên hệ, Email, SĐT,...
+                Đúng mẫu nhà trường (DANH SÁCH DOANH NGHIỆP LIÊN KẾT): STT, Mã doanh nghiệp, Tên công ty, Ngành, Người liên hệ, Email, SĐT, Địa chỉ, Website, Số lượng tiếp nhận — trùng Mã doanh nghiệp sẽ được cập nhật thông tin mới
               </p>
             </div>
           </div>
@@ -138,7 +140,7 @@ export const ImportCompaniesModal = ({
                   : "Bấm để chọn file Excel hoặc kéo thả file vào đây"}
               </p>
               <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                Định dạng hỗ trợ: .xlsx, .xls • Nhập dữ liệu danh sách đơn vị thực tập
+                Định dạng hỗ trợ: .xlsx, .xls • Nhập dữ liệu danh sách đơn vị thực tập (có dòng tiêu đề + cột STT vẫn import được)
               </p>
             </div>
           </div>
@@ -146,15 +148,21 @@ export const ImportCompaniesModal = ({
           {/* Result Summary */}
           {result && (
             <div className="space-y-3 pt-2">
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md">
                   <p className="text-[10px] text-slate-500 font-semibold">Tổng số dòng</p>
                   <p className="text-base font-bold text-slate-800">{result.totalRows}</p>
                 </div>
+                <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-[10px] text-blue-700 font-semibold">Thêm mới</p>
+                  <p className="text-base font-bold text-blue-900">
+                    {result.createdCount ?? result.createdCompanies?.length ?? 0}
+                  </p>
+                </div>
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md">
-                  <p className="text-[10px] text-emerald-700 font-semibold">Thành công</p>
+                  <p className="text-[10px] text-emerald-700 font-semibold">Cập nhật</p>
                   <p className="text-base font-bold text-emerald-800 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" /> {result.successCount}
+                    <CheckCircle2 className="w-4 h-4" /> {result.updatedCount ?? 0}
                   </p>
                 </div>
                 <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-md">
@@ -175,7 +183,11 @@ export const ImportCompaniesModal = ({
                           Dòng {err.rowNumber}
                         </span>
                         <span className="flex-1">
-                          {err.companyName ? <strong>{err.companyName}: </strong> : null}
+                          {err.companyName ? (
+                            <strong>{err.companyName}: </strong>
+                          ) : err.companyCode ? (
+                            <strong>Mã DN {err.companyCode}: </strong>
+                          ) : null}
                           {err.message}
                         </span>
                       </div>

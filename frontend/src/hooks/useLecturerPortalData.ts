@@ -10,10 +10,15 @@ import { lecturerCompaniesService } from "../services/lecturerCompanies.service"
 import { lecturerInternshipsService } from "../services/lecturerInternships.service";
 import { submissionApiService } from "../services/submissionApi.service";
 import { weeklyReportService } from "../services/weeklyReport.service";
+import { lecturerDashboardService } from "../services/lecturerDashboard.service";
 import type { Student } from "../types/student";
 import type { Submission } from "../types/submission";
 import type { Enterprise } from "../types/enterprise";
-import type { WeeklyReportDto } from "../types/api";
+import type {
+  LecturerDashboardStatsDto,
+  LecturerWeeklyTrendDto,
+  WeeklyReportDto,
+} from "../types/api";
 
 export function useLecturerPortalData(
   enabled: boolean,
@@ -25,22 +30,26 @@ export function useLecturerPortalData(
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [weeklyReports, setWeeklyReports] = useState<WeeklyReportDto[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<LecturerDashboardStatsDto | null>(null);
+  const [weeklyTrend, setWeeklyTrend] = useState<LecturerWeeklyTrendDto[]>([]);
   const [isLoading, setIsLoading] = useState(enabled);
 
   const load = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
     try {
-      const [internships, companies, allSubmissions, allWeeklyReports] =
+      const [internships, companies, allSubmissions, allWeeklyReports, stats, trend] =
         await Promise.all([
           lecturerInternshipsService.getAll(semesterId ?? undefined),
-          lecturerCompaniesService.getAll(semesterId ?? undefined),
+          lecturerCompaniesService.getActive(semesterId ?? undefined),
           lecturerInternshipsService
             .getAllSubmissions(semesterId ?? undefined)
             .catch(() => []),
           weeklyReportService
             .getAllForLecturer(semesterId ?? undefined)
             .catch(() => []),
+          lecturerDashboardService.getStats(semesterId ?? undefined),
+          lecturerDashboardService.getWeeklyTrend(semesterId ?? undefined),
         ]);
 
       const studentRows = internships.map((i) =>
@@ -71,6 +80,8 @@ export function useLecturerPortalData(
       setSubmissions(submissionRows);
       setWeeklyReports(allWeeklyReports);
       setEnterprises(companies.map(mapCompanyDtoToEnterprise));
+      setDashboardStats(stats);
+      setWeeklyTrend(trend);
     } catch (err) {
       onError?.(getApiErrorMessage(err));
     } finally {
@@ -116,6 +127,8 @@ export function useLecturerPortalData(
     submissions,
     enterprises,
     weeklyReports,
+    dashboardStats,
+    weeklyTrend,
     isLoading,
     refresh: load,
     updateSubmissionStatus,

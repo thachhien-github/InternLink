@@ -54,6 +54,47 @@ public class SemesterServiceTests
     }
 
     [Fact]
+    public async Task GetAllSemestersAsync_ShouldCountSemesterLinkedLecturers()
+    {
+        var db = GetDb();
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Fall 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            Status = SemesterStatus.Upcoming,
+            CreatedAt = DateTime.UtcNow
+        };
+        var lecturer1 = new Lecturer { Id = Guid.NewGuid(), StaffCode = "GV001", FullName = "GV 1", CreatedAt = DateTime.UtcNow };
+        var lecturer2 = new Lecturer { Id = Guid.NewGuid(), StaffCode = "GV002", FullName = "GV 2", CreatedAt = DateTime.UtcNow };
+        var lecturer3 = new Lecturer { Id = Guid.NewGuid(), StaffCode = "GV003", FullName = "GV 3", CreatedAt = DateTime.UtcNow };
+        var student = new Student { Id = Guid.NewGuid(), StudentCode = "SV001", FullName = "SV 1", CreatedAt = DateTime.UtcNow };
+
+        db.Semesters.Add(semester);
+        db.Lecturers.AddRange(lecturer1, lecturer2, lecturer3);
+        db.Students.Add(student);
+        db.SemesterLecturers.AddRange(
+            new SemesterLecturer { Id = Guid.NewGuid(), SemesterId = semester.Id, LecturerId = lecturer1.Id, CreatedAt = DateTime.UtcNow },
+            new SemesterLecturer { Id = Guid.NewGuid(), SemesterId = semester.Id, LecturerId = lecturer2.Id, CreatedAt = DateTime.UtcNow });
+        // lecturer3 is assigned through an internship in this semester
+        db.Internships.Add(new Internship
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            SemesterId = semester.Id,
+            LecturerId = lecturer3.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var service = new SemesterService(db);
+        var dto = (await service.GetAllSemestersAsync()).Single();
+
+        dto.LecturersCount.Should().Be(3);
+    }
+
+    [Fact]
     public async Task CreateSemesterAsync_Valid_ShouldCreateAndReturn()
     {
         var db = GetDb();
@@ -76,5 +117,50 @@ public class SemesterServiceTests
         var created = await db.Semesters.FindAsync(result.Id);
         created.Should().NotBeNull();
         created!.MaxStudentsPerLecturer.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task StartSemesterAsync_ShouldActivateAccountsAndInternshipsForThatSemester()
+    {
+        var db = GetDb();
+        var semester = new Semester
+        {
+            Id = Guid.NewGuid(),
+            Name = "Internship 2026",
+            Term = "Học kỳ I",
+            AcademicYear = "2026 - 2027",
+            StartDate = new DateTime(2026, 9, 1),
+            EndDate = new DateTime(2026, 10, 15),
+            Status = SemesterStatus.Upcoming,
+            CreatedAt = DateTime.UtcNow
+        };
+        var lecturerUser = new User { Id = Guid.NewGuid(), Username = "lecturer", PasswordHash = "hash", Role = Role.Lecturer, IsActive = false, CreatedAt = DateTime.UtcNow };
+        var studentUser = new User { Id = Guid.NewGuid(), Username = "student", PasswordHash = "hash", Role = Role.Student, IsActive = false, CreatedAt = DateTime.UtcNow };
+        var lecturer = new Lecturer { Id = Guid.NewGuid(), UserId = lecturerUser.Id, StaffCode = "GV001", FullName = "Lecturer", CreatedAt = DateTime.UtcNow };
+        var student = new Student { Id = Guid.NewGuid(), UserId = studentUser.Id, StudentCode = "SV001", FullName = "Student", CreatedAt = DateTime.UtcNow };
+        var internship = new Internship
+        {
+            Id = Guid.NewGuid(),
+            SemesterId = semester.Id,
+            StudentId = student.Id,
+            LecturerId = lecturer.Id,
+            Status = InternshipStatus.NotStarted,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Semesters.Add(semester);
+        db.Users.AddRange(lecturerUser, studentUser);
+        db.Lecturers.Add(lecturer);
+        db.Students.Add(student);
+        db.Internships.Add(internship);
+        await db.SaveChangesAsync();
+
+        var result = await new SemesterService(db).StartSemesterAsync(semester.Id);
+
+        result!.Status.Should().Be(SemesterStatus.Active);
+        (await db.Internships.FindAsync(internship.Id))!.Status.Should().Be(InternshipStatus.InProgress);
+        (await db.Internships.FindAsync(internship.Id))!.StartDate.Should().Be(semester.StartDate);
+        (await db.Users.FindAsync(lecturerUser.Id))!.IsActive.Should().BeTrue();
+        (await db.Users.FindAsync(studentUser.Id))!.IsActive.Should().BeTrue();
     }
 }

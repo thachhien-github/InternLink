@@ -5,10 +5,10 @@ import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
 import { DynamicRubricEvaluation } from "./DynamicRubricEvaluation";
 import { EvaluationDetail } from "./EvaluationDetail";
-import { EvaluationPdfModal } from "./EvaluationPdfModal";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { rubricService } from "../../../services/rubric.service";
 import { evaluationService } from "../../../services/evaluation.service";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   Award,
   Search,
@@ -34,7 +34,6 @@ import type {
   EvaluationRubricDto,
 } from "../../../types/evaluation";
 
-/** Map backend DTO to the shape DynamicRubricEvaluation expects. */
 function mapStudentToGrading(s: LecturerEvaluationStudentDto) {
   return {
     id: s.studentId,
@@ -45,7 +44,7 @@ function mapStudentToGrading(s: LecturerEvaluationStudentDto) {
     company: s.companyName ?? "Chưa có DN",
     supervisor: (s as any).supervisor ?? "—",
     internshipId: s.internshipId,
-    evaluationId: undefined as string | undefined,
+    evaluationId: s.evaluationId,
     semesterId: s.semesterId ?? undefined,
     weeklyReportCount: String(s.weeklyReportCount ?? 0),
     progress: s.progressPercent,
@@ -57,11 +56,10 @@ function mapStudentToGrading(s: LecturerEvaluationStudentDto) {
 }
 
 export const EvaluationDashboard = () => {
-  // --- State ---
   const [students, setStudents] = useState<LecturerEvaluationStudentDto[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const showToast = (msg: string) => {
@@ -69,20 +67,24 @@ export const EvaluationDashboard = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Active views
+  const { activeSemesterId } = useSemester();
+  useEffect(() => {
+    if (semesterFilter === null) {
+      setSemesterFilter(activeSemesterId ?? "");
+    }
+  }, [activeSemesterId, semesterFilter]);
+
   const [rubricStudent, setRubricStudent] = useState<LecturerEvaluationStudentDto | null>(null);
   const [detailStudent, setDetailStudent] = useState<any>(null);
-  const [pdfStudent, setPdfStudent] = useState<any>(null);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // --- Load students from API ---
   const refreshStudents = useCallback(async () => {
     setIsLoadingApi(true);
     try {
-      const rows = await rubricService.getLecturerStudents(semesterFilter || undefined);
+      const semesterId = semesterFilter && semesterFilter !== "all" ? semesterFilter : undefined;
+      const rows = await rubricService.getLecturerStudents(semesterId);
       setStudents(rows);
     } catch (err) {
       showToast(getApiErrorMessage(err));
@@ -95,7 +97,6 @@ export const EvaluationDashboard = () => {
     refreshStudents();
   }, [refreshStudents]);
 
-  // --- Filtering ---
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
       const matchSearch =
@@ -119,7 +120,6 @@ export const EvaluationDashboard = () => {
     return filteredStudents.slice(start, start + pageSize);
   }, [filteredStudents, currentPage, pageSize]);
 
-  // --- Stats ---
   const totalStudents = students.length;
   const gradedCount = students.filter((s) => s.isEvaluationFinalized).length;
   const ungradedCount = students.filter((s) => !s.hasEvaluation).length;
@@ -127,10 +127,11 @@ export const EvaluationDashboard = () => {
   const avgScore = useMemo(() => {
     const scored = students.filter((s) => s.finalGrade != null);
     if (scored.length === 0) return "0.0";
-    return (scored.reduce((a, s) => a + (s.finalGrade ?? 0), 0) / scored.length).toFixed(1);
+    return (
+      scored.reduce((a, s) => a + (s.finalGrade ?? 0), 0) / scored.length
+    ).toFixed(1);
   }, [students]);
 
-  // --- Helpers ---
   const getStatusBadge = (s: LecturerEvaluationStudentDto) => {
     if (s.isEvaluationFinalized) {
       return (
@@ -165,9 +166,18 @@ export const EvaluationDashboard = () => {
     return { label: "Không đạt", color: "text-rose-700" };
   };
 
-  // --- Export Excel (client-side CSV) ---
   const handleExportExcel = () => {
-    const headers = ["STT", "MSSV", "Họ tên", "Lớp", "Ngành", "Doanh nghiệp", "Điểm", "Xếp loại", "Trạng thái"];
+    const headers = [
+      "STT",
+      "MSSV",
+      "Họ tên",
+      "Lớp",
+      "Ngành",
+      "Doanh nghiệp",
+      "Điểm",
+      "Xếp loại",
+      "Trạng thái",
+    ];
     const rows = filteredStudents.map((s, idx) => [
       idx + 1,
       s.studentCode,
@@ -177,55 +187,55 @@ export const EvaluationDashboard = () => {
       s.companyName ?? "",
       s.finalGrade?.toString() ?? "",
       getClassification(s.finalGrade)?.label ?? "",
-      s.isEvaluationFinalized ? "Đã chốt" : s.hasEvaluation ? "Đang chấm" : "Chưa chấm",
+      s.isEvaluationFinalized
+        ? "Đã chốt"
+        : s.hasEvaluation
+          ? "Đang chấm"
+          : "Chưa chấm",
     ]);
-    const csv = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const csv =
+      "\uFEFF" +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Bang_Diem_Thuc_Tap_${semesterFilter || "All"}.csv`;
+    a.download = `Bang_Diem_Thuc_Tap_${(semesterFilter ?? "All").replace(/[^A-Za-z0-9 _-]/g, "")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast(`Đã tải xuống bảng điểm (${filteredStudents.length} sinh viên)`);
   };
 
-  // --- View switching ---
   if (rubricStudent) {
     const gradingStudent = mapStudentToGrading(rubricStudent);
+    const semesterId =
+      gradingStudent.semesterId ||
+      (semesterFilter && semesterFilter !== "all" ? semesterFilter : undefined);
+
     return (
       <DynamicRubricEvaluation
         student={gradingStudent}
+        semesterId={semesterId}
         onBack={() => setRubricStudent(null)}
         onSave={async (data) => {
           try {
-            if (data.evaluationId) {
               await rubricService.saveScores(
-                data.evaluationId,
-                data.criteriaScores,
-                data.comments,
-              );
-            } else {
-              // Create evaluation first, then save scores
-              const ev = await evaluationService.create({
-                internshipId: gradingStudent.internshipId!,
-                technicalScore: Math.round(data.finalScore),
-                communicationScore: Math.round(data.finalScore),
-                teamworkScore: Math.round(data.finalScore),
-                initiativeScore: Math.round(data.finalScore),
-                isFinalized: true,
-              });
-              await rubricService.saveScores(
-                ev.id,
-                data.criteriaScores,
-                data.comments,
-              );
-            }
+              data.evaluationId,
+              data.criteriaScores,
+              data.comments,
+              gradingStudent.internshipId,
+              data.finalize,
+            );
+
             await refreshStudents();
-            showToast("Đã lưu đánh giá thành công!");
+            showToast(
+              data.finalize
+                ? "Đã lưu và chốt đánh giá thành công!"
+                : "Đã lưu bản nháp đánh giá thành công!",
+            );
           } catch (err) {
             showToast(getApiErrorMessage(err));
-            return;
+              throw err;
           }
           setRubricStudent(null);
         }}
@@ -240,8 +250,9 @@ export const EvaluationDashboard = () => {
         onBack={() => setDetailStudent(null)}
         onEdit={(s: any) => {
           setDetailStudent(null);
-          // Find the original student data for rubric grading
-          const found = students.find((st) => st.studentId === s.id || st.internshipId === s.internshipId);
+          const found = students.find(
+            (st) => st.studentId === s.id || st.internshipId === s.internshipId,
+          );
           if (found) setRubricStudent(found);
         }}
       />
@@ -256,7 +267,7 @@ export const EvaluationDashboard = () => {
         icon={Award}
         title="Đánh giá & Chấm điểm Thực tập"
         subtitle="Quản lý kết quả chấm điểm theo tiêu chí rubric cho sinh viên thực tập."
-        badge={semesterFilter || "Tất cả kỳ"}
+        badge={semesterFilter ?? "Tất cả kỳ"}
         badgeColor="bg-blue-100 text-blue-800 border-blue-200"
         actions={[
           {
@@ -279,7 +290,6 @@ export const EvaluationDashboard = () => {
         }
       />
 
-      {/* Loading state */}
       {isLoadingApi ? (
         <Panel className="flex flex-col items-center justify-center py-16 space-y-3">
           <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
@@ -288,7 +298,6 @@ export const EvaluationDashboard = () => {
       ) : (
         <Panel className="space-y-4">
           <div className="space-y-3">
-            {/* Filter Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-blue-600" />
@@ -298,7 +307,10 @@ export const EvaluationDashboard = () => {
               </div>
               {(searchQuery || statusFilter !== "Tất cả") && (
                 <button
-                  onClick={() => { setSearchQuery(""); setStatusFilter("Tất cả"); }}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("Tất cả");
+                  }}
                   className="text-xs text-blue-600 hover:text-blue-800 font-bold"
                 >
                   Xóa bộ lọc
@@ -306,22 +318,40 @@ export const EvaluationDashboard = () => {
               )}
             </div>
 
-            {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <div className="relative sm:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Tìm tên sinh viên, MSSV..."
                   className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-900 font-medium"
                 />
               </div>
               <div>
                 <select
+                  value={semesterFilter ?? ""}
+                  onChange={(e) => {
+                    setSemesterFilter(e.target.value || null);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+                >
+                  <option value="">Tất cả kỳ</option>
+                  <option value="all">Tất cả kỳ (rời rạc)</option>
+                </select>
+              </div>
+              <div>
+                <select
                   value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
                 >
                   <option value="Tất cả">Tất cả trạng thái</option>
@@ -333,7 +363,6 @@ export const EvaluationDashboard = () => {
             </div>
           </div>
 
-          {/* Student Table */}
           <div className="border border-slate-200/80 rounded-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -351,7 +380,10 @@ export const EvaluationDashboard = () => {
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {paginatedStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                      <td
+                        colSpan={7}
+                        className="py-12 text-center text-slate-400 text-xs"
+                      >
                         <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-amber-400" />
                         Không tìm thấy sinh viên nào
                       </td>
@@ -359,14 +391,15 @@ export const EvaluationDashboard = () => {
                   ) : (
                     paginatedStudents.map((s) => (
                       <tr key={s.studentId} className="hover:bg-blue-50/40 transition-colors">
-                        {/* Student Info */}
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                               {s.fullName.split(" ").pop()?.charAt(0) ?? "S"}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-900 line-clamp-1">{s.fullName}</p>
+                              <p className="font-bold text-slate-900 line-clamp-1">
+                                {s.fullName}
+                              </p>
                               <p className="text-[10px] text-slate-500 font-mono">
                                 {s.studentCode} • {s.class ?? "—"}
                               </p>
@@ -374,41 +407,55 @@ export const EvaluationDashboard = () => {
                           </div>
                         </td>
 
-                        {/* Company */}
                         <td className="py-3 px-4">
-                          <p className="font-bold text-slate-900 line-clamp-1">{s.companyName ?? "Chưa có DN"}</p>
+                          <p className="font-bold text-slate-900 line-clamp-1">
+                            {s.companyName ?? "Chưa có DN"}
+                          </p>
                           <p className="text-[10px] text-slate-500">{s.major ?? "—"}</p>
                         </td>
 
-                        {/* Weekly Reports */}
                         <td className="py-3 px-3 text-center">
                           <span className="font-bold text-slate-800 text-[11px]">
                             {s.weeklyReportCount} bài
                           </span>
                         </td>
 
-                        {/* Progress */}
                         <td className="py-3 px-3 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className="font-bold text-[11px] text-slate-700">{s.progressPercent}%</span>
+                            <span className="font-bold text-[11px] text-slate-700">
+                              {s.progressPercent}%
+                            </span>
                             <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-1.5 rounded-full ${s.progressPercent === 100 ? "bg-emerald-500" : s.progressPercent >= 50 ? "bg-blue-600" : "bg-amber-500"}`}
+                                className={`h-1.5 rounded-full ${
+                                  s.progressPercent === 100
+                                    ? "bg-emerald-500"
+                                    : s.progressPercent >= 50
+                                      ? "bg-blue-600"
+                                      : "bg-amber-500"
+                                }`}
                                 style={{ width: `${s.progressPercent}%` }}
                               />
                             </div>
                           </div>
                         </td>
 
-                        {/* Grade */}
                         <td className="py-3 px-3 text-center">
                           {s.finalGrade != null ? (
                             <div>
-                              <span className={`font-bold text-sm font-mono ${getClassification(s.finalGrade)?.color ?? "text-slate-700"}`}>
+                              <span
+                                className={`font-bold text-sm font-mono ${
+                                  getClassification(s.finalGrade)?.color ?? "text-slate-700"
+                                }`}
+                              >
                                 {s.finalGrade}
                               </span>
                               {getClassification(s.finalGrade) && (
-                                <span className={`block text-[9px] font-bold ${getClassification(s.finalGrade)?.color}`}>
+                                <span
+                                  className={`block text-[9px] font-bold ${
+                                    getClassification(s.finalGrade)?.color
+                                  }`}
+                                >
                                   {getClassification(s.finalGrade)?.label}
                                 </span>
                               )}
@@ -418,15 +465,12 @@ export const EvaluationDashboard = () => {
                           )}
                         </td>
 
-                        {/* Status */}
                         <td className="py-3 px-3">{getStatusBadge(s)}</td>
 
-                        {/* Actions */}
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => {
-                                // Build detail student for EvaluationDetail
                                 setDetailStudent({
                                   id: s.studentId,
                                   name: s.fullName,
@@ -440,10 +484,16 @@ export const EvaluationDashboard = () => {
                                   lecturerScore: s.finalGrade,
                                   presentationScore: s.finalGrade,
                                   totalScore: s.finalGrade,
-                                  status: s.isEvaluationFinalized ? "Hoàn thành" : s.hasEvaluation ? "Đang chấm" : "Chưa chấm",
+                                  status: s.isEvaluationFinalized
+                                    ? "Hoàn thành"
+                                    : s.hasEvaluation
+                                      ? "Đang chấm"
+                                      : "Chưa chấm",
                                   weeklyReportCount: `${s.weeklyReportCount}/${s.weeklyReportCount}`,
-                                  lecturerComments: s.finalGrade != null ? `Điểm: ${s.finalGrade}` : "",
-                                  gradeClassification: getClassification(s.finalGrade)?.label ?? "",
+                                  lecturerComments:
+                                    s.finalGrade != null ? `Điểm: ${s.finalGrade}` : "",
+                                  gradeClassification:
+                                    getClassification(s.finalGrade)?.label ?? "",
                                   internshipId: s.internshipId,
                                   evaluatedAt: s.evaluatedAt,
                                   hasEvaluation: s.hasEvaluation,
@@ -463,32 +513,6 @@ export const EvaluationDashboard = () => {
                             >
                               <Sliders className="w-4 h-4" />
                             </button>
-
-                            <button
-                              onClick={() => {
-                                setPdfStudent({
-                                  id: s.studentId,
-                                  name: s.fullName,
-                                  mssv: s.studentCode,
-                                  class: s.class ?? "—",
-                                  major: s.major ?? "—",
-                                  company: s.companyName ?? "—",
-                                  supervisor: "—",
-                                  totalScore: s.finalGrade,
-                                  gradeClassification: getClassification(s.finalGrade)?.label ?? "",
-                                  enterpriseScore: s.finalGrade,
-                                  lecturerScore: s.finalGrade,
-                                  presentationScore: s.finalGrade,
-                                  weeklyReportCount: `${s.weeklyReportCount}/${s.weeklyReportCount}`,
-                                  status: s.isEvaluationFinalized ? "Hoàn thành" : "Đang chấm",
-                                  lecturerComments: "",
-                                });
-                              }}
-                              className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-md transition-colors border border-slate-200"
-                              title="Phiếu đánh giá PDF"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -498,13 +522,15 @@ export const EvaluationDashboard = () => {
               </table>
             </div>
 
-            {/* Pagination */}
             <div className="p-3 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 font-semibold text-slate-600">
                 <span>Hiển thị:</span>
                 <select
                   value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
                   className="px-2 py-1 bg-white border border-slate-200 rounded-lg outline-none font-bold text-slate-800"
                 >
                   <option value={10}>10</option>
@@ -512,7 +538,13 @@ export const EvaluationDashboard = () => {
                   <option value={50}>50</option>
                 </select>
                 <span className="text-slate-400">
-                  ({Math.min((currentPage - 1) * pageSize + 1, filteredStudents.length)} - {Math.min(currentPage * pageSize, filteredStudents.length)} / {filteredStudents.length})
+                  (
+                    {Math.min(
+                      (currentPage - 1) * pageSize + 1,
+                      filteredStudents.length,
+                    )} - {Math.min(currentPage * pageSize, filteredStudents.length)} /{" "}
+                    {filteredStudents.length}
+                  )
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -527,7 +559,11 @@ export const EvaluationDashboard = () => {
                   <button
                     key={pg}
                     onClick={() => setCurrentPage(pg)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${currentPage === pg ? "bg-blue-600 text-white shadow-2xs" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      currentPage === pg
+                        ? "bg-blue-600 text-white shadow-2xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
                   >
                     {pg}
                   </button>
@@ -543,9 +579,7 @@ export const EvaluationDashboard = () => {
             </div>
           </div>
 
-          {/* Bottom Analytics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Stats */}
             <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-4">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="flex items-center gap-1.5">
@@ -572,12 +606,13 @@ export const EvaluationDashboard = () => {
                 </div>
                 <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-slate-600">Điểm trung bình:</span>
-                  <span className="font-bold text-blue-700 text-sm">{avgScore}/10</span>
+                  <span className="font-bold text-blue-700 text-sm">
+                    {avgScore}/10
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Top Scorers */}
             <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
@@ -589,14 +624,21 @@ export const EvaluationDashboard = () => {
                   .sort((a, b) => (b.finalGrade ?? 0) - (a.finalGrade ?? 0))
                   .slice(0, 5)
                   .map((s, idx) => (
-                    <div key={s.studentId} className="p-2 bg-slate-50 rounded-md border border-slate-100 flex items-center justify-between">
+                    <div
+                      key={s.studentId}
+                      className="p-2 bg-slate-50 rounded-md border border-slate-100 flex items-center justify-between"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <div className="truncate max-w-[120px]">
-                          <p className="font-bold text-slate-900 text-xs truncate">{s.fullName}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{s.companyName ?? "—"}</p>
+                          <p className="font-bold text-slate-900 text-xs truncate">
+                            {s.fullName}
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {s.companyName ?? "—"}
+                          </p>
                         </div>
                       </div>
                       <span className="font-bold text-xs px-2 py-0.5 bg-blue-100 text-blue-900 font-mono rounded-md border border-blue-200">
@@ -605,29 +647,39 @@ export const EvaluationDashboard = () => {
                     </div>
                   ))}
                 {students.filter((s) => s.finalGrade != null).length === 0 && (
-                  <p className="text-xs text-slate-400 italic text-center py-4">Chưa có điểm</p>
+                  <p className="text-xs text-slate-400 italic text-center py-4">
+                    Chưa có điểm
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Ungraded Quick List */}
             <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
                 <Clock className="w-4 h-4 text-amber-600" />
                 <span>Cần chấm ({ungradedCount})</span>
               </h3>
               {ungradedCount === 0 ? (
-                <p className="text-xs text-slate-400 italic text-center py-4">Đã chấm hết!</p>
+                <p className="text-xs text-slate-400 italic text-center py-4">
+                  Đã chấm hết!
+                </p>
               ) : (
                 <div className="space-y-2 max-h-52 overflow-y-auto">
                   {students
                     .filter((s) => !s.hasEvaluation)
                     .slice(0, 10)
                     .map((s) => (
-                      <div key={s.studentId} className="p-2 bg-amber-50/50 rounded-md border border-amber-200/60 flex items-center justify-between">
+                      <div
+                        key={s.studentId}
+                        className="p-2 bg-amber-50/50 rounded-md border border-amber-200/60 flex items-center justify-between"
+                      >
                         <div className="truncate max-w-[120px]">
-                          <p className="font-bold text-slate-900 text-xs truncate">{s.fullName}</p>
-                          <p className="text-[10px] text-amber-700 truncate">{s.studentCode}</p>
+                          <p className="font-bold text-slate-900 text-xs truncate">
+                            {s.fullName}
+                          </p>
+                          <p className="text-[10px] text-amber-700 truncate">
+                            {s.studentCode}
+                          </p>
                         </div>
                         <button
                           onClick={() => setRubricStudent(s)}
@@ -644,10 +696,7 @@ export const EvaluationDashboard = () => {
         </Panel>
       )}
 
-      {/* PDF Modal */}
-      {pdfStudent && (
-        <EvaluationPdfModal student={pdfStudent} onClose={() => setPdfStudent(null)} />
-      )}
+      {/* PDF Modal removed */}
     </div>
   );
 };

@@ -22,14 +22,14 @@ public class AdminCompaniesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? semesterId = null)
     {
         if (skip < 0)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Skip must be greater than or equal to 0" }));
         if (take < 1 || take > 1000)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-        var companies = await _companyService.GetAllCompaniesAsync(skip, take);
+        var companies = await _companyService.GetAllCompaniesAsync(skip, take, semesterId);
         return Ok(ApiResponse<IEnumerable<CompanyDto>>.Ok(companies));
     }
 
@@ -46,15 +46,33 @@ public class AdminCompaniesController : ControllerBase
     }
 
     [HttpGet("active")]
-    public async Task<IActionResult> GetActive([FromQuery] int skip = 0, [FromQuery] int take = 100)
+    public async Task<IActionResult> GetActive([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? semesterId = null)
     {
         if (skip < 0)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Skip must be greater than or equal to 0" }));
         if (take < 1 || take > 1000)
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Take must be between 1 and 1000" }));
 
-        var companies = await _companyService.GetActiveCompaniesAsync(skip, take);
+        var companies = await _companyService.GetActiveCompaniesAsync(skip, take, semesterId);
         return Ok(ApiResponse<IEnumerable<CompanyDto>>.Ok(companies));
+    }
+
+    /// <summary>
+    /// Link / unlink a company for a semester ("ngưng liên kết" = isLinked false).
+    /// Existing internships are kept; the company is just hidden from new assignments in that term.
+    /// </summary>
+    [HttpPut("{id:guid}/semester/{semesterId:guid}")]
+    public async Task<IActionResult> SetSemesterLink(Guid id, Guid semesterId, [FromBody] SetSemesterLinkRequest request)
+    {
+        try
+        {
+            await _companyService.SetCompanySemesterStatusAsync(id, semesterId, request.IsLinked);
+            return Ok(ApiResponse<object>.Ok(new { isLinked = request.IsLinked }));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 
     [HttpGet("{id:guid}")]
@@ -65,6 +83,16 @@ public class AdminCompaniesController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Company not found" }));
 
         return Ok(ApiResponse<CompanyDto>.Ok(company));
+    }
+
+    [HttpGet("{id:guid}/detail")]
+    public async Task<IActionResult> GetDetail(Guid id)
+    {
+        var detail = await _companyService.GetAdminCompanyDetailAsync(id);
+        if (detail == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Company not found" }));
+
+        return Ok(ApiResponse<AdminCompanyDetailDto>.Ok(detail));
     }
 
     [HttpGet("by-industry/{industry}")]

@@ -5,7 +5,7 @@ namespace InternLink.Domain.Entities;
 /// <summary>
 /// Defines the evaluation rubric (criteria + weights) for a semester.
 /// Each semester can have at most one rubric, with a lifecycle:
-/// Draft → PendingApproval → Approved → Locked
+/// Admin save → Approved → Locked
 /// </summary>
 public class EvaluationRubric : BaseEntity
 {
