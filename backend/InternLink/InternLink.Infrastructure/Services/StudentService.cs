@@ -31,7 +31,9 @@ public class StudentService : IStudentService
     private static readonly Dictionary<string, ColumnDefinition> StudentColumns = new()
     {
         [nameof(StudentColumn.StudentCode)] = new("mssv", "studentCode", "student number", "studentcode", "ma sv", "masv", "ma sinh vien", "ma so sinh vien", "student id", "studentid"),
-        [nameof(StudentColumn.FullName)] = new("hoten", "ho ten", "ho va ten", "fullname", "full name", "student name", "ten sinh vien", "ho va ten sinh vien", "tên", "họ tên", "full name"),
+        // NOTE: no bare "tên" alias here on purpose — a header "Tên" must map to the
+        // separate Ten (given-name) column, not steal it as a combined full name.
+        [nameof(StudentColumn.FullName)] = new("hoten", "ho ten", "ho va ten", "fullname", "full name", "student name", "ten sinh vien", "ho va ten sinh vien", "họ tên", "họ và tên"),
         [nameof(StudentColumn.Ho)] = new("ho", "họ", "ho dem", "họ đệm", "ho va ten dem", "họ và tên đệm", "last name", "lastname", "họ và đệm"),
         [nameof(StudentColumn.Ten)] = new("ten", "tên", "first name", "firstname", "ten goi", "tên gọi"),
         [nameof(StudentColumn.Class)] = new("lop", "class", "classname", "lop hoc", "class name", "lop sv", "lop sinh vien", "ma lop"),
@@ -57,9 +59,10 @@ public class StudentService : IStudentService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100, Guid? lecturerId = null)
+    public async Task<IEnumerable<StudentDto>> GetAllStudentsAsync(int skip = 0, int take = 100, Guid? lecturerId = null, Guid? semesterId = null)
     {
         var query = _db.Students.Where(s => !s.IsDeleted);
+        query = ApplySemesterScope(query, semesterId);
         query = ApplyLecturerScope(query, lecturerId);
 
         var students = await query
@@ -119,7 +122,8 @@ public class StudentService : IStudentService
 
     public async Task<StudentDto?> GetStudentByCodeAsync(string studentCode, Guid? lecturerId = null)
     {
-        var query = _db.Students.Where(s => s.StudentCode == studentCode && !s.IsDeleted);
+        var normalizedCode = NormalizeStudentCode(studentCode);
+        var query = _db.Students.Where(s => s.StudentCode == normalizedCode && !s.IsDeleted);
         query = ApplyLecturerScope(query, lecturerId);
         var student = await query.FirstOrDefaultAsync();
 
@@ -132,6 +136,18 @@ public class StudentService : IStudentService
             return query;
 
         return query.Where(s => s.Internships.Any(i => !i.IsDeleted && i.LecturerId == lecturerId.Value));
+    }
+
+    private static IQueryable<Student> ApplySemesterScope(IQueryable<Student> query, Guid? semesterId)
+    {
+        if (!semesterId.HasValue || semesterId.Value == Guid.Empty)
+            return query;
+
+        // Students of the selected term = those with a (non-deleted) internship in that term,
+        // plus students not yet enrolled in any term so freshly added profiles stay visible.
+        return query.Where(s =>
+            !s.Internships.Any(i => !i.IsDeleted) ||
+            s.Internships.Any(i => !i.IsDeleted && i.SemesterId == semesterId.Value));
     }
 
     public async Task<StudentDto?> GetStudentByUserIdAsync(Guid userId)
@@ -150,12 +166,24 @@ public class StudentService : IStudentService
         if (student == null)
             return null;
 
-        var internship = await _db.Internships
+        var activeSemesterId = await _db.Semesters
+            .Where(s => !s.IsDeleted && s.Status == SemesterStatus.Active)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync();
+
+        var internshipQuery = _db.Internships
             .Include(i => i.Company)
             .Include(i => i.Lecturer)
             .Include(i => i.Student)
-            .Where(i => !i.IsDeleted && i.StudentId == student.Id)
+            .Where(i => !i.IsDeleted && i.StudentId == student.Id);
+
+        if (activeSemesterId.HasValue)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == activeSemesterId.Value);
+
+        var internship = await internshipQuery
             .OrderByDescending(i => i.CreatedAt)
+            .ThenByDescending(i => i.Id)
             .FirstOrDefaultAsync();
 
         return new StudentPortalProfileDto
@@ -168,11 +196,12 @@ public class StudentService : IStudentService
 
     public async Task<StudentDto> CreateStudentAsync(CreateStudentRequest request)
     {
+        var normalizedStudentCode = NormalizeStudentCode(request.StudentCode);
         var existingStudent = await _db.Students
-            .FirstOrDefaultAsync(s => s.StudentCode == request.StudentCode && !s.IsDeleted);
+            .FirstOrDefaultAsync(s => s.StudentCode == normalizedStudentCode && !s.IsDeleted);
 
         if (existingStudent != null)
-            throw new InvalidOperationException($"Student number '{request.StudentCode}' already exists");
+            throw new InvalidOperationException($"Student number '{normalizedStudentCode}' already exists");
 
         Guid? userId = request.UserId;
         var createdNewUser = false;
@@ -181,7 +210,7 @@ public class StudentService : IStudentService
 
         if (request.GrantAccount || !string.IsNullOrWhiteSpace(request.Username))
         {
-            createdUsername = (request.Username ?? request.StudentCode).Trim();
+            createdUsername = (request.Username ?? normalizedStudentCode).Trim();
             var ensure = await EnsureStudentUserAsync(createdUsername, request.FullName, request.Email);
             userId = ensure.UserId;
             createdNewUser = ensure.CreatedNew;
@@ -198,7 +227,7 @@ public class StudentService : IStudentService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            StudentCode = request.StudentCode.Trim(),
+            StudentCode = normalizedStudentCode,
             FullName = request.FullName.Trim(),
             Class = NullIfWhiteSpace(request.Class),
             Major = NullIfWhiteSpace(request.Major),
@@ -281,11 +310,31 @@ public class StudentService : IStudentService
         if (student == null)
             return false;
 
-        var hasInternships = await _db.Internships
-            .AnyAsync(i => i.StudentId == id && !i.IsDeleted);
+        var internships = await _db.Internships
+            .Where(i => i.StudentId == id && !i.IsDeleted)
+            .ToListAsync();
 
-        if (hasInternships)
-            throw new InvalidOperationException("Cannot delete student with existing internships");
+        if (internships.Count > 0)
+        {
+            var internshipIds = internships.Select(i => i.Id).ToList();
+
+            var hasStarted = internships.Any(i => i.Status != InternshipStatus.NotStarted);
+            var hasSubmissions = await _db.Submissions.AnyAsync(s => internshipIds.Contains(s.InternshipId) && !s.IsDeleted);
+            var hasReports = await _db.WeeklyReports.AnyAsync(w => internshipIds.Contains(w.InternshipId) && !w.IsDeleted);
+            var hasEvaluations = await _db.Evaluations.AnyAsync(e => internshipIds.Contains(e.InternshipId) && !e.IsDeleted);
+            var hasDocuments = await _db.Documents.AnyAsync(d => internshipIds.Contains(d.InternshipId) && !d.IsDeleted);
+
+            if (hasStarted || hasSubmissions || hasReports || hasEvaluations || hasDocuments)
+            {
+                throw new InvalidOperationException(
+                    "Không thể xóa sinh viên đã phát sinh hoạt động thực tập (đã có báo cáo, bài nộp, chấm điểm hoặc hồ sơ). " +
+                    "Hãy chọn sinh viên chưa có hoạt động để xóa hoặc liên hệ quản trị dữ liệu.");
+            }
+
+            // No activity yet (freshly imported into the term) -> safely remove the placeholder
+            // internship rows so the student can later be re-imported into the same term.
+            _db.Internships.RemoveRange(internships);
+        }
 
         student.IsDeleted = true;
         student.UpdatedAt = DateTime.UtcNow;
@@ -296,7 +345,8 @@ public class StudentService : IStudentService
 
     public async Task<bool> StudentCodeExistsAsync(string studentCode, Guid? excludeId = null)
     {
-        var query = _db.Students.Where(s => s.StudentCode == studentCode && !s.IsDeleted);
+        var normalizedCode = NormalizeStudentCode(studentCode);
+        var query = _db.Students.Where(s => s.StudentCode == normalizedCode && !s.IsDeleted);
 
         if (excludeId.HasValue)
             query = query.Where(s => s.Id != excludeId.Value);
@@ -351,7 +401,11 @@ public class StudentService : IStudentService
             var hoTen = GetCell(row, columnMap, StudentColumn.FullName);
             var ho = GetCell(row, columnMap, StudentColumn.Ho);
             var ten = GetCell(row, columnMap, StudentColumn.Ten);
-            var fullName = TemplateHelper.CombineFullName(ho, ten, hoTen);
+            // Prefer structured Họ + Tên columns (as in Mau-danh-sach-SV.xlsx); only fall
+            // back to a combined "Họ tên" column when no separate Họ/Tên columns exist.
+            var fullName = ho != null || ten != null
+                ? TemplateHelper.CombineFullName(ho, ten, null)
+                : TemplateHelper.CombineFullName(null, null, hoTen);
             var className = GetCell(row, columnMap, StudentColumn.Class);
             var major = GetCell(row, columnMap, StudentColumn.Major);
             var email = GetCell(row, columnMap, StudentColumn.Email);
@@ -863,6 +917,9 @@ public class StudentService : IStudentService
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeStudentCode(string value) =>
+        (value ?? string.Empty).Trim();
 
     private static bool IsValidEmail(string email) =>
         Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$");

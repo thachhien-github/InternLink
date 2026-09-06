@@ -2,12 +2,14 @@ import type {
   EvaluationListItemDto,
   FeedbackDto,
   InternshipDto,
+  LecturerCompanySummaryDto,
   NotificationDto,
   SubmissionDto,
   WeeklyReportDto,
 } from "../types/api";
 import type { Student } from "../types/student";
 import type { Submission } from "../types/submission";
+import type { Enterprise } from "../types/enterprise";
 
 /** Check if a URL is an external placeholder (Unsplash) or empty. */
 function isPlaceholderAvatar(url: string): boolean {
@@ -19,6 +21,12 @@ const DEFAULT_AVATAR = "";
 function formatViDate(iso?: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("vi-VN");
+}
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return "—";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function internshipStatusToProgress(status: string): number {
@@ -159,6 +167,7 @@ export function mapInternshipDtoToStudent(
     supervisor: i.supervisorName ?? "—",
     lecturer: lecturerName,
     major: student?.major ?? "—",
+    email: student?.email ?? undefined,
     status: uiStatus,
     progress: internshipStatusToProgress(i.status),
     riskFlag:
@@ -171,6 +180,68 @@ export function mapInternshipDtoToStudent(
     endDate: i.endDate ?? undefined,
     notesCount: 0,
     chatCount: 0,
+  };
+}
+
+export function mapCompanyDetailDtoToEnterpriseDetail(detail: CompanyDetailDto): EnterpriseDetail {
+  return {
+    id: detail.id,
+    name: detail.companyName,
+    industry: detail.industry ?? "—",
+    contactPerson: detail.contactPerson ?? "—",
+    contactEmail: detail.contactEmail ?? "—",
+    contactPhone: detail.contactPhone ?? "—",
+    address: detail.address ?? "—",
+    studentCount: detail.assignedStudentsCount,
+    totalSubmissions: detail.totalSubmissions,
+    totalWeeklyReports: detail.totalWeeklyReports,
+    pendingReviewsCount: detail.pendingReviewsCount,
+    internships: detail.internships.map((i) => ({
+      id: i.id,
+      studentId: i.studentId,
+      studentName: i.studentName,
+      position: i.position ?? "—",
+      status: i.status,
+      startDate: i.startDate ?? undefined,
+      endDate: i.endDate ?? undefined,
+      submissionCount: i.submissionCount,
+    })),
+  };
+}
+
+export function mapLecturerCompanyDtoToEnterprise(
+  company: LecturerCompanySummaryDto,
+): Enterprise {
+  const shortCode =
+    company.companyCode?.trim() ||
+    company.companyName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase() ||
+    "DN";
+
+  return {
+    id: company.id,
+    name: company.companyName,
+    shortCode,
+    badge: "Đang hướng dẫn",
+    badgeType: "teal",
+    studentCount: company.assignedStudentsCount,
+    activeThisWeek: true,
+    contactEmail: company.contactEmail ?? "—",
+    location: company.address ?? "—",
+    status: "Đang hướng dẫn",
+    field: company.industry ?? "—",
+    contactPerson: company.contactPerson ?? "—",
+    contactPhone: company.contactPhone ?? "—",
+    website: "—",
+    capacity: 0,
+    rating: 0,
+    hasStipend: false,
+    isHiring: false,
+    isPriority: false,
   };
 }
 
@@ -223,8 +294,8 @@ export function mapWeeklyReportDtoToUi(r: WeeklyReportDto) {
     submittedAt: r.submittedAt ? formatViDate(r.submittedAt) : "—",
     version: "v1.0",
     status: uiStatus,
-    fileName: `BaoCao_Tuan${r.weekNumber}.pdf`,
-    fileSize: "—",
+    fileName: r.fileName ?? undefined,
+    fileSize: formatFileSize(r.fileSize),
     feedback: r.lecturerComment ?? "",
     feedbackDate: r.updatedAt ? formatViDate(r.updatedAt).split(" ")[0] : "",
     stepIndex: stepMap[r.status] ?? 1,

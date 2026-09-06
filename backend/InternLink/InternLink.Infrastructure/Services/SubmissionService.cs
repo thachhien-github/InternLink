@@ -352,6 +352,11 @@ public class SubmissionService : ISubmissionService
         if (submission == null)
             return null;
 
+        var isAssignedLecturer = submission.Internship.Lecturer?.UserId == userId
+            || await _db.Users.AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if (!isAssignedLecturer)
+            throw new UnauthorizedAccessException("You do not have permission to review this submission");
+
         var newStatus = ResolveFeedbackStatus(request.NewStatus);
         submission.Status = newStatus;
         submission.UpdatedAt = DateTime.UtcNow;
@@ -449,9 +454,23 @@ public class SubmissionService : ISubmissionService
 
     private async Task<Internship?> GetStudentInternshipAsync(Guid userId)
     {
-        return await _db.Internships
+        var activeSemesterId = await _db.Semesters
+            .Where(s => !s.IsDeleted && s.Status == SemesterStatus.Active)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync();
+
+        var query = _db.Internships
             .Include(i => i.Student)
-            .FirstOrDefaultAsync(i => !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
+            .Where(i => !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
+
+        if (activeSemesterId.HasValue)
+            query = query.Where(i => i.SemesterId == activeSemesterId.Value);
+
+        return await query
+            .OrderByDescending(i => i.CreatedAt)
+            .ThenByDescending(i => i.Id)
+            .FirstOrDefaultAsync();
     }
 
     private static SubmissionStatus ResolveFeedbackStatus(string? newStatus)

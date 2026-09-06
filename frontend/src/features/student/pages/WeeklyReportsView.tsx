@@ -50,6 +50,7 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
     name: string;
     size: string;
     time: string;
+    file: File;
   } | null>(null);
   const [showRequirementModal, setShowRequirementModal] = useState(false);
   const [reports, setReports] = useState<WeeklyReportRow[]>([]);
@@ -144,6 +145,7 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       name: file.name,
       size: `${sizeMb} MB`,
       time: "Vừa chọn",
+      file,
     });
     onShowToast(`Đã chọn file: ${file.name}`);
   };
@@ -166,6 +168,7 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       name: file.name,
       size: `${sizeMb} MB`,
       time: "Vừa kéo thả",
+      file,
     });
     onShowToast(`Đã nhận file: ${file.name}`);
   };
@@ -186,7 +189,6 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       return;
     }
 
-    const content = `[PDF] ${selectedPdfFile.name}`;
     const editable =
       !currentReport.id ||
       currentReport.status === "B\u1EA3n nh\u00E1p" ||
@@ -200,22 +202,23 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
 
     setIsSubmitting(true);
     try {
-      let reportId = currentReport.id as string | undefined;
-      if (!reportId) {
-        const created = await weeklyReportService.create({
+      if (!currentReport.id) {
+        await weeklyReportService.upload({
           internshipId,
           weekNumber: selectedWeek,
           title: currentReport.title || `B\u00E1o c\u00E1o tu\u1EA7n ${selectedWeek}`,
-          content,
+          file: selectedPdfFile.file,
         });
-        reportId = created.id;
       } else {
-        await weeklyReportService.update(reportId, {
-          title: currentReport.title,
-          content,
-        });
+        await weeklyReportService.uploadRevision(
+          currentReport.id,
+          currentReport.title,
+          selectedPdfFile.file,
+        );
       }
-      await weeklyReportService.submit(reportId);
+      const refreshed = await reloadReports();
+      const refreshedReport = refreshed.find((r) => r.weekNumber === selectedWeek);
+      if (refreshedReport?.id) await weeklyReportService.submit(refreshedReport.id);
       await reloadReports();
       setSelectedPdfFile(null);
       onShowToast(`Đã nộp báo cáo tuần ${selectedWeek} lên hệ thống.`);
@@ -223,6 +226,26 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       onShowToast(getApiErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  const handleDownloadReport = async () => {
+    if (!currentReport.id || !currentReport.fileName) {
+      onShowToast("Báo cáo này chưa có file để tải xuống.");
+      return;
+    }
+    try {
+      const { blob, filename } = await weeklyReportService.download(
+        currentReport.id,
+        currentReport.fileName,
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
     }
   };
   const handleDownloadWordTemplate = () => {
@@ -567,11 +590,7 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
                         {ver.status}
                       </span>
                       <button
-                        onClick={() =>
-                          onShowToast(
-                            `\u0110ang t\u1EA3i xu\u1ED1ng ${ver.fileName}`,
-                          )
-                        }
+                        onClick={handleDownloadReport}
                         className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
                       >
                         <Download className="w-3 h-3" /> Tải về

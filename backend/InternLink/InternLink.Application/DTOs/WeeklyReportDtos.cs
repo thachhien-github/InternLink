@@ -1,5 +1,7 @@
 namespace InternLink.Application.DTOs;
 
+using Microsoft.AspNetCore.Http;
+
 public sealed class WeeklyReportDto
 {
     public Guid Id { get; set; }
@@ -7,6 +9,10 @@ public sealed class WeeklyReportDto
     public int WeekNumber { get; set; }
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
+    public string? FileName { get; set; }
+    public string? FileUrl { get; set; }
+    public long? FileSize { get; set; }
+    public string? MimeType { get; set; }
     public string Status { get; set; } = null!;
     public DateTime? SubmittedAt { get; set; }
     public string? LecturerComment { get; set; }
@@ -26,6 +32,14 @@ public sealed class UpdateWeeklyReportRequest
 {
     public string? Title { get; set; }
     public string? Content { get; set; }
+}
+
+public sealed class UploadWeeklyReportFormRequest
+{
+    public Guid InternshipId { get; set; }
+    public int WeekNumber { get; set; }
+    public string Title { get; set; } = null!;
+    public IFormFile? File { get; set; }
 }
 
 public sealed class ReviewWeeklyReportRequest

@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<EvaluationRubricCriterion> EvaluationRubricCriteria { get; set; } = null!;
     public DbSet<SystemSetting> SystemSettings { get; set; } = null!;
     public DbSet<AccountRequest> AccountRequests { get; set; } = null!;
+    public DbSet<SemesterLecturer> SemesterLecturers { get; set; } = null!;
+    public DbSet<SemesterCompany> SemesterCompanies { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,6 +65,7 @@ public class AppDbContext : DbContext
             b.HasMany(x => x.Internships).WithOne(x => x.Student).HasForeignKey(x => x.StudentId);
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
             b.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            b.HasIndex(x => x.StudentCode).IsUnique().HasFilter("[IsDeleted] = 0");
         });
 
         modelBuilder.Entity<Lecturer>(b =>
@@ -79,6 +82,7 @@ public class AppDbContext : DbContext
             b.HasIndex(x => x.StaffCode).IsUnique();
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
             b.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            b.HasMany(x => x.SemesterLecturers).WithOne(x => x.Lecturer).HasForeignKey(x => x.LecturerId);
         });
 
         modelBuilder.Entity<Company>(b =>
@@ -87,6 +91,7 @@ public class AppDbContext : DbContext
             b.HasKey(x => x.Id);
             b.Property(x => x.Id).HasColumnName("CompanyId");
             b.Property(x => x.CompanyName).IsRequired().HasMaxLength(250);
+            b.Property(x => x.CompanyCode).HasMaxLength(50);
             b.Property(x => x.Address).HasMaxLength(500);
             b.Property(x => x.Website).HasMaxLength(250);
             b.Property(x => x.Industry).HasMaxLength(150);
@@ -95,6 +100,7 @@ public class AppDbContext : DbContext
             b.Property(x => x.ContactPhone).HasMaxLength(50);
             b.Property(x => x.IsActive).HasDefaultValue(true);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasIndex(x => x.CompanyCode).IsUnique().HasFilter("[CompanyCode] IS NOT NULL");
         });
 
         modelBuilder.Entity<Semester>(b =>
@@ -193,6 +199,9 @@ public class AppDbContext : DbContext
             b.Property(x => x.AreasForImprovement).HasMaxLength(2000);
             b.Property(x => x.EvaluatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.Property(x => x.IsFinalized).HasDefaultValue(false);
+            b.Property(x => x.DefenseStatus).HasDefaultValue(DefenseStatus.NotScheduled);
+            b.Property(x => x.DefenseCouncilName).HasMaxLength(250);
+            b.Property(x => x.DefenseExaminerName).HasMaxLength(250);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.Internship).WithOne().HasForeignKey<Evaluation>(x => x.InternshipId);
             b.HasOne(x => x.EvaluatedBy).WithMany().HasForeignKey(x => x.EvaluatedById).OnDelete(DeleteBehavior.SetNull);
@@ -205,6 +214,9 @@ public class AppDbContext : DbContext
             b.Property(x => x.Id).HasColumnName("WeeklyReportId");
             b.Property(x => x.Title).IsRequired().HasMaxLength(250);
             b.Property(x => x.Content).IsRequired().HasMaxLength(8000);
+            b.Property(x => x.FileName).HasMaxLength(250);
+            b.Property(x => x.FileUrl).HasMaxLength(1000);
+            b.Property(x => x.MimeType).HasMaxLength(100);
             b.Property(x => x.Status).HasDefaultValue(WeeklyReportStatus.Draft);
             b.Property(x => x.LecturerComment).HasMaxLength(2000);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
@@ -316,6 +328,29 @@ public class AppDbContext : DbContext
             b.HasOne(x => x.RequesterUser).WithMany().HasForeignKey(x => x.RequesterUserId).OnDelete(DeleteBehavior.SetNull);
             b.HasIndex(x => x.Status);
             b.HasIndex(x => x.RequesterCode);
+        });
+
+        modelBuilder.Entity<SemesterLecturer>(b =>
+        {
+            b.ToTable("SemesterLecturers");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("SemesterLecturerId");
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasIndex(x => new { x.SemesterId, x.LecturerId }).IsUnique();
+            b.HasOne(x => x.Semester).WithMany(x => x.SemesterLecturers).HasForeignKey(x => x.SemesterId);
+            b.HasOne(x => x.Lecturer).WithMany(x => x.SemesterLecturers).HasForeignKey(x => x.LecturerId);
+        });
+
+        modelBuilder.Entity<SemesterCompany>(b =>
+        {
+            b.ToTable("SemesterCompanies");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("SemesterCompanyId");
+            b.Property(x => x.IsActive).HasDefaultValue(true);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasIndex(x => new { x.SemesterId, x.CompanyId }).IsUnique();
+            b.HasOne(x => x.Semester).WithMany(x => x.SemesterCompanies).HasForeignKey(x => x.SemesterId);
+            b.HasOne(x => x.Company).WithMany(x => x.SemesterCompanies).HasForeignKey(x => x.CompanyId);
         });
 
         modelBuilder.Entity<SystemSetting>(b =>

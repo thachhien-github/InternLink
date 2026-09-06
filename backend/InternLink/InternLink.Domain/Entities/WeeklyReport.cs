@@ -10,6 +10,10 @@ public class WeeklyReport : BaseEntity
     public int WeekNumber { get; set; }
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
+    public string? FileName { get; set; }
+    public string? FileUrl { get; set; }
+    public long? FileSize { get; set; }
+    public string? MimeType { get; set; }
     public WeeklyReportStatus Status { get; set; } = WeeklyReportStatus.Draft;
     public DateTime? SubmittedAt { get; set; }
     public string? LecturerComment { get; set; }

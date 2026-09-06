@@ -1,4 +1,4 @@
-import { apiRequest } from "../lib/apiClient";
+import { apiRequest, downloadAuthenticatedFile } from "../lib/apiClient";
 import type {
   CreateWeeklyReportRequestDto,
   UpdateWeeklyReportRequestDto,
@@ -26,6 +26,37 @@ export const weeklyReportService = {
       method: "POST",
       body,
     });
+  },
+
+  upload(params: {
+    internshipId: string;
+    weekNumber: number;
+    title: string;
+    file: File;
+  }): Promise<WeeklyReportDto> {
+    const form = new FormData();
+    form.append("InternshipId", params.internshipId);
+    form.append("WeekNumber", String(params.weekNumber));
+    form.append("Title", params.title);
+    form.append("File", params.file);
+    return apiRequest<WeeklyReportDto>("/api/WeeklyReport/upload", {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  uploadRevision(id: string, title: string, file: File): Promise<WeeklyReportDto> {
+    const form = new FormData();
+    form.append("Title", title);
+    form.append("File", file);
+    return apiRequest<WeeklyReportDto>(`/api/WeeklyReport/${id}/upload`, {
+      method: "PUT",
+      body: form,
+    });
+  },
+
+  download(id: string, fallbackFilename: string) {
+    return downloadAuthenticatedFile(`/api/WeeklyReport/${id}/download`, fallbackFilename);
   },
 
   update(id: string, body: UpdateWeeklyReportRequestDto): Promise<WeeklyReportDto> {

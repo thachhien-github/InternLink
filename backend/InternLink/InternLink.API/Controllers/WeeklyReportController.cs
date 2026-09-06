@@ -100,6 +100,48 @@ public class WeeklyReportController : ControllerBase
         }
     }
 
+    [HttpPost("upload")]
+    [Authorize(Policy = "RequireStudent")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Upload([FromForm] UploadWeeklyReportFormRequest form)
+    {
+        try
+        {
+            if (form.File == null || form.File.Length == 0)
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
+
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var request = new CreateWeeklyReportRequest
+            {
+                InternshipId = form.InternshipId,
+                WeekNumber = form.WeekNumber,
+                Title = form.Title,
+                Content = form.File.FileName,
+            };
+
+            await using var stream = form.File.OpenReadStream();
+            var report = await _weeklyReportService.CreateDraftWithFileAsync(
+                userId.Value,
+                request,
+                stream,
+                form.File.FileName,
+                form.File.Length,
+                form.File.ContentType);
+            return CreatedAtAction(nameof(GetById), new { id = report.Id }, ApiResponse<WeeklyReportDto>.Ok(report));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
     [HttpPut("{id:guid}")]
     [Authorize(Policy = "RequireStudent")]
     public async Task<IActionResult> UpdateDraft(Guid id, [FromBody] UpdateWeeklyReportRequest request)
@@ -123,6 +165,66 @@ public class WeeklyReportController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpPut("{id:guid}/upload")]
+    [Authorize(Policy = "RequireStudent")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateWithFile(Guid id, [FromForm] UploadWeeklyReportFormRequest form)
+    {
+        try
+        {
+            if (form.File == null || form.File.Length == 0)
+                return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "File is required" }));
+
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            await using var stream = form.File.OpenReadStream();
+            var report = await _weeklyReportService.UpdateDraftWithFileAsync(
+                id,
+                userId.Value,
+                new UpdateWeeklyReportRequest { Title = form.Title },
+                stream,
+                form.File.FileName,
+                form.File.Length,
+                form.File.ContentType);
+            if (report == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Weekly report not found" }));
+
+            return Ok(ApiResponse<WeeklyReportDto>.Ok(report));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> Download(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var file = await _weeklyReportService.DownloadFileAsync(id, userId.Value, isLecturerOrAdmin);
+            if (file == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "File not found" }));
+
+            return File(file.FileContent, file.MimeType, file.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
     }
 

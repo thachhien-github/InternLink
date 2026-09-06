@@ -4,21 +4,36 @@ using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
 using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace InternLink.Infrastructure.Services;
 
 public class WeeklyReportService : IWeeklyReportService
 {
+    private const long MaxFileSize = 20 * 1024 * 1024;
+    private const string UploadFolder = "uploads/weekly-reports";
+
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
     private readonly INotificationService _notificationService;
+    private readonly IWebHostEnvironment? _env;
 
     public WeeklyReportService(AppDbContext db, IMapper mapper, INotificationService notificationService)
+        : this(db, mapper, notificationService, null)
+    {
+    }
+
+    public WeeklyReportService(
+        AppDbContext db,
+        IMapper mapper,
+        INotificationService notificationService,
+        IWebHostEnvironment? env)
     {
         _db = db;
         _mapper = mapper;
         _notificationService = notificationService;
+        _env = env;
     }
 
     public async Task<WeeklyReportDto?> GetByIdAsync(Guid id)
@@ -127,6 +142,47 @@ public class WeeklyReportService : IWeeklyReportService
         return _mapper.Map<WeeklyReportDto>(report);
     }
 
+    public async Task<WeeklyReportDto> CreateDraftWithFileAsync(
+        Guid userId,
+        CreateWeeklyReportRequest request,
+        Stream fileStream,
+        string originalFileName,
+        long fileSize,
+        string mimeType)
+    {
+        ValidateFile(fileStream, originalFileName, fileSize, mimeType);
+        var internship = await GetOwnedInternshipAsync(userId, request.InternshipId);
+        if (internship == null)
+            throw new UnauthorizedAccessException("Internship does not belong to the current student");
+
+        var duplicate = await _db.WeeklyReports.AnyAsync(r =>
+            r.InternshipId == request.InternshipId &&
+            r.WeekNumber == request.WeekNumber &&
+            !r.IsDeleted);
+        if (duplicate)
+            throw new InvalidOperationException($"A weekly report for week {request.WeekNumber} already exists");
+
+        var (relativePath, savedFileName) = await SaveFileAsync(fileStream, originalFileName, request.InternshipId);
+        var report = new WeeklyReport
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = request.InternshipId,
+            WeekNumber = request.WeekNumber,
+            Title = request.Title,
+            Content = savedFileName,
+            FileName = originalFileName,
+            FileUrl = relativePath,
+            FileSize = fileSize,
+            MimeType = mimeType,
+            Status = WeeklyReportStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.WeeklyReports.Add(report);
+        await _db.SaveChangesAsync();
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
     public async Task<WeeklyReportDto?> UpdateDraftAsync(Guid id, Guid userId, UpdateWeeklyReportRequest request)
     {
         var report = await LoadOwnedReportAsync(id, userId);
@@ -146,6 +202,74 @@ public class WeeklyReportService : IWeeklyReportService
         await _db.SaveChangesAsync();
 
         return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<WeeklyReportDto?> UpdateDraftWithFileAsync(
+        Guid id,
+        Guid userId,
+        UpdateWeeklyReportRequest request,
+        Stream fileStream,
+        string originalFileName,
+        long fileSize,
+        string mimeType)
+    {
+        ValidateFile(fileStream, originalFileName, fileSize, mimeType);
+        var report = await LoadOwnedReportAsync(id, userId);
+        if (report == null)
+            return null;
+
+        if (report.Status != WeeklyReportStatus.Draft && report.Status != WeeklyReportStatus.RevisionRequested)
+            throw new InvalidOperationException("Only draft or revision-requested reports can be updated");
+
+        var oldFileUrl = report.FileUrl;
+        var (relativePath, savedFileName) = await SaveFileAsync(fileStream, originalFileName, report.InternshipId);
+        if (!string.IsNullOrWhiteSpace(request.Title))
+            report.Title = request.Title;
+        report.Content = savedFileName;
+        report.FileName = originalFileName;
+        report.FileUrl = relativePath;
+        report.FileSize = fileSize;
+        report.MimeType = mimeType;
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        DeleteStoredFile(oldFileUrl);
+        return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<WeeklyReportFileDownloadDto?> DownloadFileAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+        if (report == null || string.IsNullOrWhiteSpace(report.FileUrl))
+            return null;
+
+        var ownsInternship = report.Internship.Student?.UserId == userId;
+        var isAssignedLecturer = report.Internship.Lecturer?.UserId == userId;
+        if (!ownsInternship && !isAssignedLecturer && !isLecturerOrAdmin)
+            throw new UnauthorizedAccessException("You do not have access to this file");
+
+        if (isLecturerOrAdmin && !ownsInternship && !isAssignedLecturer)
+        {
+            var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+            if (!isSuperAdmin)
+                throw new UnauthorizedAccessException("You do not have access to this file");
+        }
+
+        var fullPath = Path.Combine(GetUploadRoot(), report.FileUrl.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        if (!File.Exists(fullPath))
+            return null;
+
+        return new WeeklyReportFileDownloadDto
+        {
+            FileContent = await File.ReadAllBytesAsync(fullPath),
+            FileName = report.FileName ?? Path.GetFileName(fullPath),
+            MimeType = report.MimeType ?? "application/pdf",
+        };
     }
 
     public async Task<WeeklyReportDto?> SubmitAsync(Guid id, Guid userId)
@@ -309,8 +433,71 @@ public class WeeklyReportService : IWeeklyReportService
 
     private async Task<Internship?> GetStudentInternshipAsync(Guid userId)
     {
+        var activeSemesterId = await _db.Semesters
+            .Where(s => !s.IsDeleted && s.Status == SemesterStatus.Active)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync();
+
+        var query = _db.Internships
+            .Include(i => i.Student)
+            .Where(i => !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
+
+        if (activeSemesterId.HasValue)
+            query = query.Where(i => i.SemesterId == activeSemesterId.Value);
+
+        return await query
+            .OrderByDescending(i => i.CreatedAt)
+            .ThenByDescending(i => i.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<Internship?> GetOwnedInternshipAsync(Guid userId, Guid internshipId)
+    {
         return await _db.Internships
             .Include(i => i.Student)
-            .FirstOrDefaultAsync(i => !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
+            .FirstOrDefaultAsync(i => i.Id == internshipId && !i.IsDeleted && i.Student != null && i.Student.UserId == userId);
     }
+
+    private static void ValidateFile(Stream fileStream, string originalFileName, long fileSize, string mimeType)
+    {
+        if (fileStream == null || fileSize <= 0 || fileSize > MaxFileSize)
+            throw new InvalidOperationException("File must be between 1 byte and 20 MB");
+        if (!string.Equals(Path.GetExtension(originalFileName), ".pdf", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Only PDF files are accepted");
+        if (!string.Equals(mimeType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The uploaded file must have PDF content type");
+    }
+
+    private async Task<(string RelativePath, string SavedFileName)> SaveFileAsync(
+        Stream fileStream,
+        string originalFileName,
+        Guid internshipId)
+    {
+        var uploadPath = Path.Combine(GetUploadRoot(), UploadFolder, internshipId.ToString());
+        Directory.CreateDirectory(uploadPath);
+        var safeBase = Path.GetFileNameWithoutExtension(originalFileName);
+        var savedFileName = $"{Guid.NewGuid()}_{safeBase}.pdf";
+        var fullPath = Path.Combine(uploadPath, savedFileName);
+        await using var stream = new FileStream(fullPath, FileMode.CreateNew);
+        await fileStream.CopyToAsync(stream);
+        return (
+            Path.Combine(UploadFolder, internshipId.ToString(), savedFileName).Replace("\\", "/"),
+            savedFileName);
+    }
+
+    private void DeleteStoredFile(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return;
+
+        var fullPath = Path.Combine(GetUploadRoot(), relativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        if (File.Exists(fullPath))
+            File.Delete(fullPath);
+    }
+
+    private string GetUploadRoot() =>
+        _env == null
+            ? Directory.GetCurrentDirectory()
+            : string.IsNullOrEmpty(_env.WebRootPath) ? _env.ContentRootPath : _env.WebRootPath;
 }

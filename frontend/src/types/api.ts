@@ -85,6 +85,7 @@ export interface LecturerDto {
 
 export interface CompanyDto {
   id: string;
+  companyCode?: string | null;
   companyName: string;
   address?: string | null;
   website?: string | null;
@@ -94,6 +95,9 @@ export interface CompanyDto {
   contactPhone?: string | null;
   capacity?: number | null;
   isActive: boolean;
+  studentCount?: number;
+  /** Link status for the requested semester: false = "ngưng liên kết". */
+  isSemesterLinked?: boolean | null;
   createdAt: string;
   updatedAt?: string | null;
 }
@@ -250,6 +254,106 @@ export interface CompanySummaryDto {
   contactPhone?: string | null;
 }
 
+export interface LecturerStudentListItemDto {
+  studentId: string;
+  internshipId: string;
+  studentCode: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  class?: string | null;
+  major?: string | null;
+  companyId?: string | null;
+  companyName?: string | null;
+  position?: string | null;
+  internshipStatus: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  weeklyReportCount: number;
+  pendingReportCount: number;
+  submissionCount: number;
+  finalGrade?: number | null;
+  hasEvaluation: boolean;
+  isEvaluationFinalized: boolean;
+  progressPercent: number;
+}
+
+export interface CompanyDetailDto {
+  id: string;
+  companyName: string;
+  industry?: string | null;
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
+  assignedStudentsCount: number;
+  totalSubmissions: number;
+  totalWeeklyReports: number;
+  pendingReviewsCount: number;
+  internships: InternshipListItemDto[];
+}
+
+export interface LecturerCompanySummaryDto {
+  id: string;
+  companyCode?: string | null;
+  companyName: string;
+  industry?: string | null;
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
+  assignedStudentsCount: number;
+}
+
+export interface LecturerDashboardStatsDto {
+  totalStudents: number;
+  interningCount: number;
+  pendingReviewsCount: number;
+  completedCount: number;
+  overdueReportsCount: number;
+  averageGrade: number;
+  evaluatedCount: number;
+  statusDistribution: Record<string, number>;
+}
+
+export interface LecturerWeeklyTrendDto {
+  weekNumber: number;
+  label: string;
+  onTimeCount: number;
+  lateCount: number;
+  missingCount: number;
+  totalStudents: number;
+  complianceRate: number;
+}
+
+export interface LecturerGradeDistributionDto {
+  excellentCount: number;
+  goodCount: number;
+  fairCount: number;
+  averageCount: number;
+  failCount: number;
+  notYetGradedCount: number;
+  overallAverage: number;
+  totalStudents: number;
+}
+
+export interface LecturerCompanyStatDto {
+  companyName: string;
+  studentCount: number;
+  positions: string;
+  averageGrade: number;
+  partnershipLevel: string;
+}
+
+export interface LecturerActivityStatsDto {
+  reviewedReportsCount: number;
+  pendingReportsCount: number;
+  completedStudentsCount: number;
+  totalStudentsCount: number;
+  averageResponseDays: number;
+  complianceRate: number;
+}
+
 export interface InternshipDto {
   id: string;
   studentId: string;
@@ -298,6 +402,10 @@ export interface WeeklyReportDto {
   weekNumber: number;
   title: string;
   content: string;
+  fileName?: string | null;
+  fileUrl?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
   status: string;
   submittedAt?: string | null;
   lecturerComment?: string | null;
@@ -397,6 +505,17 @@ export interface EvaluationDetailDto {
   evaluatedAt: string;
   updatedAt?: string | null;
   isFinalized: boolean;
+  defenseDate?: string | null;
+  defenseStatus: "NotScheduled" | "Scheduled" | "Completed";
+  defenseCouncilName?: string | null;
+  defenseExaminerName?: string | null;
+  criteriaScores?: Array<{
+    criterionId?: string | null;
+    criterionName: string;
+    maxScore: number;
+    score: number;
+    comment?: string | null;
+  }>;
   evaluatedBy?: { id: string; fullName?: string | null; email?: string | null } | null;
   internship?: {
     id: string;
@@ -471,6 +590,25 @@ export interface StudentImportErrorDto {
   message: string;
 }
 
+export interface AdminCompanyDetailDto {
+  company: CompanyDto;
+  internships: InternshipListItemDto[];
+}
+
+export interface InternshipListItemDto {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  companyId?: string;
+  companyName?: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  position?: string;
+  submissionCount: number;
+  createdAt: string;
+}
+
 export interface LecturerImportResultDto {
   totalRows: number;
   successCount: number;
@@ -494,14 +632,18 @@ export interface LecturerImportErrorDto {
 export interface CompanyImportResultDto {
   totalRows: number;
   successCount: number;
+  createdCount: number;
+  updatedCount: number;
   failedCount: number;
   skippedDuplicateCount: number;
   createdCompanies: CompanyDto[];
+  updatedCompanies: CompanyDto[];
   errors?: CompanyImportErrorDto[];
 }
 
 export interface CompanyImportErrorDto {
   rowNumber: number;
+  companyCode?: string | null;
   companyName?: string | null;
   message: string;
 }
