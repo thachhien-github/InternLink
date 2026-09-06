@@ -19,7 +19,11 @@ public class DocumentService : IDocumentService
     private readonly IWebHostEnvironment _env;
 
     private const string UploadFolder = "uploads/documents";
-    private static readonly string[] AllowedExtensions = { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".jpg", ".jpeg", ".png", ".gif" };
+    private static readonly string[] AllowedExtensions =
+    {
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt",
+        ".jpg", ".jpeg", ".png", ".gif"
+    };
 
     public DocumentService(AppDbContext db, IMapper mapper, IWebHostEnvironment env)
     {
@@ -27,6 +31,7 @@ public class DocumentService : IDocumentService
         _mapper = mapper;
         _env = env;
     }
+
 
     public async Task<IEnumerable<DocumentListItemDto>> GetAllDocumentsAsync(int skip = 0, int take = 100)
     {
@@ -545,6 +550,8 @@ public class DocumentService : IDocumentService
             ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ".xls" => "application/vnd.ms-excel",
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".ppt" => "application/vnd.ms-powerpoint",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             ".txt" => "text/plain",
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",

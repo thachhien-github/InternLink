@@ -190,4 +190,22 @@ public class DocumentServiceTests
         items.Should().ContainSingle();
         items.First().Title.Should().Be("Internship Spec");
     }
+
+    [Fact]
+    public async Task UploadDocumentAsync_PowerPointFile_ShouldBeAccepted()
+    {
+        var db = GetDb();
+        var (_, lecturerUser, _, _, internship, _) = await SeedDataAsync(db);
+        var service = CreateService(db);
+        await using var fileStream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        var result = await service.UploadDocumentAsync(
+            new CreateDocumentRequest { InternshipId = internship.Id, Title = "Slide" },
+            fileStream,
+            "presentation.pptx",
+            lecturerUser.Id);
+
+        result.FileName.Should().Be("presentation.pptx");
+        result.MimeType.Should().Be("application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    }
 }

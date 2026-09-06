@@ -3,28 +3,22 @@ import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import {
-  FileText,
   Download,
   Eye,
   Search,
-  FileCheck,
   FolderOpen,
-  Edit,
-  Trash2,
-  BookOpen,
   CloudUpload,
   LayoutGrid,
   List,
   Archive,
   CheckCircle2,
   History,
-  X,
-  ShieldCheck,
-  AlertTriangle,
   RotateCcw,
+  AlertTriangle,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 import { UploadDocumentWorkspace } from "../components/UploadDocumentWorkspace";
-import { StudentDocumentLibrary } from "../components/StudentDocumentLibrary";
 import { DocumentDetailWorkspace } from "../components/DocumentDetailWorkspace";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
@@ -41,12 +35,11 @@ export const TemplatesView = () => {
   const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED" | "DRAFT">("CIRCULATING");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const { semesters, selectedSemester, selectSemester } = useSemester();
-  const [semesterFilter, setSemesterFilter] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState("Tất cả");
   const [majorFilter, setMajorFilter] = useState("Tất cả");
   const [fileTypeFilter, setFileTypeFilter] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
-  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -56,6 +49,8 @@ export const TemplatesView = () => {
   const [archiveCustomNote, setArchiveCustomNote] = useState("");
   const [viewingAuditLogDoc, setViewingAuditLogDoc] = useState<DocumentItem | null>(null);
   const [showGlobalAuditLogs, setShowGlobalAuditLogs] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -67,15 +62,21 @@ export const TemplatesView = () => {
     (async () => {
       setIsLoadingDocs(true);
       try {
-        const [internships, docs] = await Promise.all([
+        const [internshipsResult, documentsResult] = await Promise.allSettled([
           lecturerInternshipsService.getAll(),
           documentService.getAll(),
         ]);
         if (cancelled) return;
-        if (internships[0]?.id) setDefaultInternshipId(internships[0].id);
-        if (docs && docs.length > 0) {
-          const mapped = docs.map(mapDocumentListItemToUi) as unknown as DocumentItem[];
+
+        if (internshipsResult.status === "fulfilled" && internshipsResult.value[0]?.id) {
+          setDefaultInternshipId(internshipsResult.value[0].id);
+        }
+
+        if (documentsResult.status === "fulfilled") {
+          const mapped = documentsResult.value.map(mapDocumentListItemToUi) as unknown as DocumentItem[];
           setDocuments(mapped);
+        } else {
+          throw documentsResult.reason;
         }
       } catch (err) {
         showToast(getApiErrorMessage(err));
@@ -88,58 +89,6 @@ export const TemplatesView = () => {
     };
   }, []);
 
-  const filteredDocuments = useMemo(() => {
-    return documents.filter((doc) => {
-      const matchesSearch =
-        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.uploader.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      const matchesCat =
-        selectedCategory === "Tất cả" || doc.category === selectedCategory;
-
-      const matchesSem =
-        semesterFilter === "Tất cả" ||
-        doc.semester === "Tất cả học kỳ" ||
-        doc.semester === semesterFilter;
-
-      const matchesMajor =
-        majorFilter === "Tất cả" ||
-        doc.major === "Tất cả ngành" ||
-        doc.major === majorFilter;
-
-      const matchesType =
-        fileTypeFilter === "Tất cả" || doc.fileType === fileTypeFilter;
-
-      // Tab filter
-      let matchesTab = true;
-      if (activeTab === "CIRCULATING") {
-        matchesTab = doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
-      } else if (activeTab === "ARCHIVED") {
-        matchesTab = doc.status === "Ngưng lưu hành" || (doc as any).status === "Lưu trữ";
-      } else if (activeTab === "DRAFT") {
-        matchesTab = doc.status === "Bản nháp" || (doc as any).status === "Cần cập nhật";
-      }
-
-      return (
-        matchesSearch &&
-        matchesCat &&
-        matchesSem &&
-        matchesMajor &&
-        matchesType &&
-        matchesTab
-      );
-    });
-  }, [
-    documents,
-    searchQuery,
-    selectedCategory,
-    semesterFilter,
-    majorFilter,
-    fileTypeFilter,
-    activeTab,
-  ]);
-
   const totalDocs = documents.length;
   const circulatingCount = documents.filter(
     (d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng",
@@ -151,6 +100,47 @@ export const TemplatesView = () => {
     (acc, curr) => acc + (curr.downloads || 0),
     0,
   );
+
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesSearch =
+      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.uploader.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCat =
+      selectedCategory === "Tất cả" || doc.category === selectedCategory;
+
+    const matchesSem =
+      semesterFilter === "Tất cả" ||
+      doc.semester === "Tất cả học kỳ" ||
+      doc.semester === semesterFilter;
+
+    const matchesMajor =
+      majorFilter === "Tất cả" ||
+      doc.major === "Tất cả ngành" ||
+      doc.major === majorFilter;
+
+    const matchesType =
+      fileTypeFilter === "Tất cả" || doc.fileType === fileTypeFilter;
+
+    let matchesTab = true;
+    if (activeTab === "CIRCULATING") {
+      matchesTab = doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
+    } else if (activeTab === "ARCHIVED") {
+      matchesTab = doc.status === "Ngưng lưu hành" || (doc as any).status === "Lưu trữ";
+    } else if (activeTab === "DRAFT") {
+      matchesTab = doc.status === "Bản nháp" || (doc as any).status === "Cần cập nhật";
+    }
+
+    return (
+      matchesSearch &&
+      matchesCat &&
+      matchesSem &&
+      matchesMajor &&
+      matchesType &&
+      matchesTab
+    );
+  });
 
   const handleDownload = async (doc: DocumentItem) => {
     try {
@@ -167,19 +157,6 @@ export const TemplatesView = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast(`Đã tải xuống: ${doc.title}`);
-    } catch (err) {
-      showToast(getApiErrorMessage(err));
-    }
-  };
-
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài liệu "${title}"?`)) {
-      return;
-    }
-    try {
-      await documentService.delete(id);
-      setDocuments((prev) => prev.filter((d) => d.id !== id));
-      showToast(`Đã xóa tài liệu "${title}" khỏi hệ thống.`);
     } catch (err) {
       showToast(getApiErrorMessage(err));
     }
@@ -316,7 +293,7 @@ export const TemplatesView = () => {
         );
         showToast(`Đã cập nhật tài liệu "${payload.title}"`);
       } else {
-        if (!payload.rawFile) {
+        if (!payload.rawFiles || payload.rawFiles.length === 0) {
           showToast("Vui lòng chọn file trước khi tải lên");
           return;
         }
@@ -324,18 +301,16 @@ export const TemplatesView = () => {
           showToast("Không tìm thấy đợt thực tập để gắn tài liệu");
           return;
         }
-        const created = await documentService.upload({
+        const result = await documentService.uploadSimple({
           internshipId: defaultInternshipId,
-          title: payload.title,
-          description: payload.description,
-          category: payload.category,
-          isRequired: false,
-          file: payload.rawFile,
+          files: payload.rawFiles,
         });
-        setDocuments((prev) => [mapDocumentListItemToUi(created) as any, ...prev]);
-        showToast(`Đã tải lên: ${created.title}`);
+        const newDocs = result.documents.map((d) => mapDocumentListItemToUi(d) as any);
+        setDocuments((prev) => [...newDocs, ...prev]);
+        showToast(`Đã tải lên ${result.count} tệp${result.count > 1 ? "s" : ""}: ${result.documents.map((d) => d.title).join(", ")}`);
       }
       setEditingDoc(null);
+      setUploadModalOpen(false);
       setSubView("list");
     } catch (err) {
       showToast(getApiErrorMessage(err));
@@ -359,15 +334,19 @@ export const TemplatesView = () => {
     return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [documents]);
 
-  if (subView === "upload") {
+  if (subView === "detail" && selectedDoc) {
     return (
-      <UploadDocumentWorkspace
-        initialData={editingDoc}
-        onBack={() => {
-          setEditingDoc(null);
-          setSubView("list");
+      <DocumentDetailWorkspace
+        document={selectedDoc}
+        onBack={() => setSubView("list")}
+        onDownload={handleDownload}
+        onArchiveToggle={(doc) => {
+          if (doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng") {
+            setArchivingDoc(doc);
+          } else {
+            handleReactivateCirculation(doc);
+          }
         }}
-        onSave={handleSaveDocument}
       />
     );
   }
@@ -425,67 +404,35 @@ export const TemplatesView = () => {
           {
             label: "+ Đăng biểu mẫu mới",
             icon: CloudUpload,
-            onClick: () => {
-              setEditingDoc(null);
-              setSubView("upload");
-            },
+            onClick: () => setUploadModalOpen(true),
             variant: "primary",
           },
         ]}
       />
 
       {/* KPI GRID */}
-      <KpiGrid>
-        <KpiCard
-          tone="blue"
-          title="Tổng biểu mẫu & tài liệu"
-          value={totalDocs}
-          unit="tài liệu"
-          icon={FolderOpen}
-          footer="Bao gồm cả tài liệu đang lưu trữ log"
-          onClick={() => {
-            setActiveTab("ALL");
-            setSelectedCategory("Tất cả");
-            setSemesterFilter("Tất cả");
-          }}
-        />
-        <KpiCard
-          tone="emerald"
-          title="Đang lưu hành (Public SV)"
-          value={circulatingCount}
-          unit="biểu mẫu"
-          icon={CheckCircle2}
-          footer="Sinh viên đợt thực tập có thể thấy & tải"
-          onClick={() => {
-            setActiveTab("CIRCULATING");
-            setSelectedCategory("Tất cả");
-          }}
-        />
-        <KpiCard
-          tone="amber"
-          title="Ngưng lưu hành & Đã lưu Log"
-          value={archivedCount}
-          unit="văn bản"
-          icon={Archive}
-          footer="Đã ẩn khỏi sinh viên, lưu nhật ký"
-          onClick={() => {
-            setActiveTab("ARCHIVED");
-            setSelectedCategory("Tất cả");
-          }}
-        />
-        <KpiCard
-          tone="sky"
-          title="Tổng lượt tải của SV"
-          value={totalDownloadsThisWeek.toLocaleString()}
-          unit="lượt tải"
-          icon={Download}
-          footer="Theo dõi mức độ sử dụng biểu mẫu"
-          onClick={() => {
-            setSearchQuery("");
-            setSelectedCategory("Tất cả");
-          }}
-        />
-      </KpiGrid>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tổng biểu mẫu & tài liệu</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{documents.length}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Bao gồm cả tài liệu đang lưu trữ log</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Đang lưu hành (Public SV)</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{documents.filter((d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng").length}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Sinh viên đợt thực tập có thể thấy & tải</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ngưng lưu hành & Đã lưu Log</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{documents.filter((d) => d.status === "Ngưng lưu hành" || (d as any).status === "Lưu trữ").length}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Đã ẩn khỏi sinh viên, lưu nhật ký</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tổng lượt tải của SV</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{documents.reduce((acc, curr) => acc + (curr.downloads || 0), 0).toLocaleString()}</p>
+          <p className="text-[11px] text-slate-400 mt-1">Theo dõi mức độ sử dụng biểu mẫu</p>
+        </div>
+      </div>
 
       {/* TAB SELECTOR & FILTERS */}
       <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
@@ -508,7 +455,7 @@ export const TemplatesView = () => {
                   activeTab === "CIRCULATING" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
                 }`}
               >
-                {circulatingCount}
+                {documents.filter((d) => d.status === "Đang lưu hành" || (d as any).status === "Đang áp dụng").length}
               </span>
             </button>
 
@@ -527,7 +474,7 @@ export const TemplatesView = () => {
                   activeTab === "ARCHIVED" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
                 }`}
               >
-                {archivedCount}
+                {documents.filter((d) => d.status === "Ngưng lưu hành" || (d as any).status === "Lưu trữ").length}
               </span>
             </button>
 
@@ -550,7 +497,7 @@ export const TemplatesView = () => {
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              Tất cả ({totalDocs})
+              Tất cả ({documents.length})
             </button>
           </div>
 
@@ -688,7 +635,13 @@ export const TemplatesView = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
-                {filteredDocuments.length === 0 ? (
+                {isLoadingDocs ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                      Đang tải danh sách tài liệu...
+                    </td>
+                  </tr>
+                ) : filteredDocuments.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
                       Không có biểu mẫu nào phù hợp với bộ lọc hiện tại.
@@ -832,24 +785,6 @@ export const TemplatesView = () => {
                               </button>
                             )}
 
-                            <button
-                              onClick={() => {
-                                setEditingDoc(doc);
-                                setSubView("upload");
-                              }}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600"
-                              title="Chỉnh sửa phiên bản"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDelete(doc.id, doc.title)}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-rose-600"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -923,9 +858,7 @@ export const TemplatesView = () => {
                       {doc.fileType} • {doc.fileSize} • {doc.semester}
                     </span>
                     <span>{doc.downloads.toLocaleString()} lượt tải</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 pt-1">
+                  </div>                    <div className="flex items-center gap-1.5 pt-1">
                     <button
                       onClick={() => {
                         setSelectedDoc(doc);
@@ -967,6 +900,56 @@ export const TemplatesView = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* MODAL UPLOAD TÀI LIỆU */}
+      {uploadModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <CloudUpload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Tải tài liệu lên kho biểu mẫu
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Tải file PDF/Word/Excel/Slide đính kèm cho đợt thực tập đang chọn.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setEditingDoc(null);
+                  setSubView("list");
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Thông tin đợt thực tập */}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
+              <p className="font-bold">Đợt thực tập:</p>
+              <p className="text-slate-600">
+                {defaultInternshipId
+                  ? `Gắn vào đợt thực tập đang chọn`                    : "Chưa có đợt thực tập nào. Vui lòng chọn trước."}
+              </p>
+            </div>
+
+            <UploadDocumentWorkspace
+              initialData={null}
+              onBack={() => {
+                setUploadModalOpen(false);
+              }}
+              onSave={handleSaveDocument}
+            />
+          </div>
         </div>
       )}
 

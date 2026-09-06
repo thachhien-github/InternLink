@@ -8,23 +8,23 @@ namespace InternLink.Application.DTOs;
 public class CreateDocumentRequest
 {
     public Guid InternshipId { get; set; }
-    public string Title { get; set; } = null!;
+    public string? Title { get; set; }
     public string? Description { get; set; }
     public string? Category { get; set; }
     public bool IsRequired { get; set; } = false;
 }
 
 /// <summary>
-/// Form model for multipart upload endpoint
+/// Form model for multipart upload endpoint (hỗ trợ nhiều file)
 /// </summary>
 public class UploadDocumentFormRequest
 {
     public Guid InternshipId { get; set; }
-    public string Title { get; set; } = null!;
+    public string? Title { get; set; }
     public string? Description { get; set; }
     public string? Category { get; set; }
     public bool IsRequired { get; set; } = false;
-    public IFormFile? File { get; set; }
+    public List<IFormFile>? Files { get; set; }
 }
 
 /// <summary>
