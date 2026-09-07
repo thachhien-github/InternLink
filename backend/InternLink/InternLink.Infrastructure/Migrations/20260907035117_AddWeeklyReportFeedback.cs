@@ -36,7 +36,7 @@ namespace InternLink.Infrastructure.Migrations
                 column: "WeeklyReportId",
                 principalTable: "WeeklyReports",
                 principalColumn: "WeeklyReportId",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.NoAction);
         }
 
         /// <inheritdoc />

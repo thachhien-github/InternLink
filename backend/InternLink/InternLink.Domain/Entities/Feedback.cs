@@ -13,4 +13,6 @@ public class Feedback : BaseEntity
 
     public string Comment { get; set; } = null!;
     public bool IsPublic { get; set; } = true;
+    public DateTime? StudentReadAt { get; set; }
+    public DateTime? LecturerReadAt { get; set; }
 }

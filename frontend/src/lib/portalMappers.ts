@@ -290,9 +290,10 @@ export function mapWeeklyReportDtoToUi(r: WeeklyReportDto) {
     weekNumber: r.weekNumber,
     title: r.title,
     content: r.content,
-    deadline: "—",
+    deadline: r.dueDate ? formatViDate(r.dueDate).split(" ")[0] : "—",
     submittedAt: r.submittedAt ? formatViDate(r.submittedAt) : "—",
-    version: "v1.0",
+    version: `v${r.version}`,
+    versions: r.versions ?? [],
     status: uiStatus,
     fileName: r.fileName ?? undefined,
     fileSize: formatFileSize(r.fileSize),
@@ -516,35 +517,46 @@ export type StudentFeedbackUiItem = {
 export function mapFeedbackDtoToStudentUi(
   f: FeedbackDto,
   submission: SubmissionDto,
+  threadFeedbacks: FeedbackDto[] = [f],
 ): StudentFeedbackUiItem {
+  const orderedFeedbacks = [...threadFeedbacks].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  const latestLecturerFeedback = [...orderedFeedbacks]
+    .reverse()
+    .find((feedback) => feedback.authorRole === "Lecturer") ?? f;
+  const hasUnreadLecturerFeedback = orderedFeedbacks.some(
+    (feedback) => feedback.authorRole === "Lecturer" && !feedback.studentReadAt,
+  );
+
   return {
-    id: f.id,
+    id: `submission-thread-${submission.id}`,
     submissionId: submission.id,
     sourceType: "submission",
-    senderName: f.lecturerName ?? "Giảng viên hướng dẫn",
+    senderName: latestLecturerFeedback.lecturerName ?? "Giảng viên hướng dẫn",
     senderRole: "Giảng viên hướng dẫn",
     avatar: DEFAULT_AVATAR,
-    timeAgo: formatViDate(f.createdAt),
-    dateStr: formatViDate(f.createdAt),
-    sortKey: f.createdAt,
+    timeAgo: formatViDate(latestLecturerFeedback.createdAt),
+    dateStr: formatViDate(latestLecturerFeedback.createdAt),
+    sortKey: latestLecturerFeedback.createdAt,
     title: submission.title ?? mapSubmissionTypeToUi(submission.type),
     category: mapSubmissionTypeToUi(submission.type),
     priority: submission.status === "RevisionRequested" ? "Khẩn" : "Thường",
-    status: mapSubmissionFeedbackStatus(submission.status),
-    detail: f.comment,
+    status: hasUnreadLecturerFeedback ? "Chưa xem" : mapSubmissionFeedbackStatus(submission.status),
+    detail: latestLecturerFeedback.comment,
     attachments: [],
     currentWorkflowStep: submissionToWorkflowStep(submission.status),
-    conversation: [
-      {
-        id: f.id,
-        sender: "lecturer",
-        senderName: f.lecturerName ?? "Giảng viên",
-        avatar: DEFAULT_AVATAR,
-        time: formatViDate(f.createdAt),
-        text: f.comment,
-        attachments: [],
-      },
-    ],
+    conversation: orderedFeedbacks.map((feedback) => ({
+      id: feedback.id,
+      sender: feedback.authorRole === "Lecturer" ? "lecturer" : "student",
+      senderName: feedback.authorRole === "Lecturer"
+        ? feedback.lecturerName ?? "Giảng viên"
+        : "Sinh viên",
+      avatar: DEFAULT_AVATAR,
+      time: formatViDate(feedback.createdAt),
+      text: feedback.comment,
+      attachments: [],
+    })),
     revisions: [
       {
         version: `v${submission.version}`,
@@ -573,6 +585,9 @@ export function mapWeeklyReportFeedbackToStudentUi(
   if (r.status === "RevisionRequested") feedbackStatus = "Cần chỉnh sửa";
   else if (r.status === "Approved") feedbackStatus = "Đã hoàn thành";
   else if (r.status === "Reviewed") feedbackStatus = "Đã xem";
+  if ((r.feedbacks ?? []).some((feedback) => feedback.authorRole === "Lecturer" && !feedback.studentReadAt)) {
+    feedbackStatus = "Chưa xem";
+  }
 
   const when = r.updatedAt ?? r.createdAt;
 
@@ -594,7 +609,7 @@ export function mapWeeklyReportFeedbackToStudentUi(
     attachments: [],
     currentWorkflowStep: stepMap[r.status] ?? 3,
     conversation: [
-      ...(r.lecturerComment
+      ...(r.lecturerComment && !(r.feedbacks ?? []).some((feedback) => feedback.authorRole === "Lecturer")
         ? [{
             id: `wr-msg-${r.id}`,
             sender: "lecturer",
@@ -607,8 +622,10 @@ export function mapWeeklyReportFeedbackToStudentUi(
         : []),
       ...(r.feedbacks ?? []).map((f) => ({
         id: f.id,
-        sender: f.lecturerId ? "lecturer" : "student",
-        senderName: f.lecturerName ?? "Sinh viên",
+        sender: f.authorRole === "Lecturer" ? "lecturer" : "student",
+        senderName: f.authorRole === "Lecturer"
+          ? f.lecturerName ?? "Giảng viên"
+          : "Sinh viên",
         avatar: DEFAULT_AVATAR,
         time: formatViDate(f.createdAt),
         text: f.comment,

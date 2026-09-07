@@ -59,3 +59,14 @@ public sealed class SubmissionFileDownloadDto
     public string FileName { get; set; } = null!;
     public string MimeType { get; set; } = "application/octet-stream";
 }
+
+public sealed class DownloadSubmissionsZipRequest
+{
+    public List<Guid> SubmissionIds { get; set; } = new();
+}
+
+public sealed class SubmissionZipDownloadDto
+{
+    public byte[] FileContent { get; set; } = null!;
+    public string FileName { get; set; } = "submissions.zip";
+}

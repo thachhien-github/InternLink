@@ -426,32 +426,56 @@ public class LecturerService : ILecturerService
         return _mapper.Map<List<SubmissionDto>>(submissions);
     }
 
-    public async Task<IEnumerable<WeeklyReportDto>> GetAssignedWeeklyReportsAsync(Guid userId, Guid? semesterId = null)
+    public async Task<PaginatedResponse<WeeklyReportDto>> GetAssignedWeeklyReportsAsync(Guid userId, WeeklyReportFilterRequest filter)
     {
         var lecturerId = await ResolveLecturerIdAsync(userId);
         if (lecturerId == null)
-            return Array.Empty<WeeklyReportDto>();
+            return new PaginatedResponse<WeeklyReportDto> { Skip = filter.Skip, Take = filter.Take };
 
         var internshipQuery = _db.Internships
             .AsNoTracking()
             .Where(i => i.LecturerId == lecturerId && !i.IsDeleted);
 
-        if (semesterId.HasValue)
-            internshipQuery = internshipQuery.Where(i => i.SemesterId == semesterId.Value);
+        if (filter.SemesterId.HasValue)
+            internshipQuery = internshipQuery.Where(i => i.SemesterId == filter.SemesterId.Value);
 
-        var internshipIds = await internshipQuery.Select(i => i.Id).ToListAsync();
-        if (internshipIds.Count == 0)
-            return Array.Empty<WeeklyReportDto>();
-
-        var reports = await _db.WeeklyReports
+        var reportQuery = _db.WeeklyReports
             .AsNoTracking()
-            .Where(r => internshipIds.Contains(r.InternshipId) && !r.IsDeleted)
+            .Where(r => internshipQuery.Any(i => i.Id == r.InternshipId) && !r.IsDeleted)
             .Include(r => r.Internship)
                 .ThenInclude(i => i.Student)
+            .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.Lecturer)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.Status))
+            reportQuery = reportQuery.Where(r => r.Status.ToString() == filter.Status);
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var term = filter.SearchTerm.Trim().ToLower();
+            reportQuery = reportQuery.Where(r =>
+                r.Title.ToLower().Contains(term) ||
+                (r.Internship.Student != null &&
+                 (r.Internship.Student.FullName.ToLower().Contains(term) ||
+                  r.Internship.Student.StudentCode.ToLower().Contains(term))));
+        }
+
+        var total = await reportQuery.CountAsync();
+        var reports = await reportQuery
             .OrderByDescending(r => r.CreatedAt)
+            .ThenByDescending(r => r.Id)
+            .Skip(Math.Max(0, filter.Skip))
+            .Take(Math.Clamp(filter.Take, 1, 100))
             .ToListAsync();
 
-        return _mapper.Map<List<WeeklyReportDto>>(reports);
+        return new PaginatedResponse<WeeklyReportDto>
+        {
+            Items = _mapper.Map<List<WeeklyReportDto>>(reports),
+            Total = total,
+            Skip = filter.Skip,
+            Take = Math.Clamp(filter.Take, 1, 100),
+        };
     }
 
 

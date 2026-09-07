@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<Document> Documents { get; set; } = null!;
     public DbSet<Evaluation> Evaluations { get; set; } = null!;
     public DbSet<WeeklyReport> WeeklyReports { get; set; } = null!;
+    public DbSet<WeeklyReportVersion> WeeklyReportVersions { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -162,8 +163,10 @@ public class AppDbContext : DbContext
             b.Property(x => x.IsPublic).HasDefaultValue(true);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.Submission).WithMany(x => x.Feedbacks).HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.WeeklyReport).WithMany(x => x.Feedbacks).HasForeignKey(x => x.WeeklyReportId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.WeeklyReport).WithMany(x => x.Feedbacks).HasForeignKey(x => x.WeeklyReportId).OnDelete(DeleteBehavior.NoAction);
             b.HasIndex(x => x.WeeklyReportId);
+            b.HasIndex(x => new { x.SubmissionId, x.CreatedAt });
+            b.HasIndex(x => new { x.WeeklyReportId, x.CreatedAt });
             b.HasOne(x => x.Lecturer).WithMany().HasForeignKey(x => x.LecturerId).OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -219,11 +222,27 @@ public class AppDbContext : DbContext
             b.Property(x => x.FileName).HasMaxLength(250);
             b.Property(x => x.FileUrl).HasMaxLength(1000);
             b.Property(x => x.MimeType).HasMaxLength(100);
+            b.Property(x => x.Version).HasDefaultValue(1);
             b.Property(x => x.Status).HasDefaultValue(WeeklyReportStatus.Draft);
             b.Property(x => x.LecturerComment).HasMaxLength(2000);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.Internship).WithMany(x => x.WeeklyReports).HasForeignKey(x => x.InternshipId);
             b.HasIndex(x => new { x.InternshipId, x.WeekNumber });
+            b.HasIndex(x => new { x.InternshipId, x.Status, x.WeekNumber });
+        });
+
+        modelBuilder.Entity<WeeklyReportVersion>(b =>
+        {
+            b.ToTable("WeeklyReportVersions");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("WeeklyReportVersionId");
+            b.Property(x => x.FileName).IsRequired().HasMaxLength(250);
+            b.Property(x => x.FileUrl).IsRequired().HasMaxLength(1000);
+            b.Property(x => x.MimeType).IsRequired().HasMaxLength(100);
+            b.Property(x => x.UploadedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.HasOne(x => x.WeeklyReport).WithMany(x => x.Versions)
+                .HasForeignKey(x => x.WeeklyReportId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => new { x.WeeklyReportId, x.Version }).IsUnique();
         });
 
         modelBuilder.Entity<Notification>(b =>

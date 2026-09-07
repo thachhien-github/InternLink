@@ -116,12 +116,13 @@ export function useRealAppState(
     };
   }, [assignedStudents, lecturerPortal.dashboardStats]);
 
-  const handleUpdateSubmissionStatus = (
+  const handleUpdateSubmissionStatus = async (
     id: string,
     newStatus: string,
     note?: string,
   ) => {
-    void lecturerPortal.updateSubmissionStatus(id, newStatus, note);
+    await lecturerPortal.updateSubmissionStatus(id, newStatus, note);
+    await lecturerPortal.refresh();
   };
 
   const handleReviewWeeklyReport = (
@@ -206,6 +207,9 @@ export function useRealAppState(
     })(),
     stats,
     weeklyReports: lecturerPortal.weeklyReports,
+    weeklyReportPage: lecturerPortal.weeklyReportPage,
+    weeklyReportQuery: lecturerPortal.weeklyReportQuery,
+    queryWeeklyReports: lecturerPortal.queryWeeklyReports,
     isLecturerLoading: lecturerPortal.isLoading,
     lecturerError: lecturerPortal.error,
     handleUpdateSubmissionStatus,

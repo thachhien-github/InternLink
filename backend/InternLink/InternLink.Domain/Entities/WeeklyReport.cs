@@ -8,6 +8,7 @@ public class WeeklyReport : BaseEntity
     public Internship Internship { get; set; } = null!;
 
     public int WeekNumber { get; set; }
+    public int Version { get; set; } = 1;
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? FileName { get; set; }
@@ -18,4 +19,5 @@ public class WeeklyReport : BaseEntity
     public DateTime? SubmittedAt { get; set; }
     public string? LecturerComment { get; set; }
     public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+    public ICollection<WeeklyReportVersion> Versions { get; set; } = new List<WeeklyReportVersion>();
 }

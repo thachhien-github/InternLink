@@ -53,6 +53,7 @@ public class WeeklyReportService : IWeeklyReportService
                 .ThenInclude(i => i.Lecturer)
             .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
+            .Include(r => r.Versions)
             .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
 
         if (report == null)
@@ -82,6 +83,9 @@ public class WeeklyReportService : IWeeklyReportService
             return Array.Empty<WeeklyReportDto>();
 
         var reports = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Semester)
+            .Include(r => r.Versions)
             .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
             .Where(r => r.InternshipId == internship.Id && !r.IsDeleted)
@@ -102,6 +106,9 @@ public class WeeklyReportService : IWeeklyReportService
             await EnsureInternshipAccessAsync(internshipId, userId, isLecturerOrAdmin);
 
         var reports = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Semester)
+            .Include(r => r.Versions)
             .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
             .Where(r => r.InternshipId == internshipId && !r.IsDeleted)
@@ -186,6 +193,19 @@ public class WeeklyReportService : IWeeklyReportService
 
         _db.WeeklyReports.Add(report);
         await _db.SaveChangesAsync();
+        _db.WeeklyReportVersions.Add(new WeeklyReportVersion
+        {
+            Id = Guid.NewGuid(),
+            WeeklyReportId = report.Id,
+            Version = report.Version,
+            FileName = originalFileName,
+            FileUrl = relativePath,
+            FileSize = fileSize,
+            MimeType = mimeType,
+            UploadedById = userId,
+            UploadedAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
         return _mapper.Map<WeeklyReportDto>(report);
     }
 
@@ -236,9 +256,22 @@ public class WeeklyReportService : IWeeklyReportService
         report.FileUrl = relativePath;
         report.FileSize = fileSize;
         report.MimeType = mimeType;
+        report.Version++;
         report.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        DeleteStoredFile(oldFileUrl);
+        _db.WeeklyReportVersions.Add(new WeeklyReportVersion
+        {
+            Id = Guid.NewGuid(),
+            WeeklyReportId = report.Id,
+            Version = report.Version,
+            FileName = originalFileName,
+            FileUrl = relativePath,
+            FileSize = fileSize,
+            MimeType = mimeType,
+            UploadedById = userId,
+            UploadedAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
         return _mapper.Map<WeeklyReportDto>(report);
     }
 
@@ -275,6 +308,57 @@ public class WeeklyReportService : IWeeklyReportService
             FileContent = await File.ReadAllBytesAsync(fullPath),
             FileName = report.FileName ?? Path.GetFileName(fullPath),
             MimeType = report.MimeType ?? "application/pdf",
+        };
+    }
+
+    public async Task<IReadOnlyList<WeeklyReportVersionDto>> GetVersionsAsync(
+        Guid reportId,
+        Guid userId,
+        bool isLecturerOrAdmin)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(r => r.Versions)
+            .FirstOrDefaultAsync(r => r.Id == reportId && !r.IsDeleted);
+
+        if (report == null)
+            return Array.Empty<WeeklyReportVersionDto>();
+
+        EnsureReportAccess(report, userId, isLecturerOrAdmin);
+        return _mapper.Map<List<WeeklyReportVersionDto>>(
+            report.Versions.Where(v => !v.IsDeleted).OrderByDescending(v => v.Version));
+    }
+
+    public async Task<WeeklyReportFileDownloadDto?> DownloadVersionAsync(
+        Guid versionId,
+        Guid userId,
+        bool isLecturerOrAdmin)
+    {
+        var version = await _db.WeeklyReportVersions
+            .Include(v => v.WeeklyReport)
+                .ThenInclude(r => r.Internship)
+                    .ThenInclude(i => i.Student)
+            .Include(v => v.WeeklyReport)
+                .ThenInclude(r => r.Internship)
+                    .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(v => v.Id == versionId && !v.IsDeleted);
+
+        if (version == null)
+            return null;
+
+        EnsureReportAccess(version.WeeklyReport, userId, isLecturerOrAdmin);
+        var fullPath = Path.Combine(GetUploadRoot(), version.FileUrl.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        if (!File.Exists(fullPath))
+            return null;
+
+        return new WeeklyReportFileDownloadDto
+        {
+            FileContent = await File.ReadAllBytesAsync(fullPath),
+            FileName = version.FileName,
+            MimeType = version.MimeType,
         };
     }
 
@@ -357,6 +441,18 @@ public class WeeklyReportService : IWeeklyReportService
         report.Status = status;
         report.LecturerComment = request.LecturerComment;
         report.UpdatedAt = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(request.LecturerComment) && report.Internship.Lecturer != null)
+        {
+            _db.Feedbacks.Add(new Feedback
+            {
+                Id = Guid.NewGuid(),
+                WeeklyReportId = report.Id,
+                LecturerId = report.Internship.Lecturer.Id,
+                Comment = request.LecturerComment.Trim(),
+                IsPublic = true,
+                CreatedAt = DateTime.UtcNow,
+            });
+        }
         await _db.SaveChangesAsync();
 
         var studentUserId = report.Internship.Student?.UserId;
@@ -427,6 +523,37 @@ public class WeeklyReportService : IWeeklyReportService
         return _mapper.Map<FeedbackDto>(feedback);
     }
 
+    public async Task<bool> MarkFeedbacksReadAsync(Guid reportId, Guid userId, bool isLecturer)
+    {
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(r => r.Feedbacks)
+            .FirstOrDefaultAsync(r => r.Id == reportId && !r.IsDeleted);
+        if (report == null)
+            return false;
+
+        var owns = report.Internship.Student?.UserId == userId;
+        var assigned = report.Internship.Lecturer?.UserId == userId;
+        var isSuperAdmin = isLecturer && await _db.Users.AnyAsync(u =>
+            u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if ((!isLecturer && !owns) || (isLecturer && !assigned && !isSuperAdmin))
+            throw new UnauthorizedAccessException("You do not have access to this feedback thread");
+
+        var now = DateTime.UtcNow;
+        foreach (var feedback in report.Feedbacks.Where(f => !f.IsDeleted))
+        {
+            if (isLecturer && feedback.LecturerId == null)
+                feedback.LecturerReadAt = now;
+            else if (!isLecturer && feedback.LecturerId != null)
+                feedback.StudentReadAt = now;
+        }
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<bool> SoftDeleteAsync(Guid id, Guid userId)
     {
         var report = await LoadOwnedReportAsync(id, userId);
@@ -456,6 +583,14 @@ public class WeeklyReportService : IWeeklyReportService
             throw new UnauthorizedAccessException("Weekly report does not belong to the current student");
 
         return report;
+    }
+
+    private static void EnsureReportAccess(WeeklyReport report, Guid userId, bool isLecturerOrAdmin)
+    {
+        var ownsInternship = report.Internship.Student?.UserId == userId;
+        var isAssignedLecturer = report.Internship.Lecturer?.UserId == userId;
+        if (!ownsInternship && !isAssignedLecturer && !isLecturerOrAdmin)
+            throw new UnauthorizedAccessException("You do not have access to this weekly report");
     }
 
     private async Task EnsureInternshipAccessAsync(Guid internshipId, Guid userId, bool isLecturerOrAdmin)

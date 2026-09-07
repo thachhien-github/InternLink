@@ -57,11 +57,15 @@ public sealed class FeedbackDto
 
     public string? LecturerName { get; set; }
 
+    public string AuthorRole { get; set; } = "Student";
+
     public string Comment { get; set; } = null!;
 
     public bool IsPublic { get; set; }
 
     public DateTime CreatedAt { get; set; }
+    public DateTime? StudentReadAt { get; set; }
+    public DateTime? LecturerReadAt { get; set; }
 
 }
 

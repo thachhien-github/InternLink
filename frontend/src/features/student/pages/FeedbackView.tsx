@@ -71,14 +71,20 @@ export const FeedbackView = ({
         weeklyReportService.getMine(),
       ]);
 
-      const fromSubmissions = submissions.flatMap((sub) =>
-        (sub.feedbacks ?? [])
-          .filter((f) => f.isPublic)
-          .map((f) => mapFeedbackDtoToStudentUi(f, sub)),
-      );
+      const fromSubmissions = submissions
+        .map((sub) => {
+          const threadFeedbacks = (sub.feedbacks ?? []).filter((f) => f.isPublic);
+          const latestFeedback = [...threadFeedbacks].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          )[0];
+          return latestFeedback
+            ? mapFeedbackDtoToStudentUi(latestFeedback, sub, threadFeedbacks)
+            : null;
+        })
+        .filter((item): item is StudentFeedbackUiItem => item !== null);
 
       const fromReports = reports
-        .filter((r) => r.lecturerComment?.trim())
+        .filter((r) => r.lecturerComment?.trim() || (r.feedbacks?.length ?? 0) > 0)
         .map((r) =>
           mapWeeklyReportFeedbackToStudentUi(r, profile.lecturerName),
         );
@@ -125,7 +131,16 @@ export const FeedbackView = ({
     currentPage * pageSize,
   );
 
-  const handleMarkAsRead = (id: string) => {
+  const handleMarkAsRead = async (id: string) => {
+    const item = feedbacks.find((feedback) => feedback.id === id);
+    if (!item) return;
+    try {
+      if (item.submissionId) await submissionApiService.markFeedbacksRead(item.submissionId);
+      if (item.reportId) await weeklyReportService.markFeedbacksRead(item.reportId);
+    } catch (err) {
+      onShowToast?.(getApiErrorMessage(err));
+      return;
+    }
     setFeedbacks((prev) =>
       prev.map((f) =>
         f.id === id && f.status === "Chưa xem"
@@ -151,26 +166,7 @@ export const FeedbackView = ({
       } else {
         throw new Error("Feedback target is missing");
       }
-      const newReply = {
-        id: `c-${Date.now()}`,
-        sender: "student",
-        senderName: `${profile.name} (Bạn)`,
-        avatar: "",
-        time: "Vừa xong",
-        text: replyText,
-        attachments: [] as unknown[],
-      };
-      setFeedbacks((prev) =>
-        prev.map((f) => {
-          if (f.id !== selectedFeedback.id) return f;
-          return {
-            ...f,
-            conversation: [...f.conversation, newReply],
-            status:
-              f.status === "Cần chỉnh sửa" ? "Đã xem" : f.status,
-          };
-        }),
-      );
+      await loadFeedbacks();
       setReplyText("");
       onShowToast?.("Đã gửi tin nhắn phản hồi tới giảng viên!");
     } catch {

@@ -75,6 +75,15 @@ export const submissionApiService = {
     );
   },
 
+  downloadLecturerZip(ids: string[]) {
+    return downloadAuthenticatedFile(
+      "/api/Lecturer/submissions/download-zip",
+      "submissions.zip",
+      true,
+      { method: "POST", body: JSON.stringify({ submissionIds: ids }) },
+    );
+  },
+
   updateStatus(id: string, status: string): Promise<SubmissionDto> {
     return apiRequest<SubmissionDto>(`/api/Submission/${id}/status`, {
       method: "PATCH",
@@ -98,6 +107,10 @@ export const submissionApiService = {
       method: "POST",
       body: { comment },
     });
+  },
+
+  markFeedbacksRead(id: string): Promise<void> {
+    return apiRequest<void>(`/api/Submission/${id}/feedback/read`, { method: "POST" });
   },
 
   /** Review submission with optional comment (lecturer). */

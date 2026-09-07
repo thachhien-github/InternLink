@@ -1,4 +1,5 @@
 using AutoMapper;
+using System.IO.Compression;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
@@ -264,6 +265,51 @@ public class SubmissionService : ISubmissionService
             FileContent = await File.ReadAllBytesAsync(fullPath),
             FileName = submission.FileName ?? Path.GetFileName(fullPath),
             MimeType = GetMimeType(extension),
+        };
+    }
+
+    public async Task<SubmissionZipDownloadDto?> DownloadZipAsync(IEnumerable<Guid> submissionIds, Guid userId)
+    {
+        var ids = submissionIds.Distinct().ToList();
+        if (ids.Count == 0)
+            throw new InvalidOperationException("At least one submission is required");
+
+        var isSuperAdmin = await _db.Users.AnyAsync(u => u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        var submissions = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Where(s => ids.Contains(s.Id) && !s.IsDeleted)
+            .ToListAsync();
+
+        if (submissions.Count != ids.Count)
+            throw new InvalidOperationException("One or more submissions were not found");
+        if (!isSuperAdmin && submissions.Any(s => s.Internship.Lecturer?.UserId != userId))
+            throw new UnauthorizedAccessException("You can only download submissions assigned to you");
+
+        await using var output = new MemoryStream();
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var submission in submissions)
+            {
+                if (string.IsNullOrWhiteSpace(submission.FileUrl))
+                    continue;
+
+                var fullPath = Path.Combine(GetUploadRoot(), submission.FileUrl.Replace("/", Path.DirectorySeparatorChar.ToString()));
+                if (!File.Exists(fullPath))
+                    continue;
+
+                var entryName = $"{submission.InternshipId}_{submission.FileName ?? Path.GetFileName(fullPath)}";
+                var entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
+                await using var entryStream = entry.Open();
+                await using var fileStream = File.OpenRead(fullPath);
+                await fileStream.CopyToAsync(entryStream);
+            }
+        }
+
+        return new SubmissionZipDownloadDto
+        {
+            FileContent = output.ToArray(),
+            FileName = $"submissions_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip",
         };
     }
 
@@ -533,6 +579,9 @@ public class SubmissionService : ISubmissionService
 
     public async Task<FeedbackDto?> AddStudentReplyAsync(Guid submissionId, Guid studentUserId, string comment)
     {
+        if (string.IsNullOrWhiteSpace(comment))
+            throw new InvalidOperationException("Reply comment is required");
+
         var submission = await _db.Submissions
             .Include(s => s.Internship)
                 .ThenInclude(i => i.Student)
@@ -552,7 +601,7 @@ public class SubmissionService : ISubmissionService
             Id = Guid.NewGuid(),
             SubmissionId = submissionId,
             LecturerId = null,
-            Comment = comment,
+            Comment = comment.Trim(),
             IsPublic = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -575,5 +624,36 @@ public class SubmissionService : ISubmissionService
         }
 
         return _mapper.Map<FeedbackDto>(feedback);
+    }
+
+    public async Task<bool> MarkFeedbacksReadAsync(Guid submissionId, Guid userId, bool isLecturer)
+    {
+        var submission = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(s => s.Feedbacks)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && !s.IsDeleted);
+        if (submission == null)
+            return false;
+
+        var owns = submission.Internship.Student?.UserId == userId;
+        var assigned = submission.Internship.Lecturer?.UserId == userId;
+        var isSuperAdmin = isLecturer && await _db.Users.AnyAsync(u =>
+            u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if ((!isLecturer && !owns) || (isLecturer && !assigned && !isSuperAdmin))
+            throw new UnauthorizedAccessException("You do not have access to this feedback thread");
+
+        var now = DateTime.UtcNow;
+        foreach (var feedback in submission.Feedbacks.Where(f => !f.IsDeleted))
+        {
+            if (isLecturer && feedback.LecturerId == null)
+                feedback.LecturerReadAt = now;
+            else if (!isLecturer && feedback.LecturerId != null)
+                feedback.StudentReadAt = now;
+        }
+        await _db.SaveChangesAsync();
+        return true;
     }
 }

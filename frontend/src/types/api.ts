@@ -374,9 +374,13 @@ export interface InternshipDetailDto extends InternshipDto {
 
 export interface FeedbackDto {
   id: string;
-  submissionId: string;
+  submissionId?: string | null;
+  weeklyReportId?: string | null;
   lecturerId?: string | null;
   lecturerName?: string | null;
+  authorRole: "Lecturer" | "Student";
+  studentReadAt?: string | null;
+  lecturerReadAt?: string | null;
   comment: string;
   isPublic: boolean;
   createdAt: string;
@@ -400,6 +404,7 @@ export interface WeeklyReportDto {
   id: string;
   internshipId: string;
   weekNumber: number;
+  version: number;
   title: string;
   content: string;
   fileName?: string | null;
@@ -412,6 +417,17 @@ export interface WeeklyReportDto {
   feedbacks?: FeedbackDto[];
   createdAt: string;
   updatedAt?: string | null;
+  dueDate?: string | null;
+  versions?: WeeklyReportVersionDto[];
+}
+
+export interface WeeklyReportVersionDto {
+  id: string;
+  version: number;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
 }
 
 export interface CreateWeeklyReportRequestDto {

@@ -228,6 +228,53 @@ public class WeeklyReportController : ControllerBase
         }
     }
 
+    [HttpGet("{id:guid}/versions")]
+    [Authorize]
+    public async Task<IActionResult> GetVersions(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var versions = await _weeklyReportService.GetVersionsAsync(
+                id,
+                userId.Value,
+                User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin"));
+            return Ok(ApiResponse<IReadOnlyList<WeeklyReportVersionDto>>.Ok(versions));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpGet("versions/{versionId:guid}/download")]
+    [Authorize]
+    public async Task<IActionResult> DownloadVersion(Guid versionId)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var file = await _weeklyReportService.DownloadVersionAsync(
+                versionId,
+                userId.Value,
+                User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin"));
+            if (file == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "File not found" }));
+
+            return File(file.FileContent, file.MimeType, file.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     [HttpPost("{id:guid}/submit")]
     [Authorize(Policy = "RequireStudent")]
     public async Task<IActionResult> Submit(Guid id)
@@ -277,6 +324,26 @@ public class WeeklyReportController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
+    [HttpPost("{id:guid}/feedback/read")]
+    [Authorize]
+    public async Task<IActionResult> MarkFeedbacksRead(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturer = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var updated = await _weeklyReportService.MarkFeedbacksReadAsync(id, userId.Value, isLecturer);
+            return updated ? NoContent() : NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Weekly report not found" }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
     }
 

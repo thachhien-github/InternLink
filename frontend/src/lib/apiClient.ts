@@ -333,11 +333,21 @@ export async function downloadAuthenticatedFile(
   path: string,
   fallbackFilename: string,
   autoTrigger = true,
+  options: RequestInit = {},
 ): Promise<{ blob: Blob; filename: string }> {
   const url = resolveApiUrl(path);
   const token = getStoredToken();
+  const headers = new Headers(options.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (options.body && !(options.body instanceof FormData) && typeof options.body !== "string") {
+    headers.set("Content-Type", "application/json");
+  }
   const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    ...options,
+    headers,
+    body: options.body && !(options.body instanceof FormData) && typeof options.body !== "string"
+      ? JSON.stringify(options.body)
+      : options.body,
   });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;

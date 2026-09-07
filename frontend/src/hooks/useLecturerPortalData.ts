@@ -34,6 +34,21 @@ export function useLecturerPortalData(
   const [weeklyTrend, setWeeklyTrend] = useState<LecturerWeeklyTrendDto[]>([]);
   const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const [weeklyReportPage, setWeeklyReportPage] = useState({ total: 0, skip: 0, take: 20 });
+  const [weeklyReportQuery, setWeeklyReportQuery] = useState({ status: "", searchTerm: "", skip: 0 });
+
+  const loadWeeklyReports = useCallback(async (query = weeklyReportQuery) => {
+    const result = await weeklyReportService.getAllForLecturer({
+      semesterId: semesterId ?? undefined,
+      skip: query.skip,
+      take: 20,
+      status: query.status || undefined,
+      searchTerm: query.searchTerm || undefined,
+    });
+    setWeeklyReportPage({ total: result.total, skip: result.skip, take: result.take });
+    setWeeklyReports(result.items);
+    return result.items;
+  }, [semesterId, weeklyReportQuery]);
 
   const load = useCallback(async () => {
     if (!enabled) return;
@@ -45,7 +60,7 @@ export function useLecturerPortalData(
           lecturerInternshipsService.getAll(semesterId ?? undefined),
           lecturerCompaniesService.getActive(semesterId ?? undefined),
           lecturerInternshipsService.getAllSubmissions(semesterId ?? undefined),
-          weeklyReportService.getAllForLecturer(semesterId ?? undefined),
+          loadWeeklyReports(),
           lecturerDashboardService.getStats(semesterId ?? undefined),
           lecturerDashboardService.getWeeklyTrend(semesterId ?? undefined),
         ]);
@@ -87,7 +102,11 @@ export function useLecturerPortalData(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, lecturerName, semesterId, onError]);
+  }, [enabled, lecturerName, semesterId, onError, loadWeeklyReports]);
+
+  const queryWeeklyReports = useCallback((query: { status: string; searchTerm: string; skip: number }) => {
+    setWeeklyReportQuery(query);
+  }, []);
 
   useEffect(() => {
     load();
@@ -98,9 +117,9 @@ export function useLecturerPortalData(
       if (!enabled) return;
       try {
         await submissionApiService.review(id, uiStatus, note);
-        await load();
       } catch (err) {
         onError?.(getApiErrorMessage(err));
+        throw err;
       }
     },
     [enabled, load, onError],
@@ -127,6 +146,9 @@ export function useLecturerPortalData(
     submissions,
     enterprises,
     weeklyReports,
+    weeklyReportPage,
+    weeklyReportQuery,
+    queryWeeklyReports,
     dashboardStats,
     weeklyTrend,
     isLoading,

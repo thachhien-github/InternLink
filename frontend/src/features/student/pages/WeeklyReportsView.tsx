@@ -3,6 +3,7 @@ import {
   FileCheck2,
   Upload,
   Download,
+  Eye,
   FileText,
   Clock,
   MessageSquare,
@@ -35,6 +36,14 @@ type WeeklyReportRow = {
   status: string;
   fileName?: string;
   fileSize?: string;
+  versions?: {
+    id: string;
+    version: number;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedAt: string;
+  }[];
   feedback?: string;
   feedbackDate?: string;
   stepIndex: number;
@@ -51,6 +60,10 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
     size: string;
     time: string;
     file: File;
+  } | null>(null);
+  const [previewReport, setPreviewReport] = useState<{
+    url: string;
+    name: string;
   } | null>(null);
   const [showRequirementModal, setShowRequirementModal] = useState(false);
   const [reports, setReports] = useState<WeeklyReportRow[]>([]);
@@ -94,6 +107,7 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
     version: "v0.0",
     status: "Chưa nộp",
     stepIndex: 0,
+    versions: [],
   });
 
   const allWeekRows = useMemo(
@@ -113,16 +127,28 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
     if (!currentReport.submittedAt && currentReport.status === "Chưa nộp") {
       return [];
     }
-    return [
-      {
-        version: currentReport.version,
-        submittedAt: currentReport.submittedAt ?? "—",
-        fileName: currentReport.fileName ?? currentReport.title,
-        fileSize: currentReport.fileSize ?? "—",
-        status: currentReport.status,
-        feedback: currentReport.feedback,
-      },
-    ];
+    const versions = currentReport.versions ?? [];
+    return versions.length > 0
+      ? versions.map((version) => ({
+          id: version.id,
+          version: `v${version.version}`,
+          submittedAt: new Date(version.uploadedAt).toLocaleDateString("vi-VN"),
+          fileName: version.fileName,
+          fileSize: `${(version.fileSize / (1024 * 1024)).toFixed(1)} MB`,
+          status: version.version === currentReport.versions?.[0]?.version
+            ? currentReport.status
+            : "Bản trước",
+          feedback: currentReport.feedback,
+        }))
+      : [{
+          id: undefined,
+          version: currentReport.version,
+          submittedAt: currentReport.submittedAt ?? "—",
+          fileName: currentReport.fileName ?? currentReport.title,
+          fileSize: currentReport.fileSize ?? "—",
+          status: currentReport.status,
+          feedback: currentReport.feedback,
+        }];
   }, [currentReport]);
 
   const nextPendingWeek = allWeekRows.find(
@@ -228,22 +254,40 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       setIsSubmitting(false);
     }
   };
-  const handleDownloadReport = async () => {
+  const handleDownloadReport = async (versionId?: string, fileName?: string) => {
     if (!currentReport.id || !currentReport.fileName) {
       onShowToast("Báo cáo này chưa có file để tải xuống.");
       return;
     }
     try {
-      const { blob, filename } = await weeklyReportService.download(
-        currentReport.id,
-        currentReport.fileName,
-      );
+      const { blob, filename } = versionId
+        ? await weeklyReportService.downloadVersion(versionId, fileName ?? currentReport.fileName)
+        : await weeklyReportService.download(currentReport.id, fileName ?? currentReport.fileName);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = filename;
       anchor.click();
       URL.revokeObjectURL(url);
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
+    }
+  };
+  const handlePreviewReport = async (versionId?: string, fileName?: string) => {
+    if (!currentReport.id || !currentReport.fileName) {
+      onShowToast("Báo cáo này chưa có file để xem trước.");
+      return;
+    }
+    try {
+      const { blob, filename } = versionId
+        ? await weeklyReportService.downloadVersion(versionId, fileName ?? currentReport.fileName)
+        : await weeklyReportService.download(currentReport.id, fileName ?? currentReport.fileName);
+      if (blob.type !== "application/pdf") {
+        onShowToast("Chỉ hỗ trợ xem trước file PDF.");
+        return;
+      }
+      if (previewReport) URL.revokeObjectURL(previewReport.url);
+      setPreviewReport({ url: URL.createObjectURL(blob), name: filename });
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     }
@@ -589,12 +633,20 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
                       <span className="text-[10px] font-bold text-slate-500">
                         {ver.status}
                       </span>
-                      <button
-                        onClick={handleDownloadReport}
-                        className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
-                      >
-                        <Download className="w-3 h-3" /> Tải về
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handlePreviewReport(ver.id, ver.fileName)}
+                          className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
+                        >
+                          <Eye className="w-3 h-3" /> Xem
+                        </button>
+                        <button
+                          onClick={() => handleDownloadReport(ver.id, ver.fileName)}
+                          className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
+                        >
+                          <Download className="w-3 h-3" /> Tải về
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -632,6 +684,34 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
           </Panel>
         </div>
       </div>
+
+      {/* REQUIREMENTS MODAL */}
+      {previewReport && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-5xl h-[90vh] flex flex-col shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" /> {previewReport.name}
+              </h3>
+              <button
+                onClick={() => {
+                  URL.revokeObjectURL(previewReport.url);
+                  setPreviewReport(null);
+                }}
+                className="text-slate-400 hover:text-slate-700"
+                aria-label="Đóng xem trước"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={previewReport.url}
+              title={`Xem trước ${previewReport.name}`}
+              className="min-h-0 flex-1 w-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* REQUIREMENTS MODAL */}
       {showRequirementModal && (

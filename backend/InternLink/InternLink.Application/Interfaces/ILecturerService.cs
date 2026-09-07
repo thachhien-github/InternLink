@@ -12,7 +12,7 @@ public interface ILecturerService
     Task<InternshipDetailDto?> GetInternshipAsync(Guid internshipId, Guid userId);
     Task<IEnumerable<SubmissionDto>> GetSubmissionsByInternshipAsync(Guid internshipId, Guid userId);
     Task<IEnumerable<SubmissionDto>> GetAssignedSubmissionsAsync(Guid userId, Guid? semesterId = null);
-    Task<IEnumerable<WeeklyReportDto>> GetAssignedWeeklyReportsAsync(Guid userId, Guid? semesterId = null);
+    Task<PaginatedResponse<WeeklyReportDto>> GetAssignedWeeklyReportsAsync(Guid userId, WeeklyReportFilterRequest filter);
     Task<FeedbackDto?> AddFeedbackAsync(Guid submissionId, Guid authorId, CreateFeedbackRequest request);
     Task<byte[]> ExportEndOfTermExcelAsync(Guid userId);
 

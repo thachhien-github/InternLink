@@ -14,6 +14,7 @@ public interface ISubmissionService
     Task<SubmissionDto?> ResubmitAsync(Guid id, Guid userId, ResubmitRequest request);
     Task<SubmissionDto?> ResubmitWithFileAsync(Guid id, Guid userId, ResubmitRequest request, Stream fileStream, string originalFileName);
     Task<SubmissionFileDownloadDto?> DownloadFileAsync(Guid submissionId, Guid userId, bool isLecturerOrAdmin);
+    Task<SubmissionZipDownloadDto?> DownloadZipAsync(IEnumerable<Guid> submissionIds, Guid userId);
     Task<SubmissionDto?> UpdateStatusAsync(Guid id, UpdateSubmissionStatusRequest request, Guid? actorUserId = null);
     Task<bool> SoftDeleteAsync(Guid id, Guid? actorUserId = null);
 
@@ -21,4 +22,5 @@ public interface ISubmissionService
     Task<FeedbackDto?> AddFeedbackAsync(Guid submissionId, Guid authorId, CreateFeedbackRequest request);
     Task<FeedbackDto?> UpdateFeedbackAsync(Guid feedbackId, Guid authorId, UpdateFeedbackRequest request);
     Task<FeedbackDto?> AddStudentReplyAsync(Guid submissionId, Guid studentUserId, string comment);
+    Task<bool> MarkFeedbacksReadAsync(Guid submissionId, Guid userId, bool isLecturer);
 }

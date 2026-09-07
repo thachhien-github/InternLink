@@ -23,6 +23,7 @@ public class LecturerController : ControllerBase
     private readonly IDocumentService _documentService;
     private readonly ILecturerAccessService _lecturerAccessService;
     private readonly IPdfExportService _pdfExportService;
+    private readonly ISubmissionService _submissionService;
     private readonly ILogger<LecturerController> _logger;
 
     public LecturerController(
@@ -30,6 +31,7 @@ public class LecturerController : ControllerBase
         IEvaluationService evaluationService,
         IWeeklyReportService weeklyReportService,
         IDocumentService documentService,
+        ISubmissionService submissionService,
         ILecturerAccessService lecturerAccessService,
         IPdfExportService pdfExportService,
         ILogger<LecturerController> logger)
@@ -38,6 +40,7 @@ public class LecturerController : ControllerBase
         _evaluationService = evaluationService;
         _weeklyReportService = weeklyReportService;
         _documentService = documentService;
+        _submissionService = submissionService;
         _lecturerAccessService = lecturerAccessService;
         _pdfExportService = pdfExportService;
         _logger = logger;
@@ -335,6 +338,30 @@ public class LecturerController : ControllerBase
         return Ok(ApiResponse<IEnumerable<SubmissionDto>>.Ok(submissions));
     }
 
+    [HttpPost("submissions/download-zip")]
+    public async Task<IActionResult> DownloadSubmissionsZip([FromBody] DownloadSubmissionsZipRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        try
+        {
+            var zip = await _submissionService.DownloadZipAsync(request.SubmissionIds, userId.Value);
+            if (zip == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "No submission files found" }));
+            return File(zip.FileContent, "application/zip", zip.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
     /// <summary>
     /// Give feedback on a submission
     /// </summary>
@@ -371,7 +398,13 @@ public class LecturerController : ControllerBase
     /// Get weekly reports for assigned internship or all assigned internships of lecturer
     /// </summary>
     [HttpGet("weekly-reports")]
-    public async Task<IActionResult> GetWeeklyReports([FromQuery] Guid? internshipId = null, [FromQuery] Guid? semesterId = null)
+    public async Task<IActionResult> GetWeeklyReports(
+        [FromQuery] Guid? internshipId = null,
+        [FromQuery] Guid? semesterId = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] string? searchTerm = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
@@ -390,8 +423,15 @@ public class LecturerController : ControllerBase
             }
         }
 
-        var allReports = await _lecturerService.GetAssignedWeeklyReportsAsync(userId.Value, semesterId);
-        return Ok(ApiResponse<IEnumerable<WeeklyReportDto>>.Ok(allReports));
+        var allReports = await _lecturerService.GetAssignedWeeklyReportsAsync(userId.Value, new WeeklyReportFilterRequest
+        {
+            SemesterId = semesterId,
+            Skip = Math.Max(0, skip),
+            Take = Math.Clamp(take, 1, 100),
+            Status = status,
+            SearchTerm = searchTerm,
+        });
+        return Ok(ApiResponse<PaginatedResponse<WeeklyReportDto>>.Ok(allReports));
     }
 
     /// <summary>

@@ -4,6 +4,8 @@ import type {
   FeedbackDto,
   UpdateWeeklyReportRequestDto,
   WeeklyReportDto,
+  WeeklyReportVersionDto,
+  PaginatedResponse,
 } from "../types/api";
 
 export const weeklyReportService = {
@@ -17,9 +19,20 @@ export const weeklyReportService = {
     );
   },
 
-  getAllForLecturer(semesterId?: string): Promise<WeeklyReportDto[]> {
-    const params = semesterId ? `?semesterId=${semesterId}` : "";
-    return apiRequest<WeeklyReportDto[]>(`/api/Lecturer/weekly-reports${params}`);
+  getAllForLecturer(params: {
+    semesterId?: string;
+    skip?: number;
+    take?: number;
+    status?: string;
+    searchTerm?: string;
+  } = {}): Promise<PaginatedResponse<WeeklyReportDto>> {
+    const query = new URLSearchParams();
+    if (params.semesterId) query.set("semesterId", params.semesterId);
+    query.set("skip", String(params.skip ?? 0));
+    query.set("take", String(params.take ?? 20));
+    if (params.status) query.set("status", params.status);
+    if (params.searchTerm?.trim()) query.set("searchTerm", params.searchTerm.trim());
+    return apiRequest<PaginatedResponse<WeeklyReportDto>>(`/api/Lecturer/weekly-reports?${query.toString()}`);
   },
 
   create(body: CreateWeeklyReportRequestDto): Promise<WeeklyReportDto> {
@@ -60,11 +73,23 @@ export const weeklyReportService = {
     return downloadAuthenticatedFile(`/api/WeeklyReport/${id}/download`, fallbackFilename);
   },
 
+  getVersions(id: string) {
+    return apiRequest<WeeklyReportVersionDto[]>(`/api/WeeklyReport/${id}/versions`);
+  },
+
+  downloadVersion(id: string, fallbackFilename: string) {
+    return downloadAuthenticatedFile(`/api/WeeklyReport/versions/${id}/download`, fallbackFilename);
+  },
+
   studentReply(id: string, comment: string): Promise<FeedbackDto> {
     return apiRequest<FeedbackDto>(`/api/WeeklyReport/${id}/student-reply`, {
       method: "POST",
       body: { comment },
     });
+  },
+
+  markFeedbacksRead(id: string): Promise<void> {
+    return apiRequest<void>(`/api/WeeklyReport/${id}/feedback/read`, { method: "POST" });
   },
 
   update(id: string, body: UpdateWeeklyReportRequestDto): Promise<WeeklyReportDto> {

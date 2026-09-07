@@ -58,6 +58,13 @@ public class CompanyFilterRequest : PaginationRequest
     public string? SearchTerm { get; set; }
 }
 
+public class WeeklyReportFilterRequest : PaginationRequest
+{
+    public Guid? SemesterId { get; set; }
+    public string? Status { get; set; }
+    public string? SearchTerm { get; set; }
+}
+
 /// <summary>
 /// Generic paginated response wrapper
 /// </summary>

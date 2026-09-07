@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InternLink.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260907035117_AddWeeklyReportFeedback")]
-    partial class AddWeeklyReportFeedback
+    [Migration("20260907100620_AddWeeklyReportVersions")]
+    partial class AddWeeklyReportVersions
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1349,6 +1349,11 @@ namespace InternLink.Infrastructure.Migrations
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("WeekNumber")
                         .HasColumnType("int");
 
@@ -1357,6 +1362,68 @@ namespace InternLink.Infrastructure.Migrations
                     b.HasIndex("InternshipId", "WeekNumber");
 
                     b.ToTable("WeeklyReports", (string)null);
+                });
+
+            modelBuilder.Entity("InternLink.Domain.Entities.WeeklyReportVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("WeeklyReportVersionId");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid>("UploadedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("WeeklyReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeeklyReportId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyReportVersions", (string)null);
                 });
 
             modelBuilder.Entity("InternLink.Domain.Entities.AccountRequest", b =>
@@ -1616,6 +1683,17 @@ namespace InternLink.Infrastructure.Migrations
                     b.Navigation("Internship");
                 });
 
+            modelBuilder.Entity("InternLink.Domain.Entities.WeeklyReportVersion", b =>
+                {
+                    b.HasOne("InternLink.Domain.Entities.WeeklyReport", "WeeklyReport")
+                        .WithMany("Versions")
+                        .HasForeignKey("WeeklyReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WeeklyReport");
+                });
+
             modelBuilder.Entity("InternLink.Domain.Entities.Company", b =>
                 {
                     b.Navigation("Internships");
@@ -1673,6 +1751,8 @@ namespace InternLink.Infrastructure.Migrations
             modelBuilder.Entity("InternLink.Domain.Entities.WeeklyReport", b =>
                 {
                     b.Navigation("Feedbacks");
+
+                    b.Navigation("Versions");
                 });
 #pragma warning restore 612, 618
         }

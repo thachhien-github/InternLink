@@ -15,7 +15,10 @@ public interface IWeeklyReportService
     Task<WeeklyReportDto?> UpdateDraftWithFileAsync(Guid id, Guid userId, UpdateWeeklyReportRequest request, Stream fileStream, string originalFileName, long fileSize, string mimeType);
     Task<WeeklyReportDto?> SubmitAsync(Guid id, Guid userId);
     Task<WeeklyReportFileDownloadDto?> DownloadFileAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
+    Task<IReadOnlyList<WeeklyReportVersionDto>> GetVersionsAsync(Guid reportId, Guid userId, bool isLecturerOrAdmin);
+    Task<WeeklyReportFileDownloadDto?> DownloadVersionAsync(Guid versionId, Guid userId, bool isLecturerOrAdmin);
     Task<FeedbackDto?> AddStudentReplyAsync(Guid reportId, Guid studentUserId, string comment);
+    Task<bool> MarkFeedbacksReadAsync(Guid reportId, Guid userId, bool isLecturer);
     Task<WeeklyReportDto?> ReviewAsync(Guid id, ReviewWeeklyReportRequest request);
     Task<WeeklyReportDto?> ReviewAsync(Guid id, Guid userId, ReviewWeeklyReportRequest request);
     Task<bool> SoftDeleteAsync(Guid id, Guid userId);

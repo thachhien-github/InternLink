@@ -7,6 +7,7 @@ public sealed class WeeklyReportDto
     public Guid Id { get; set; }
     public Guid InternshipId { get; set; }
     public int WeekNumber { get; set; }
+    public int Version { get; set; }
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? FileName { get; set; }
@@ -19,6 +20,18 @@ public sealed class WeeklyReportDto
     public List<FeedbackDto> Feedbacks { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public DateTime? DueDate { get; set; }
+    public List<WeeklyReportVersionDto> Versions { get; set; } = new();
+}
+
+public sealed class WeeklyReportVersionDto
+{
+    public Guid Id { get; set; }
+    public int Version { get; set; }
+    public string FileName { get; set; } = null!;
+    public long FileSize { get; set; }
+    public string MimeType { get; set; } = null!;
+    public DateTime UploadedAt { get; set; }
 }
 
 public sealed class CreateWeeklyReportRequest

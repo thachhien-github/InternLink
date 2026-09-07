@@ -6,9 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InternLink.API.Controllers;
 
-/// <summary>
-/// Admin bulk assignment of students to lecturers.
-/// </summary>
 [ApiController]
 [Route("api/Admin/assignments")]
 [Authorize(Policy = "RequireAdmin")]

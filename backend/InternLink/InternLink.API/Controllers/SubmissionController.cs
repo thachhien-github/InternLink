@@ -342,4 +342,24 @@ public class SubmissionController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
         }
     }
+
+    [HttpPost("{id:guid}/feedback/read")]
+    [Authorize]
+    public async Task<IActionResult> MarkFeedbacksRead(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturer = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var updated = await _submissionService.MarkFeedbacksReadAsync(id, userId.Value, isLecturer);
+            return updated ? NoContent() : NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Submission not found" }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
 }
