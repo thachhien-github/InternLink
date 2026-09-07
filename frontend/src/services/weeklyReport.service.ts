@@ -1,6 +1,7 @@
 import { apiRequest, downloadAuthenticatedFile } from "../lib/apiClient";
 import type {
   CreateWeeklyReportRequestDto,
+  FeedbackDto,
   UpdateWeeklyReportRequestDto,
   WeeklyReportDto,
 } from "../types/api";
@@ -57,6 +58,13 @@ export const weeklyReportService = {
 
   download(id: string, fallbackFilename: string) {
     return downloadAuthenticatedFile(`/api/WeeklyReport/${id}/download`, fallbackFilename);
+  },
+
+  studentReply(id: string, comment: string): Promise<FeedbackDto> {
+    return apiRequest<FeedbackDto>(`/api/WeeklyReport/${id}/student-reply`, {
+      method: "POST",
+      body: { comment },
+    });
   },
 
   update(id: string, body: UpdateWeeklyReportRequestDto): Promise<WeeklyReportDto> {

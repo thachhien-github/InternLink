@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { FileCheck2, Check, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileCheck2, Check, RotateCcw, Download, Eye, X, Loader2 } from "lucide-react";
 import { Panel } from "../../../components/common/Panel";
 import {
   mapWeeklyReportStatusToUi,
 } from "../../../lib/portalMappers";
 import type { WeeklyReportDto } from "../../../types/api";
+import { weeklyReportService } from "../../../services/weeklyReport.service";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 
 type WeeklyReportsReviewPanelProps = {
   reports: WeeklyReportDto[];
@@ -21,6 +23,12 @@ export function WeeklyReportsReviewPanel({
 }: WeeklyReportsReviewPanelProps) {
   const [commentById, setCommentById] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; fileName: string } | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+
+  useEffect(() => () => {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+  }, [preview]);
 
   const pending = reports.filter((r) => r.status === "Submitted");
 
@@ -32,6 +40,35 @@ export function WeeklyReportsReviewPanel({
       await onReview(id, uiStatus, commentById[id]);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handlePreview = async (report: WeeklyReportDto) => {
+    if (!report.fileName) return;
+    setPreviewLoadingId(report.id);
+    try {
+      const { blob, filename } = await weeklyReportService.download(report.id, report.fileName);
+      if (preview?.url) URL.revokeObjectURL(preview.url);
+      setPreview({ url: URL.createObjectURL(blob), fileName: filename });
+    } catch (err) {
+      window.alert(getApiErrorMessage(err));
+    } finally {
+      setPreviewLoadingId(null);
+    }
+  };
+
+  const handleDownload = async (report: WeeklyReportDto) => {
+    if (!report.fileName) return;
+    try {
+      const { blob, filename } = await weeklyReportService.download(report.id, report.fileName);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      window.alert(getApiErrorMessage(err));
     }
   };
 
@@ -56,13 +93,35 @@ export function WeeklyReportsReviewPanel({
                   Tuần {r.weekNumber} — {r.title}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
-                  {r.content}
+                  {r.fileName ?? r.content}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-1">
                   Trạng thái: {mapWeeklyReportStatusToUi(r.status)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {r.fileName && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void handlePreview(r)}
+                      disabled={previewLoadingId === r.id}
+                      className="il-btn il-btn-secondary text-[11px]"
+                      title="Xem trước file"
+                    >
+                      {previewLoadingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                      Xem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDownload(r)}
+                      className="il-btn il-btn-secondary text-[11px]"
+                      title="Tải file"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   disabled={busyId === r.id}
@@ -95,6 +154,20 @@ export function WeeklyReportsReviewPanel({
           </li>
         ))}
       </ul>
+
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-5xl h-[85vh] shadow-xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+              <p className="text-sm font-bold text-slate-900 truncate">{preview.fileName}</p>
+              <button type="button" onClick={() => setPreview(null)} className="p-1.5 text-slate-500 hover:text-slate-900" title="Đóng xem trước">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe title={`Xem trước ${preview.fileName}`} src={preview.url} className="flex-1 w-full" />
+          </div>
+        </div>
+      )}
     </Panel>
   );
 }

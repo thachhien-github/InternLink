@@ -17,4 +17,5 @@ public class WeeklyReport : BaseEntity
     public WeeklyReportStatus Status { get; set; } = WeeklyReportStatus.Draft;
     public DateTime? SubmittedAt { get; set; }
     public string? LecturerComment { get; set; }
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

@@ -409,6 +409,7 @@ export interface WeeklyReportDto {
   status: string;
   submittedAt?: string | null;
   lecturerComment?: string | null;
+  feedbacks?: FeedbackDto[];
   createdAt: string;
   updatedAt?: string | null;
 }

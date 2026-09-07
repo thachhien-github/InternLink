@@ -2,8 +2,11 @@ namespace InternLink.Domain.Entities;
 
 public class Feedback : BaseEntity
 {
-    public Guid SubmissionId { get; set; }
-    public Submission Submission { get; set; } = null!;
+    public Guid? SubmissionId { get; set; }
+    public Submission? Submission { get; set; }
+
+    public Guid? WeeklyReportId { get; set; }
+    public WeeklyReport? WeeklyReport { get; set; }
 
     public Guid? LecturerId { get; set; }
     public Lecturer? Lecturer { get; set; }

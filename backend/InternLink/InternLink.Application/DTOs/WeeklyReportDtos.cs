@@ -16,6 +16,7 @@ public sealed class WeeklyReportDto
     public string Status { get; set; } = null!;
     public DateTime? SubmittedAt { get; set; }
     public string? LecturerComment { get; set; }
+    public List<FeedbackDto> Feedbacks { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

@@ -9,6 +9,7 @@ public class SubmissionProfile : Profile
     public SubmissionProfile()
     {
         CreateMap<Feedback, FeedbackDto>().MaxDepth(64)
+            .ForMember(d => d.WeeklyReportId, o => o.MapFrom(s => s.WeeklyReportId))
             .ForMember(d => d.LecturerName, o => o.MapFrom(s => s.Lecturer != null ? s.Lecturer.FullName : null));
 
         CreateMap<Submission, SubmissionDto>().MaxDepth(64)

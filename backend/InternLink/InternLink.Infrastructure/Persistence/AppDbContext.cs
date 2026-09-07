@@ -161,7 +161,9 @@ public class AppDbContext : DbContext
             b.Property(x => x.Comment).IsRequired().HasMaxLength(2000);
             b.Property(x => x.IsPublic).HasDefaultValue(true);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            b.HasOne(x => x.Submission).WithMany(x => x.Feedbacks).HasForeignKey(x => x.SubmissionId);
+            b.HasOne(x => x.Submission).WithMany(x => x.Feedbacks).HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.WeeklyReport).WithMany(x => x.Feedbacks).HasForeignKey(x => x.WeeklyReportId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => x.WeeklyReportId);
             b.HasOne(x => x.Lecturer).WithMany().HasForeignKey(x => x.LecturerId).OnDelete(DeleteBehavior.SetNull);
         });
 

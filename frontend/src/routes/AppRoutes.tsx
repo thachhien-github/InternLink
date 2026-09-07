@@ -347,6 +347,9 @@ export function AppRoutes() {
                     <LecturerReportsView
                       submissions={appState.assignedSubmissions}
                       weeklyReports={appState.weeklyReports}
+                      isLoading={appState.isLecturerLoading}
+                      error={appState.lecturerError}
+                      onRetry={appState.refresh}
                       onUpdateSubmissionStatus={appState.handleUpdateSubmissionStatus}
                       onReviewWeeklyReport={appState.handleReviewWeeklyReport}
                       showToast={showToast}

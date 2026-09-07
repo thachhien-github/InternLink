@@ -17,6 +17,9 @@ interface ReportsViewProps {
     comment?: string,
   ) => void | Promise<void>;
   showToast?: (msg: string) => void;
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => Promise<void>;
 }
 
 export const ReportsView = ({
@@ -25,7 +28,23 @@ export const ReportsView = ({
   onUpdateSubmissionStatus,
   onReviewWeeklyReport,
   showToast,
+  isLoading = false,
+  error = null,
+  onRetry,
 }: ReportsViewProps) => {
+  if (isLoading) {
+    return <div className="p-6 text-sm text-slate-500">Đang tải danh sách báo cáo…</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 rounded-lg border border-rose-200 bg-rose-50 text-sm text-rose-800 space-y-3">
+        <p className="font-semibold">Không thể tải danh sách báo cáo: {error}</p>
+        {onRetry && <button type="button" onClick={() => void onRetry()} className="il-btn il-btn-secondary text-xs">Thử lại</button>}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       <WeeklyReportsReviewPanel

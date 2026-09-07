@@ -206,6 +206,8 @@ export function useRealAppState(
     })(),
     stats,
     weeklyReports: lecturerPortal.weeklyReports,
+    isLecturerLoading: lecturerPortal.isLoading,
+    lecturerError: lecturerPortal.error,
     handleUpdateSubmissionStatus,
     handleReviewWeeklyReport,
     refresh: lecturerPortal.refresh,

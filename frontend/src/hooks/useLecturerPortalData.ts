@@ -33,21 +33,19 @@ export function useLecturerPortalData(
   const [dashboardStats, setDashboardStats] = useState<LecturerDashboardStatsDto | null>(null);
   const [weeklyTrend, setWeeklyTrend] = useState<LecturerWeeklyTrendDto[]>([]);
   const [isLoading, setIsLoading] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
+    setError(null);
     try {
       const [internships, companies, allSubmissions, allWeeklyReports, stats, trend] =
         await Promise.all([
           lecturerInternshipsService.getAll(semesterId ?? undefined),
           lecturerCompaniesService.getActive(semesterId ?? undefined),
-          lecturerInternshipsService
-            .getAllSubmissions(semesterId ?? undefined)
-            .catch(() => []),
-          weeklyReportService
-            .getAllForLecturer(semesterId ?? undefined)
-            .catch(() => []),
+          lecturerInternshipsService.getAllSubmissions(semesterId ?? undefined),
+          weeklyReportService.getAllForLecturer(semesterId ?? undefined),
           lecturerDashboardService.getStats(semesterId ?? undefined),
           lecturerDashboardService.getWeeklyTrend(semesterId ?? undefined),
         ]);
@@ -83,7 +81,9 @@ export function useLecturerPortalData(
       setDashboardStats(stats);
       setWeeklyTrend(trend);
     } catch (err) {
-      onError?.(getApiErrorMessage(err));
+      const message = getApiErrorMessage(err);
+      setError(message);
+      onError?.(message);
     } finally {
       setIsLoading(false);
     }
@@ -130,6 +130,7 @@ export function useLecturerPortalData(
     dashboardStats,
     weeklyTrend,
     isLoading,
+    error,
     refresh: load,
     updateSubmissionStatus,
     reviewWeeklyReport,

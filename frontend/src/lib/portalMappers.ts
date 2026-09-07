@@ -594,15 +594,26 @@ export function mapWeeklyReportFeedbackToStudentUi(
     attachments: [],
     currentWorkflowStep: stepMap[r.status] ?? 3,
     conversation: [
-      {
-        id: `wr-msg-${r.id}`,
-        sender: "lecturer",
-        senderName: lecturerName ?? "Giảng viên hướng dẫn",
+      ...(r.lecturerComment
+        ? [{
+            id: `wr-msg-${r.id}`,
+            sender: "lecturer",
+            senderName: lecturerName ?? "Giảng viên hướng dẫn",
+            avatar: DEFAULT_AVATAR,
+            time: formatViDate(when),
+            text: r.lecturerComment,
+            attachments: [],
+          }]
+        : []),
+      ...(r.feedbacks ?? []).map((f) => ({
+        id: f.id,
+        sender: f.lecturerId ? "lecturer" : "student",
+        senderName: f.lecturerName ?? "Sinh viên",
         avatar: DEFAULT_AVATAR,
-        time: formatViDate(when),
-        text: r.lecturerComment ?? "",
+        time: formatViDate(f.createdAt),
+        text: f.comment,
         attachments: [],
-      },
+      })),
     ],
     revisions: [],
   };

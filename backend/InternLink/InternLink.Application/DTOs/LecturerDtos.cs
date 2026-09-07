@@ -50,7 +50,8 @@ public sealed class FeedbackDto
 
     public Guid Id { get; set; }
 
-    public Guid SubmissionId { get; set; }
+    public Guid? SubmissionId { get; set; }
+    public Guid? WeeklyReportId { get; set; }
 
     public Guid? LecturerId { get; set; }
 

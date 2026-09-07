@@ -146,6 +146,10 @@ export const FeedbackView = ({
     try {
       if (selectedFeedback.submissionId) {
         await submissionApiService.studentReply(selectedFeedback.submissionId, replyText.trim());
+      } else if (selectedFeedback.reportId) {
+        await weeklyReportService.studentReply(selectedFeedback.reportId, replyText.trim());
+      } else {
+        throw new Error("Feedback target is missing");
       }
       const newReply = {
         id: `c-${Date.now()}`,

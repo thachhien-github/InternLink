@@ -51,6 +51,8 @@ public class WeeklyReportService : IWeeklyReportService
                 .ThenInclude(i => i.Student)
             .Include(r => r.Internship)
                 .ThenInclude(i => i.Lecturer)
+            .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.Lecturer)
             .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
 
         if (report == null)
@@ -80,6 +82,8 @@ public class WeeklyReportService : IWeeklyReportService
             return Array.Empty<WeeklyReportDto>();
 
         var reports = await _db.WeeklyReports
+            .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.Lecturer)
             .Where(r => r.InternshipId == internship.Id && !r.IsDeleted)
             .OrderByDescending(r => r.WeekNumber)
             .ToListAsync();
@@ -98,6 +102,8 @@ public class WeeklyReportService : IWeeklyReportService
             await EnsureInternshipAccessAsync(internshipId, userId, isLecturerOrAdmin);
 
         var reports = await _db.WeeklyReports
+            .Include(r => r.Feedbacks.Where(f => !f.IsDeleted))
+                .ThenInclude(f => f.Lecturer)
             .Where(r => r.InternshipId == internshipId && !r.IsDeleted)
             .OrderByDescending(r => r.WeekNumber)
             .ToListAsync();
@@ -373,6 +379,52 @@ public class WeeklyReportService : IWeeklyReportService
         }
 
         return _mapper.Map<WeeklyReportDto>(report);
+    }
+
+    public async Task<FeedbackDto?> AddStudentReplyAsync(Guid reportId, Guid studentUserId, string comment)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+            throw new InvalidOperationException("Reply comment is required");
+
+        var report = await _db.WeeklyReports
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(r => r.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .FirstOrDefaultAsync(r => r.Id == reportId && !r.IsDeleted);
+
+        if (report == null)
+            return null;
+        if (report.Internship.Student?.UserId != studentUserId)
+            throw new UnauthorizedAccessException("You can only reply to your own weekly report");
+
+        var feedback = new Feedback
+        {
+            Id = Guid.NewGuid(),
+            WeeklyReportId = reportId,
+            LecturerId = null,
+            Comment = comment.Trim(),
+            IsPublic = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.Feedbacks.Add(feedback);
+        await _db.SaveChangesAsync();
+
+        var lecturerUserId = report.Internship.Lecturer?.UserId;
+        if (lecturerUserId.HasValue)
+        {
+            await _notificationService.CreateAsync(new CreateNotificationRequest
+            {
+                UserId = lecturerUserId.Value,
+                Title = "Sinh viên phản hồi báo cáo tuần",
+                Content = $"Sinh viên phản hồi về báo cáo tuần {report.WeekNumber}.",
+                Link = $"/weekly-reports/{reportId}"
+            });
+        }
+
+        await _db.Entry(feedback).Reference(f => f.Lecturer).LoadAsync();
+        return _mapper.Map<FeedbackDto>(feedback);
     }
 
     public async Task<bool> SoftDeleteAsync(Guid id, Guid userId)
