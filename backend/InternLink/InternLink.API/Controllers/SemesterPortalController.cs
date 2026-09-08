@@ -3,6 +3,9 @@ using InternLink.Application.Interfaces;
 using InternLink.Shared.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using InternLink.Domain.Enums;
+using InternLink.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace InternLink.API.Controllers;
 
@@ -12,16 +15,40 @@ namespace InternLink.API.Controllers;
 public class SemesterPortalController : ControllerBase
 {
     private readonly ISemesterService _semesterService;
+    private readonly AppDbContext _db;
 
-    public SemesterPortalController(ISemesterService semesterService)
+    public SemesterPortalController(ISemesterService semesterService, AppDbContext db)
     {
         _semesterService = semesterService;
+        _db = db;
     }
 
     [HttpGet("current")]
     public async Task<IActionResult> GetCurrent()
     {
         var semester = await _semesterService.GetActiveSemesterAsync();
+        if (semester == null)
+        {
+            // Keep student portal usable during setup before an admin starts the first semester.
+            semester = await _db.Semesters
+                .Where(s => !s.IsDeleted && s.Status != SemesterStatus.Completed)
+                .OrderBy(s => s.Status == SemesterStatus.Upcoming ? 0 : 1)
+                .ThenByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                .Select(s => new SemesterDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Term = s.Term,
+                    AcademicYear = s.AcademicYear,
+                    StartDate = s.StartDate,
+                    EndDate = s.EndDate,
+                    Status = s.Status,
+                    Description = s.Description,
+                    MaxStudentsPerLecturer = s.MaxStudentsPerLecturer
+                })
+                .FirstOrDefaultAsync();
+        }
+
         return semester == null
             ? NotFound(ApiResponse<object>.Fail(new ApiError { Title = "No active semester" }))
             : Ok(ApiResponse<SemesterDto>.Ok(semester));

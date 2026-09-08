@@ -70,7 +70,9 @@ public class DocumentService : IDocumentService
                 }
                 else
                 {
-                    query = query.Where(d => d.Internship.Student.UserId == userId.Value && d.IsPublished);
+                    // Published templates are shared with students; internship-specific access is
+                    // still enforced by GetDocumentsByInternshipAsync for private documents.
+                    query = query.Where(d => d.IsPublished);
                 }
             }
         }

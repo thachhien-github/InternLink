@@ -17,6 +17,7 @@ public static class SeedData
         var hasher = new PasswordHasher<User>();
 
         await EnsureAdminUserAsync(context, hasher);
+        await EnsureSemestersAsync(context);
     }
 
     private static async Task EnsureAdminUserAsync(AppDbContext context, PasswordHasher<User> hasher)
