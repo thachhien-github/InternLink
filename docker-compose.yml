@@ -14,21 +14,23 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=database,1433;Database=InternLink;User Id=sa;Password=InternLink_Sa123!;TrustServerCertificate=True;MultipleActiveResultSets=true;IPAddressPreference=IPv4First
-      - Jwt__Secret=InternLink_SecretKey_Production_SuperSecure_32BytesLength!
+      - ConnectionStrings__DefaultConnection=Server=database,1433;Database=InternLink;User Id=sa;Password=${MSSQL_SA_PASSWORD:-InternLink_Sa123!};TrustServerCertificate=True;MultipleActiveResultSets=true;IPAddressPreference=IPv4First
+      - Jwt__Secret=${JWT_SECRET:-InternLink_SecretKey_Production_SuperSecure_32BytesLength!}
       - Jwt__Issuer=InternLink
       - Jwt__Audience=InternLinkClients
-      - Email__Enabled=true
+      - Email__Enabled=${EMAIL_ENABLED:-true}
       - Email__SmtpHost=smtp.gmail.com
       - Email__SmtpPort=587
-      - Email__Username=internlink.cntt@gmail.com
-      - Email__Password=yxqldegwombxsujd
-      - Email__FromAddress=internlink.cntt@gmail.com
-      - Email__PortalUrl=http://localhost:3000
-      - Cors__AllowedOrigins__0=http://localhost:3000
+      - Email__Username=${EMAIL_USERNAME:-internlink.cntt@gmail.com}
+      - Email__Password=${EMAIL_PASSWORD:-}
+      - Email__FromAddress=${EMAIL_USERNAME:-internlink.cntt@gmail.com}
+      - Email__PortalUrl=${PORTAL_URL:-http://localhost:3000}
+      - Cors__AllowedOrigins__0=${PORTAL_URL:-http://localhost:3000}
       - Cors__AllowedOrigins__1=http://localhost:5173
-    ports:
-      - "7109:8080"
+    # Không publish port ra ngoài - chỉ truy cập qua Nginx proxy (frontend:3000)
+    # Muốn gỡ lỗi Swagger trực tiếp: uncomment dòng dưới
+    # ports:
+    #   - "127.0.0.1:7109:8080"
     volumes:
       - internlink_uploads_data:/app/uploads
     networks:
@@ -49,10 +51,13 @@ services:
     container_name: internlink_database
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "InternLink_Sa123!"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-InternLink_Sa123!}"
       MSSQL_PID: "Developer"
-    ports:
-      - "1433:1433"
+      # Giới hạn RAM SQL Server tránh OOM trên máy 4-8GB (mặc định chiếm 80% RAM vật lý)
+      MSSQL_MEMORY_LIMIT_MB: "${MSSQL_MEMORY_LIMIT_MB:-2048}"
+    # Không publish port ra ngoài - SQL Server chỉ truy cập nội bộ qua Docker network
+    # ports:
+    #   - "127.0.0.1:1433:1433"
     volumes:
       - internlink_database_data:/var/opt/mssql
     networks:

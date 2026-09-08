@@ -7,6 +7,7 @@ import { authService } from "../../../services/auth.service";
 import type { AuthActivityDto, AuthSessionDto } from "../../../types/api";
 import { useAuth } from "../../../hooks/useAuth";
 import { useAdminNavStats } from "../../../hooks/useAdminNavStats";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   User,
   Building2,
@@ -68,7 +69,8 @@ export const AccountView = ({
   onShowToast: (msg: string) => void;
 }) => {
   const { user } = useAuth();
-  const { stats: navStats } = useAdminNavStats(true);
+  const { selectedSemesterId } = useSemester();
+  const { stats: navStats } = useAdminNavStats(true, selectedSemesterId);
 
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "preferences" | "activity">("profile");
 
@@ -161,20 +163,6 @@ export const AccountView = ({
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(next));
     onShowToast("Đã lưu tùy chọn thông báo trên thiết bị này.");
   };
-
-  // Load from backend me endpoint if in live mode
-  useEffect(() => {
-    authService
-      .getMe()
-      .then((me) => {
-        setProfile((prev) => ({
-          ...prev,
-          fullName: me.fullName || me.username || prev.fullName,
-          email: me.email || prev.email,
-        }));
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -19,6 +19,7 @@ interface LoginUser {
   username: string;
   role: UserRole;
   name: string;
+  email?: string | null;
   mustChangePassword?: boolean;
   token?: string;
   id?: string;
@@ -118,6 +119,7 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
         id: me.id,
         role,
         name: me.fullName?.trim() || me.username,
+        email: me.email,
         mustChangePassword: loginRes.mustChangePassword,
         token: loginRes.token,
       });

@@ -28,6 +28,7 @@ import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { exportNotificationsHistoryCsv } from "../../../lib/adminNotificationsExport";
 import { useAdminNavStats } from "../../../hooks/useAdminNavStats";
+import { useSemester } from "../../../contexts/SemesterContext";
 import {
   useAdminNotifications,
   type AdminNotificationItem,
@@ -81,7 +82,8 @@ export const NotificationsView = ({
   onShowToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
 }) => {
-  const { stats: navStats } = useAdminNavStats(true);
+  const { selectedSemesterId } = useSemester();
+  const { stats: navStats } = useAdminNavStats(true, selectedSemesterId);
   const {
     notifications,
     loading: isLoading,

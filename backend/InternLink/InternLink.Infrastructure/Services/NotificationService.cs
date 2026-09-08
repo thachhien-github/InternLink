@@ -21,15 +21,23 @@ public class NotificationService : INotificationService
         _realtimeService = realtimeService;
     }
 
-    public async Task<IEnumerable<NotificationDto>> GetMineAsync(Guid userId)
+    public async Task<IEnumerable<NotificationDto>> GetMineAsync(Guid userId, int? limit = null)
     {
-        var notifications = await _db.Notifications
+        var query = _db.Notifications
             .Where(n => n.UserId == userId && !n.IsDeleted)
             .OrderByDescending(n => n.CreatedAt)
-            .ToListAsync();
+            .AsNoTracking();
+
+        if (limit.HasValue)
+            query = query.Take(Math.Clamp(limit.Value, 1, 100));
+
+        var notifications = await query.ToListAsync();
 
         return _mapper.Map<List<NotificationDto>>(notifications);
     }
+
+    public Task<int> GetUnreadCountAsync(Guid userId) =>
+        _db.Notifications.CountAsync(n => n.UserId == userId && !n.IsDeleted && !n.IsRead);
 
     public async Task<NotificationDto> CreateAsync(CreateNotificationRequest request)
     {

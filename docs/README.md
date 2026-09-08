@@ -1,12 +1,30 @@
-# InternLink — Danh Mục Tài Liệu Kỹ Thuật
+# InternLink — Documentation Index
 
-**Phiên bản:** 4.0  
-**Ngày cập nhật:** Tháng 9/2026  
-**Trạng thái:** v1.0 Release — 18 entities, 25 controllers, 34 routes
+**Trạng thái:** Bộ tài liệu hiện hành
+**Ngày kiểm tra:** 2026-09-08
+**Nguồn chuẩn:** mã nguồn, cấu hình runtime và migrations hiện tại
+
+> Các tài liệu đánh số cũ trong thư mục này được giữ để tham khảo lịch sử. Đặc tả hiện hành nằm trong [`current/`](current/README.md). Không dùng các số liệu cũ về .NET 8, 25 controllers, 18 bảng hoặc 34 routes.
 
 ---
 
-## 📑 Danh Sách Tài Liệu
+## Tài liệu hiện hành
+
+| File | Nội dung |
+|:---|:---|
+| [`current/README.md`](current/README.md) | Baseline implementation và quy ước đọc tài liệu |
+| [`current/01-Architecture.md`](current/01-Architecture.md) | Kiến trúc runtime và cấu trúc source |
+| [`current/02-Frontend-Routes.md`](current/02-Frontend-Routes.md) | Route tree và phân quyền portal |
+| [`current/03-API-Reference.md`](current/03-API-Reference.md) | Controller/endpoint inventory |
+| [`current/04-Domain-Model.md`](current/04-Domain-Model.md) | Entity, quan hệ và state |
+| [`current/05-Database.md`](current/05-Database.md) | Schema, migration và index |
+| [`current/06-Storage.md`](current/06-Storage.md) | Upload, volume, backup và retention |
+| [`current/07-Development.md`](current/07-Development.md) | Setup, build, test và migration |
+| [`current/08-Operations.md`](current/08-Operations.md) | Docker, healthcheck, logging và sự cố |
+| [`current/09-Demo-Accounts.md`](current/09-Demo-Accounts.md) | Seed account và dữ liệu demo |
+| [`current/10-Documentation-Maintenance.md`](current/10-Documentation-Maintenance.md) | Quy trình cập nhật docs |
+
+## Tài liệu lịch sử
 
 | # | File | Nội dung | Phiên bản |
 |:---:|:---|:---|:---:|
@@ -29,7 +47,7 @@
 
 ---
 
-## 🏗️ Kiến Trúc Hệ Thống
+## Snapshot hiện tại
 
 | Thành phần | Công nghệ | Phiên bản |
 |:---|:---|:---|
@@ -48,13 +66,12 @@
 
 | Metric | Giá trị |
 |:---|:---:|
-| API Controllers | 25 |
-| Bảng dữ liệu | 18 |
-| Frontend Routes | 34 |
-| Service Files | 31 |
-| Use Cases | 37 |
-| TypeScript Errors | 0 |
-| C# Build Errors | 0 |
+| API controllers | 26 |
+| DbSet hiện tại | 23 |
+| Frontend portal | 3 |
+| Backend target | .NET 10 |
+| Database | SQL Server 2022 |
+| Docker web entrypoint | `http://localhost:3000` |
 
 ---
 
@@ -63,3 +80,5 @@
 - **SuperAdmin**: Quản lý học kỳ, users, assignments, notifications, settings
 - **Lecturer**: Dashboard, students, reports, evaluations, export
 - **Student**: Dashboard, internship, weekly reports, submissions, feedback
+
+Chi tiết và giới hạn đã kiểm chứng nằm trong [`current/README.md`](current/README.md).

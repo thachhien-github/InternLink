@@ -101,6 +101,23 @@ docker compose ps
 
 ---
 
+### Cách 3: Deploy demo tại khoa / lab — chi phí 0 đồng (Cloudflare Tunnel)
+
+Phù hợp demo 6 tuần cho ~30 SV + 5 GVHD: chạy Docker trên một máy tại khoa (RAM ≥ 4GB, khuyên 8GB) và expose công khai qua **Cloudflare Tunnel** (HTTPS miễn phí, không cần mở port / không cần tài khoản):
+
+```bash
+bash scripts/deploy-lab.sh
+```
+
+- Script tự kiểm tra Docker, tạo `.env` với secret ngẫu nhiên, build & khởi động toàn bộ, sau đó chạy tunnel.
+- Kết quả trả về URL dạng `https://<random>.trycloudflare.com` — gửi link này cho SV/GV.
+- **URL quick tunnel đổi mỗi lần restart**; muốn URL cố định trong 6 tuần, tạo Cloudflare Tunnel named (tài khoản miễn phí + domain) rồi chạy:
+  `CLOUDFLARE_TUNNEL_TOKEN=... PORTAL_URL=https://ten-mien bash scripts/deploy-lab.sh`
+- Dữ liệu nằm trong volumes `internlink_database_data` + `internlink_uploads_data`; script in sẵn lệnh backup (khuyên chạy cron hằng ngày).
+- Chi tiết cấu hình production (giới hạn RAM SQL Server, ẩn port nội bộ, secret qua `.env`) đã được cài sẵn trong `docker-compose.yml`.
+
+---
+
 ### Cách 2: Chạy cục bộ từng phần (Local Development)
 
 #### 1. Khởi chạy Backend (.NET 10 Web API)

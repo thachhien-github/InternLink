@@ -115,6 +115,7 @@ export function AppRoutes() {
                     username: user.username,
                     name: user.name,
                     role: user.role,
+                    email: user.email,
                   },
                   mustChangePassword: user.mustChangePassword,
                 });

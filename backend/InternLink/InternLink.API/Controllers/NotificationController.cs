@@ -20,14 +20,25 @@ public class NotificationController : ControllerBase
     }
 
     [HttpGet("mine")]
-    public async Task<IActionResult> GetMine()
+    public async Task<IActionResult> GetMine([FromQuery] int? limit = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
             return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
 
-        var notifications = await _notificationService.GetMineAsync(userId.Value);
+        var notifications = await _notificationService.GetMineAsync(userId.Value, limit);
         return Ok(ApiResponse<IEnumerable<NotificationDto>>.Ok(notifications));
+    }
+
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var count = await _notificationService.GetUnreadCountAsync(userId.Value);
+        return Ok(ApiResponse<int>.Ok(count));
     }
 
     [HttpPost("mark-read/{id:guid}")]
