@@ -8,7 +8,7 @@ public interface IAssignmentService
     Task<IReadOnlyList<LecturerAssignmentItemDto>> GetByLecturerAsync(Guid lecturerId, Guid? semesterId = null);
     Task<IReadOnlyList<LecturerAssignmentItemDto>> GetAllAssignmentsAsync(Guid? semesterId = null);
     Task<bool> UnassignAsync(UnassignRequest request);
-    Task<IReadOnlyList<AssignmentHistoryItemDto>> GetHistoryAsync(int limit = 50);
+    Task<IReadOnlyList<AssignmentHistoryItemDto>> GetHistoryAsync(int limit = 50, Guid? semesterId = null);
     Task<byte[]> ExportExcelAsync(Guid? semesterId = null);
     Task<AutoAssignResultDto> AutoAssignAsync(AutoAssignRequest request);
 

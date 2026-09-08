@@ -13,6 +13,7 @@ import {
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { useSemester } from "../../../contexts/SemesterContext";
 import type { Student } from "../../../types/student";
 
@@ -212,9 +213,7 @@ export const StudentsView = ({
                   </td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                        {student.name.split(" ").slice(-1)[0]?.[0] ?? "S"}
-                      </div>
+                      <InitialsAvatar name={student.name} seed={student.mssv} size={32} />
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate leading-tight" title={student.name}>{student.name}</p>
                         <p className="text-[10px] text-slate-400 font-medium truncate leading-tight">{student.email ?? "—"}</p>

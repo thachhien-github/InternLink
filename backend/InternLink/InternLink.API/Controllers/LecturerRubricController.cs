@@ -3,6 +3,7 @@ using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Domain.Entities;
+using InternLink.Domain.Enums;
 using InternLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -307,6 +308,7 @@ public class LecturerRubricController : ControllerBase
                 .Include(i => i.Company)
                 .Include(i => i.Semester)
                 .Include(i => i.WeeklyReports.Where(wr => !wr.IsDeleted))
+                .Include(i => i.Submissions.Where(s => !s.IsDeleted))
                 .AsQueryable();
 
             if (semesterId.HasValue)
@@ -337,19 +339,23 @@ public class LecturerRubricController : ControllerBase
                     CompanyId = i.CompanyId,
                     CompanyName = i.Company?.CompanyName,
                     Position = i.Position,
-                    InternshipStatus = i.Status.ToString(),
+                    InternshipStatus = (i.Status == InternLink.Domain.Enums.InternshipStatus.NotStarted &&
+                        (i.CompanyId.HasValue || i.Submissions.Any() || i.WeeklyReports.Any())
+                        ? InternLink.Domain.Enums.InternshipStatus.InProgress
+                        : i.Status).ToString(),
                     StartDate = i.StartDate?.ToString("yyyy-MM-dd"),
                     EndDate = i.EndDate?.ToString("yyyy-MM-dd"),
                     WeeklyReportCount = i.WeeklyReports.Count,
-                    PendingReportCount = 0,
-                    SubmissionCount = 0,
+                    PendingReportCount = i.WeeklyReports.Count(wr => wr.Status == InternLink.Domain.Enums.WeeklyReportStatus.Submitted),
+                    SubmissionCount = i.Submissions.Count,
+                    FinalReportSubmitted = i.Submissions.Any(s => s.Type == SubmissionType.FinalReport),
+                    PracticalProductSubmitted = i.Submissions.Any(s => s.Type == SubmissionType.Product),
                     EvaluationId = ev?.Id,
                     FinalGrade = ev?.FinalGrade,
                     EvaluatedAt = ev?.EvaluatedAt,
                     HasEvaluation = ev != null,
                     IsEvaluationFinalized = ev?.IsFinalized ?? false,
-                    ProgressPercent = i.Status == InternLink.Domain.Enums.InternshipStatus.Completed ? 100
-                        : i.Status == InternLink.Domain.Enums.InternshipStatus.InProgress ? 55 : 10
+                    ProgressPercent = CalculateProgress(i)
                 };
             }).ToList();
 
@@ -360,6 +366,26 @@ public class LecturerRubricController : ControllerBase
             _logger.LogError(ex, "Error retrieving lecturer students");
             return StatusCode(500, new { message = "Lỗi khi lấy danh sách sinh viên." });
         }
+    }
+
+    private static int CalculateProgress(Internship internship)
+    {
+        var activityProgress = Math.Min(95, Math.Max(10,
+            internship.WeeklyReports.Count * 8 + internship.Submissions.Count * 2));
+
+        return internship.Status switch
+        {
+            InternLink.Domain.Enums.InternshipStatus.Completed or
+            InternLink.Domain.Enums.InternshipStatus.Graded => 100,
+            InternLink.Domain.Enums.InternshipStatus.InProgress or
+            InternLink.Domain.Enums.InternshipStatus.BehindSchedule or
+            InternLink.Domain.Enums.InternshipStatus.AwaitingFeedback or
+            InternLink.Domain.Enums.InternshipStatus.RequiresRevision => activityProgress,
+            _ when internship.CompanyId.HasValue ||
+                internship.WeeklyReports.Count > 0 ||
+                internship.Submissions.Count > 0 => activityProgress,
+            _ => 0,
+        };
     }
 }
 
@@ -386,6 +412,8 @@ public class LecturerEvaluationStudentDto
     public int WeeklyReportCount { get; set; }
     public int PendingReportCount { get; set; }
     public int SubmissionCount { get; set; }
+    public bool FinalReportSubmitted { get; set; }
+    public bool PracticalProductSubmitted { get; set; }
     public Guid? EvaluationId { get; set; }
     public decimal? FinalGrade { get; set; }
     public DateTime? EvaluatedAt { get; set; }

@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<Semester> Semesters { get; set; } = null!;
     public DbSet<Internship> Internships { get; set; } = null!;
     public DbSet<Submission> Submissions { get; set; } = null!;
+    public DbSet<SubmissionAsset> SubmissionAssets { get; set; } = null!;
     public DbSet<Feedback> Feedbacks { get; set; } = null!;
     public DbSet<Document> Documents { get; set; } = null!;
     public DbSet<Evaluation> Evaluations { get; set; } = null!;
@@ -152,6 +153,21 @@ public class AppDbContext : DbContext
             b.Property(x => x.SubmittedAt).HasDefaultValueSql("GETUTCDATE()");
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             b.HasOne(x => x.Internship).WithMany(x => x.Submissions).HasForeignKey(x => x.InternshipId);
+            b.HasMany(x => x.Assets).WithOne(x => x.Submission).HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SubmissionAsset>(b =>
+        {
+            b.ToTable("SubmissionAssets");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasColumnName("SubmissionAssetId");
+            b.Property(x => x.Label).HasMaxLength(250);
+            b.Property(x => x.FileName).HasMaxLength(250);
+            b.Property(x => x.FileUrl).HasMaxLength(1000);
+            b.Property(x => x.AssetType).IsRequired().HasMaxLength(30);
+            b.Property(x => x.MimeType).HasMaxLength(150);
+            b.Property(x => x.UploadedAt).HasDefaultValueSql("GETUTCDATE()");
+            b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
         });
 
         modelBuilder.Entity<Feedback>(b =>
@@ -179,9 +195,13 @@ public class AppDbContext : DbContext
             b.Property(x => x.Description).HasMaxLength(2000);
             b.Property(x => x.FileName).IsRequired().HasMaxLength(250);
             b.Property(x => x.FilePath).IsRequired().HasMaxLength(500);
+            b.Property(x => x.DownloadCount).HasDefaultValue(0);
             b.Property(x => x.MimeType).IsRequired().HasMaxLength(100);
             b.Property(x => x.UploadedAt).HasDefaultValueSql("GETUTCDATE()");
             b.Property(x => x.IsRequired).HasDefaultValue(false);
+            b.Property(x => x.IsPublished).HasDefaultValue(true);
+            b.Property(x => x.ArchiveReason).HasMaxLength(1000);
+            b.Property(x => x.ArchivedBy).HasMaxLength(200);
             // Category used to filter documents (e.g., "CV", "Form", "Report")
             b.Property(x => x.Category).HasMaxLength(100);
             b.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");

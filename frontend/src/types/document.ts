@@ -37,6 +37,9 @@ export interface DocumentItem {
   major: string;
   status: DocumentStatus;
   isPublished: boolean;
+  archiveReason?: string;
+  archivedAt?: string;
+  archivedBy?: string;
   isRequired?: boolean;
   description: string;
   archiveReason?: string;

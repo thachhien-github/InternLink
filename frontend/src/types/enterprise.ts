@@ -40,6 +40,7 @@ export interface EnterpriseDetail {
   internships: {
     id: string;
     studentId: string;
+    studentCode?: string | null;
     studentName: string;
     position: string;
     status: string;

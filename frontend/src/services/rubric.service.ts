@@ -123,6 +123,19 @@ export const rubricService = {
     }
   },
 
+  /** Get the approved rubric for a student's current semester. */
+  async getStudentApproved(semesterId: string): Promise<EvaluationRubricDto | null> {
+    try {
+      const raw = await apiRequestRaw<RubricApiDto>(
+        `/api/Evaluation/rubric?semesterId=${semesterId}`,
+      );
+      return mapFromApi(raw);
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) return null;
+      throw error;
+    }
+  },
+
   /**
    * Create a new rubric
    */
@@ -314,6 +327,12 @@ export const rubricService = {
   }> {
     return apiRequestRaw(
       `/api/Lecturer/evaluation/${evaluationId}/scores`,
+    );
+  },
+
+  async getStudentScores(evaluationId: string): ReturnType<typeof rubricService.getScores> {
+    return apiRequestRaw(
+      `/api/Evaluation/${evaluationId}/scores`,
     );
   },
 

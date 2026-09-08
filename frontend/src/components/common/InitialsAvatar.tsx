@@ -21,17 +21,19 @@ function getInitials(name: string): string {
 
 interface InitialsAvatarProps {
   name: string;
+  seed?: string;
   size?: number;
   className?: string;
 }
 
 export function InitialsAvatar({
   name,
+  seed,
   size = 32,
   className = "",
 }: InitialsAvatarProps) {
   const initials = getInitials(name);
-  const gradient = nameToGradient(name);
+  const gradient = nameToGradient(seed || name);
 
   return (
     <div

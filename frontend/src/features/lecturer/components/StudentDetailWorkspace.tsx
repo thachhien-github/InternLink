@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Toast } from "../../../components/common/Toast";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import {
   ArrowLeft,
   Building2,
@@ -166,13 +167,11 @@ export const StudentDetailWorkspace = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           {/* Avatar + Personal Profile Details */}
           <div className="flex items-start gap-4">
-            <img
-              src={
-                student.avatar ||
-                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-              }
-              alt={student.name}
-              className="w-18 h-18 rounded-lg object-cover border-2 border-blue-500 shadow-sm shrink-0"
+            <InitialsAvatar
+              name={student.name}
+              seed={student.mssv}
+              size={72}
+              className="border-2 border-blue-500"
             />
             <div className="space-y-1.5 min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">

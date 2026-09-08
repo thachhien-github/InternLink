@@ -5,24 +5,16 @@ import {
   BarChart3,
   Users,
   CheckCircle2,
-  Clock,
   Building2,
   Award,
-  Printer,
-  FileSpreadsheet,
-  FileText,
   TrendingUp,
   PieChart,
-  ShieldCheck,
-  Filter,
   Star,
-  GraduationCap,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
 import { lecturerAnalyticsService } from "../../../services/lecturerAnalytics.service";
-import { lecturerExportService } from "../../../services/lecturerExport.service";
 import { useSemester, toApiSemesterId } from "../../../contexts/SemesterContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 
@@ -38,14 +30,13 @@ interface DashboardStatsDto {
 }
 
 export const LecturerAnalytics = () => {
-  const { semesters, selectedSemester, selectSemester } = useSemester();
+  const { selectedSemester } = useSemester();
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("Tất cả doanh nghiệp");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<DashboardStatsDto | null>(null);
   const [weeklyTrend, setWeeklyTrend] = useState<LecturerWeeklyTrendDto[]>([]);
   const [gradeDist, setGradeDist] = useState<LecturerGradeDistributionDto | null>(null);
   const [companyStats, setCompanyStats] = useState<LecturerCompanyStatDto[]>([]);
-  const [activityStats, setActivityStats] = useState<LecturerActivityStatsDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const semesterId = toApiSemesterId(selectedSemester?.id);
@@ -58,18 +49,16 @@ export const LecturerAnalytics = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [stats, trend, grade, company, activity] = await Promise.all([
+      const [stats, trend, grade, company] = await Promise.all([
         lecturerAnalyticsService.getStats(semesterId),
         lecturerAnalyticsService.getWeeklyTrend(semesterId),
         lecturerAnalyticsService.getGradeDistribution(semesterId),
         lecturerAnalyticsService.getCompanyStats(semesterId),
-        lecturerAnalyticsService.getActivityStats(semesterId),
       ]);
       setStatsData(stats);
       setWeeklyTrend(trend);
       setGradeDist(grade);
       setCompanyStats(company);
-      setActivityStats(activity);
     } catch (err) {
       console.error("Analytics fetch error:", err);
     } finally {
@@ -84,46 +73,6 @@ export const LecturerAnalytics = () => {
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3e3);
-  };
-
-  const handleExportExcel = async () => {
-    try {
-      showToast("Đang tạo file Excel báo cáo...");
-      const { blob, filename } = await lecturerExportService.downloadEndOfTerm();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Đã tải xuống ${filename}`);
-    } catch (err) {
-      showToast(getApiErrorMessage(err));
-    }
-  };
-
-  const handleExportPDF = async () => {
-    try {
-      showToast("Đang xuất Báo cáo Thống kê định dạng PDF...");
-      const { blob, filename } = await lecturerExportService.downloadEndOfTermPdf();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Đã tải xuống ${filename}`);
-    } catch (err) {
-      showToast(getApiErrorMessage(err));
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   const totalStudents = statsData?.totalStudents ?? 0;
@@ -142,31 +91,7 @@ export const LecturerAnalytics = () => {
       <PageHeader
         icon={BarChart2}
         title="Thống kê & Phân tích Chuyên sâu"
-        subtitle="Phân tích tiến độ 12 tuần, phổ điểm tiêu chí, hiệu suất hướng dẫn và chất lượng doanh nghiệp tiếp nhận."
-        badge="Báo cáo Khoa CNTT"
-        actions={[
-          {
-            label: "Xuất Excel",
-            icon: FileSpreadsheet,
-            variant: "secondary",
-            onClick: handleExportExcel,
-            ariaLabel: "Xuất dữ liệu thống kê ra file Excel",
-          },
-          {
-            label: "Xuất PDF",
-            icon: FileText,
-            variant: "primary",
-            onClick: handleExportPDF,
-            ariaLabel: "Xuất báo cáo thống kê định dạng PDF",
-          },
-          {
-            label: "In Báo cáo",
-            icon: Printer,
-            variant: "ghost",
-            onClick: handlePrint,
-            ariaLabel: "In báo cáo thống kê",
-          },
-        ]}
+        subtitle={`Số liệu nhóm hướng dẫn · ${selectedSemester?.name ?? "Tất cả học kỳ"}`}
       />
 
       <KpiGrid>
@@ -177,9 +102,6 @@ export const LecturerAnalytics = () => {
           unit="sinh viên"
           icon={Users}
           footer="100% Đã phân công giảng viên"
-          onClick={() => {
-            if (semesters.length > 0) selectSemester(semesters[0].id);
-          }}
         />
         <KpiCard
           tone="emerald"
@@ -207,66 +129,18 @@ export const LecturerAnalytics = () => {
         />
       </KpiGrid>
 
-      {/* FILTER & ANALYTICAL SCOPE BAR */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-blue-600" />
-            <h2 className="text-xs font-bold uppercase text-slate-800 tracking-wider">
-              Phạm vi phân tích &amp; Lọc dữ liệu báo cáo
-            </h2>
-          </div>
-
-          {selectedSemester?.id !== "all" && (
-            <button
-              onClick={() => {
-                selectSemester("all");
-              }}
-              className="text-xs text-blue-600 hover:text-blue-800 font-bold"
-            >
-              Xóa bộ lọc
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-          <div>
-            <select
-              value={selectedSemester?.id ?? "all"}
-              onChange={(e) => selectSemester(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
-            >
-              <option value="all">Tất cả học kỳ</option>
-              {semesters.map((sem) => (
-                <option key={sem.id} value={sem.id}>
-                  {sem.name} — [{sem.status === "active" ? "Đang chạy" : sem.status === "upcoming" ? "Sắp tới" : "Đã đóng"}]
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <span className="text-xs text-slate-400">Lọc theo lớp: sắp có</span>
-          </div>
-
-          <div>
-            <select
-              value={selectedCompanyFilter}
-              onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
-            >
-              <option value="Tất cả doanh nghiệp">
-                Tất cả Doanh nghiệp đối tác
-              </option>
-              {companyStats.map((c) => (
-                <option key={c.companyName} value={c.companyName}>{c.companyName} ({c.studentCount} SV)</option>
-              ))}
-              {companyStats.length === 0 && (
-                <option value="" disabled>Chưa có dữ liệu</option>
-              )}
-            </select>
-          </div>
-        </div>
+      <div className="flex justify-end">
+        <select
+          value={selectedCompanyFilter}
+          onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+          className="w-full sm:w-72 p-2 bg-white border border-slate-200 rounded-md outline-none font-semibold text-slate-800 text-[11px]"
+          aria-label="Lọc thống kê theo doanh nghiệp"
+        >
+          <option value="Tất cả doanh nghiệp">Tất cả doanh nghiệp</option>
+          {companyStats.map((c) => (
+            <option key={c.companyName} value={c.companyName}>{c.companyName} ({c.studentCount} SV)</option>
+          ))}
+        </select>
       </div>
 
       {/* 2. CHARTS & VISUAL ANALYTICS */}
@@ -412,78 +286,7 @@ export const LecturerAnalytics = () => {
         </div>
       </div>
 
-      {/* 3. LECTURER GUIDANCE STATISTICS (THỐNG KÊ HOẠT ĐỘNG HƯỚNG DẪN) */}
-      <Panel className="space-y-4 border-l-4 border-l-[#1d4ed8]">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-blue-50 text-[#1d4ed8] border border-blue-100 flex items-center justify-center font-bold shrink-0">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900">
-                Thống kê Hoạt động Hướng dẫn Giảng viên
-              </h3>
-              <p className="text-xs text-slate-500">
-                Hiệu suất chấm bài, phản hồi sinh viên và hoàn thành đợt thực
-                tập
-              </p>
-            </div>
-          </div>
-          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold rounded-full">
-            Hoạt động hướng dẫn
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-md bg-slate-50 border border-slate-200 space-y-1">
-            <div className="flex items-center justify-between text-slate-600 text-xs font-semibold">
-              <span>Báo cáo đã nhận xét</span>
-              <FileText className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.reviewedReportsCount ?? 0} bài</p>
-            <p className="text-[11px] text-emerald-700 font-medium">
-              {activityStats && activityStats.totalStudentsCount > 0
-                ? `Đạt ${Math.round((activityStats.reviewedReportsCount / (activityStats.reviewedReportsCount + activityStats.pendingReportsCount || 1)) * 100)}% tổng số bài nộp`
-                : "Chưa có dữ liệu"}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-md bg-slate-50 border border-slate-200 space-y-1">
-            <div className="flex items-center justify-between text-slate-600 text-xs font-semibold">
-              <span>Báo cáo chờ phản hồi</span>
-              <Clock className="w-4 h-4 text-amber-600" />
-            </div>
-            <p className="text-2xl font-bold text-amber-700 il-kpi-val">{activityStats?.pendingReportsCount ?? 0} bài</p>
-            <p className="text-[11px] text-amber-700 font-medium">
-              Cần xử lý trong tuần này
-            </p>
-          </div>
-
-          <div className="p-4 rounded-md bg-slate-50 border border-slate-200 space-y-1">
-            <div className="flex items-center justify-between text-slate-600 text-xs font-semibold">
-              <span>SV Hoàn thành đợt</span>
-              <GraduationCap className="w-4 h-4 text-sky-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.completedStudentsCount ?? 0} / {activityStats?.totalStudentsCount ?? 0} SV</p>
-            <p className="text-[11px] text-sky-700 font-medium">
-              Đã chấm điểm &amp; bảo vệ
-            </p>
-          </div>
-
-          <div className="p-4 rounded-md bg-slate-50 border border-slate-200 space-y-1">
-            <div className="flex items-center justify-between text-slate-600 text-xs font-semibold">
-              <span>Tỷ lệ tuân thủ</span>
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900 il-kpi-val">{activityStats?.complianceRate ?? 100}%</p>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Nộp báo cáo đúng hạn
-            </p>
-          </div>
-        </div>
-      </Panel>
-
-      {/* 4. COMPANY STATISTICS (THỐNG KÊ DOANH NGHIỆP TIẾP NHẬN SINH VIÊN) */}
+      {/* COMPANY STATISTICS */}
       <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
@@ -549,18 +352,6 @@ export const LecturerAnalytics = () => {
         </div>
       </div>
 
-      {/* 5. AI PLAGIARISM & ORIGINALITY — Chưa tích hợp */}
-      <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <ShieldCheck className="w-5 h-5 text-slate-400" />
-          <h3 className="font-bold text-slate-400 text-sm">
-            Kiểm tra Trùng lặp AI &amp; Độ nguyên bản báo cáo
-          </h3>
-        </div>
-        <p className="text-xs text-slate-400 text-center py-6">
-          Chức năng đang phát triển — sẽ tích hợp trong phiên bản tiếp theo.
-        </p>
-      </div>
     </div>
   );
 };

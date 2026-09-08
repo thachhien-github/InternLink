@@ -11,6 +11,7 @@ import {
   Phone,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { Panel } from "../../../components/common/Panel";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
@@ -143,9 +144,12 @@ export const StudentDetailPage = ({ onRefresh }: { onRefresh?: () => Promise<voi
       <Panel className="space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 border-b border-slate-100 pb-5">
           <div className="flex items-start gap-3">
-            <div className="w-14 h-14 rounded-lg bg-[#1d4ed8] text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md">
-              {student.fullName.split(" ").slice(-1)[0]?.[0] ?? "S"}
-            </div>
+            <InitialsAvatar
+              name={student.fullName}
+              seed={student.studentCode}
+              size={56}
+              className="text-lg"
+            />
             <div>
               <h2 className="text-lg font-bold text-slate-900">{student.fullName}</h2>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">

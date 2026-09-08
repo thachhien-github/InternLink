@@ -3,10 +3,12 @@ import { Toast } from "../../../components/common/Toast";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { DynamicRubricEvaluation } from "./DynamicRubricEvaluation";
 import { EvaluationDetail } from "./EvaluationDetail";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { rubricService } from "../../../services/rubric.service";
+import { lecturerExportService } from "../../../services/lecturerExport.service";
 import { evaluationService } from "../../../services/evaluation.service";
 import { useSemester } from "../../../contexts/SemesterContext";
 import {
@@ -62,6 +64,7 @@ export const EvaluationDashboard = () => {
   const [semesterFilter, setSemesterFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -166,44 +169,16 @@ export const EvaluationDashboard = () => {
     return { label: "Không đạt", color: "text-rose-700" };
   };
 
-  const handleExportExcel = () => {
-    const headers = [
-      "STT",
-      "MSSV",
-      "Họ tên",
-      "Lớp",
-      "Ngành",
-      "Doanh nghiệp",
-      "Điểm",
-      "Xếp loại",
-      "Trạng thái",
-    ];
-    const rows = filteredStudents.map((s, idx) => [
-      idx + 1,
-      s.studentCode,
-      s.fullName,
-      s.class ?? "",
-      s.major ?? "",
-      s.companyName ?? "",
-      s.finalGrade?.toString() ?? "",
-      getClassification(s.finalGrade)?.label ?? "",
-      s.isEvaluationFinalized
-        ? "Đã chốt"
-        : s.hasEvaluation
-          ? "Đang chấm"
-          : "Chưa chấm",
-    ]);
-    const csv =
-      "\uFEFF" +
-      [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Bang_Diem_Thuc_Tap_${(semesterFilter ?? "All").replace(/[^A-Za-z0-9 _-]/g, "")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Đã tải xuống bảng điểm (${filteredStudents.length} sinh viên)`);
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      await lecturerExportService.downloadInternshipExcel(semesterFilter ?? undefined);
+      showToast("Đã tải xuống DanhSachThucTap (.xlsx) của nhóm hướng dẫn");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (rubricStudent) {
@@ -273,8 +248,10 @@ export const EvaluationDashboard = () => {
           {
             label: "Xuất bảng điểm",
             icon: Download,
-            onClick: handleExportExcel,
+            onClick: () => void handleExportExcel(),
             variant: "primary",
+            disabled: isExporting || isLoadingApi,
+            loading: isExporting,
           },
         ]}
       />
@@ -370,7 +347,7 @@ export const EvaluationDashboard = () => {
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Sinh viên</th>
                     <th className="py-3 px-4">Doanh nghiệp</th>
-                    <th className="py-3 px-3 text-center">Báo cáo tuần</th>
+                    <th className="py-3 px-3 text-center">Hoạt động</th>
                     <th className="py-3 px-3 text-center">Tiến độ</th>
                     <th className="py-3 px-3 text-center">Điểm</th>
                     <th className="py-3 px-3">Trạng thái</th>
@@ -393,9 +370,7 @@ export const EvaluationDashboard = () => {
                       <tr key={s.studentId} className="hover:bg-blue-50/40 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                              {s.fullName.split(" ").pop()?.charAt(0) ?? "S"}
-                            </div>
+                            <InitialsAvatar name={s.fullName} seed={s.studentCode} size={36} />
                             <div>
                               <p className="font-bold text-slate-900 line-clamp-1">
                                 {s.fullName}
@@ -415,9 +390,15 @@ export const EvaluationDashboard = () => {
                         </td>
 
                         <td className="py-3 px-3 text-center">
-                          <span className="font-bold text-slate-800 text-[11px]">
-                            {s.weeklyReportCount} bài
-                          </span>
+                          <div className="font-bold text-slate-800 text-[11px]">
+                            {s.weeklyReportCount} báo cáo tuần · {s.finalReportSubmitted ? "Đã có báo cáo tốt nghiệp" : "Thiếu báo cáo tốt nghiệp"}
+                            {s.practicalProductSubmitted ? " · Có sản phẩm thực tế" : ""}
+                          </div>
+                          {(s.pendingReportCount ?? 0) > 0 && (
+                            <span className="text-[10px] text-amber-700">
+                              {s.pendingReportCount} chờ duyệt
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3 px-3 text-center">

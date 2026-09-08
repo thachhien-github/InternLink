@@ -40,7 +40,7 @@ export const DocumentDetailWorkspace = ({
   const [pdfLoading, setPdfLoading] = useState(true);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<"info" | "logs">("info");
+  const [activeSidebarTab] = useState<"info">("info");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const triggerToast = (msg: string) => {
@@ -342,17 +342,6 @@ export const DocumentDetailWorkspace = ({
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Thông tin tài liệu</span>
-            </button>
-            <button
-              onClick={() => setActiveSidebarTab("logs")}
-              className={`flex-1 py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                activeSidebarTab === "logs"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Nhật ký &amp; Log lưu trữ ({document.archiveLogs?.length || 0})</span>
             </button>
           </div>
 

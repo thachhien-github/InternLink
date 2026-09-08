@@ -70,9 +70,9 @@ public class AdminAssignmentsController : ControllerBase
     }
 
     [HttpGet("history")]
-    public async Task<IActionResult> GetHistory([FromQuery] int limit = 50)
+    public async Task<IActionResult> GetHistory([FromQuery] int limit = 50, [FromQuery] Guid? semesterId = null)
     {
-        var items = await _assignmentService.GetHistoryAsync(Math.Clamp(limit, 1, 200));
+        var items = await _assignmentService.GetHistoryAsync(Math.Clamp(limit, 1, 200), semesterId);
         return Ok(ApiResponse<IReadOnlyList<AssignmentHistoryItemDto>>.Ok(items));
     }
 

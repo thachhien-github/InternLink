@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Sidebar as StudentSidebar } from "../features/student/components/Sidebar";
 import { Header as StudentHeader } from "../features/student/components/Header";
 import { Toast } from "../components/common/Toast";
@@ -23,14 +23,28 @@ export default function StudentLayout({
   onLogout,
 }: StudentLayoutProps) {
   const { message, type, clearToast } = useToast();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <StudentPortalProvider>
       <div className="min-h-screen bg-[var(--il-surface-bg)] text-slate-800 font-sans flex antialiased">
+        {isSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Đóng menu điều hướng"
+            className="fixed inset-0 z-40 bg-slate-950/25 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
         <StudentSidebar
           activeTab={activeTab}
-          onNavigate={onNavigate}
+          onNavigate={(tab) => {
+            onNavigate(tab);
+            setIsSidebarOpen(false);
+          }}
           onSwitchPortal={onSwitchPortal}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           <StudentHeader
@@ -38,6 +52,7 @@ export default function StudentLayout({
             onNavigate={onNavigate}
             onSwitchPortal={onSwitchPortal}
             onLogout={onLogout}
+            onMenuOpen={() => setIsSidebarOpen(true)}
           />
           <Toast message={message} type={type} onClose={clearToast} />
           <main className="p-4 md:p-6 space-y-4 max-w-[1440px] w-full mx-auto">

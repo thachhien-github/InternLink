@@ -8,6 +8,14 @@ export const lecturerExportService = {
     );
   },
 
+  async downloadInternshipExcel(semesterId?: string): Promise<{ blob: Blob; filename: string }> {
+    const query = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
+    return downloadAuthenticatedFile(
+      `/api/Export/lecturer-internship-excel${query}`,
+      `DanhSachThucTap_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  },
+
   async downloadEndOfTermPdf(): Promise<{ blob: Blob; filename: string }> {
     return downloadAuthenticatedFile(
       "/api/Lecturer/export/end-of-term/pdf",

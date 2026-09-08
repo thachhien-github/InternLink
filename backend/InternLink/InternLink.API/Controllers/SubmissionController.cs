@@ -4,6 +4,7 @@ using InternLink.API.Extensions;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
 using InternLink.Shared.Responses;
+using System.Text.Json;
 
 namespace InternLink.API.Controllers;
 
@@ -137,6 +138,49 @@ public class SubmissionController : ControllerBase
         }
     }
 
+    [HttpPost("bundle")]
+    [Authorize(Policy = "RequireStudent")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadBundle([FromForm] UploadSubmissionBundleFormRequest form)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var links = string.IsNullOrWhiteSpace(form.LinksJson)
+                ? new List<SubmissionAssetInput>()
+                : JsonSerializer.Deserialize<List<SubmissionAssetInput>>(form.LinksJson) ?? new List<SubmissionAssetInput>();
+
+            var files = form.Files
+                .Where(file => file.Length > 0)
+                .Select(file => (file.OpenReadStream(), file.FileName, file.Length, file.ContentType));
+
+            var submission = await _submissionService.CreateBundleAsync(
+                userId.Value,
+                new CreateSubmissionRequest
+                {
+                    InternshipId = form.InternshipId,
+                    Type = form.Type,
+                    Title = form.Title,
+                    Description = form.Description,
+                },
+                files,
+                links);
+
+            return CreatedAtAction(nameof(GetById), new { id = submission.Id }, ApiResponse<SubmissionDto>.Ok(submission));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
     [HttpPost("{id:guid}/resubmit")]
     [Authorize(Policy = "RequireStudent")]
     public async Task<IActionResult> Resubmit(Guid id, [FromBody] ResubmitRequest request)
@@ -219,6 +263,28 @@ public class SubmissionController : ControllerBase
             var file = await _submissionService.DownloadFileAsync(id, userId.Value, isLecturerOrAdmin);
             if (file == null)
                 return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "File not found" }));
+
+            return File(file.FileContent, file.MimeType, file.FileName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpGet("{id:guid}/assets/{assetId:guid}/download")]
+    public async Task<IActionResult> DownloadAsset(Guid id, Guid assetId)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var file = await _submissionService.DownloadAssetAsync(id, assetId, userId.Value, isLecturerOrAdmin);
+            if (file == null)
+                return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Asset not found" }));
 
             return File(file.FileContent, file.MimeType, file.FileName);
         }

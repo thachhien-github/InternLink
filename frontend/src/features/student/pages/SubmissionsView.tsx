@@ -6,39 +6,26 @@ import {
   FileText,
   Video,
   Presentation,
-  Github,
-  ExternalLink,
   Upload,
   Download,
   RefreshCw,
   Trash2,
-  Copy,
   Send,
   Plus,
-  GitBranch,
   ShieldAlert,
   MessageSquare,
-  ShieldCheck,
-  ChevronRight,
   BookOpen,
 } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { EmptyState } from "../../../components/common/EmptyState";
 import { getApiErrorMessage } from "../../../lib/apiClient";
-import { mapStudentSubmissionToUpload, mapUiProductCategoryToSubmissionType } from "../../../lib/portalMappers";
+import { mapStudentSubmissionToUpload } from "../../../lib/portalMappers";
 import { submissionApiService } from "../../../services/submissionApi.service";
 import type { SubmissionDto } from "../../../types/api";
-
-const CHECKLIST_TEMPLATE = [
-  { key: "Source Code", label: "Mã nguồn (Source Code ZIP / GitHub)", required: true },
-  { key: "User Manual", label: "Báo cáo tổng kết (Final Report PDF)", required: true },
-  { key: "Slide", label: "Slide thuyết trình (Presentation PPTX)", required: true },
-  { key: "Video Demo", label: "Video Demo sản phẩm (MP4)", required: true },
-  { key: "Database Backup", label: "Kịch bản CSDL (Database Script SQL)", required: false },
-];
 
 type UploadItem = {
   id: string;
@@ -53,13 +40,13 @@ type UploadItem = {
   fileUrl?: string;
 };
 
+type SubmissionLink = { label: string; url: string };
+
 export const SubmissionsView = ({ onShowToast }) => {
   const { profile, internshipId } = useStudentPortal();
   const [hasSubmissions, setHasSubmissions] = useState(false);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [rawSubmissions, setRawSubmissions] = useState<SubmissionDto[]>([]);
-  const [repoUrl, setRepoUrl] = useState("");
-  const [repoBranch, setRepoBranch] = useState("main");
 
   useEffect(() => {
     let cancelled = false;
@@ -80,22 +67,6 @@ export const SubmissionsView = ({ onShowToast }) => {
     };
   }, [onShowToast]);
 
-  const checklist = useMemo(
-    () =>
-      CHECKLIST_TEMPLATE.map((item, i) => ({
-        id: `ck-${i}`,
-        label: item.label,
-        required: item.required,
-        completed: uploads.some(
-          (u) =>
-            u.category === item.key &&
-            u.status !== "Từ chối" &&
-            u.status !== "Yêu cầu sửa",
-        ),
-      })),
-    [uploads],
-  );
-
   const requirements = useMemo(
     () =>
       rawSubmissions
@@ -115,35 +86,26 @@ export const SubmissionsView = ({ onShowToast }) => {
     [rawSubmissions],
   );
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showUpdateRepoModal, setShowUpdateRepoModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<UploadItem | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
-  const [uploadCategory, setUploadCategory] = useState("Source Code");
+  const [uploadCategory, setUploadCategory] = useState("FinalReport");
   const [uploadVersion, setUploadVersion] = useState("v1.0");
   const [uploadNotes, setUploadNotes] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadLinks, setUploadLinks] = useState<SubmissionLink[]>([
+    { label: "", url: "" },
+  ]);
   const [replaceFile, setReplaceFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newRepoUrl, setNewRepoUrl] = useState("");
-  const [newRepoBranch, setNewRepoBranch] = useState("main");
   const [contactMsg, setContactMsg] = useState("");
-  const completedChecklistCount = checklist.filter((c) => c.completed).length;
-  const toggleChecklist = (_id: string) => {
-    onShowToast("Checklist tự động cập nhật theo sản phẩm đã nộp.");
-  };
-  const handleCopyGit = () => {
-    if (!repoUrl) {
-      onShowToast("Chưa có liên kết GitHub.");
-      return;
-    }
-    navigator.clipboard.writeText(repoUrl);
-    onShowToast("Đã sao chép liên kết GitHub Repository!");
-  };
   const handleAddUpload = async (e) => {
     e.preventDefault();
-    if (!uploadTitle.trim()) {
-      onShowToast("Vui lòng nhập tên tệp sản phẩm!");
+    const title = uploadTitle.trim() || (uploadCategory === "FinalReport"
+      ? "Báo cáo thực tập tốt nghiệp"
+      : "Sản phẩm thực tế");
+    if (!title) {
+      onShowToast("Vui lòng nhập tên sản phẩm!");
       return;
     }
 
@@ -152,29 +114,34 @@ export const SubmissionsView = ({ onShowToast }) => {
       return;
     }
 
-    if (!uploadFile) {
-      onShowToast("Vui lòng chọn tệp đính kèm!");
+    const links = uploadLinks.filter((link) => link.url.trim());
+    if (uploadFiles.length === 0 && links.length === 0) {
+      onShowToast("Vui lòng chọn ít nhất một tệp hoặc thêm một liên kết!");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const created = await submissionApiService.upload({
+      const created = [await submissionApiService.bundle({
         internshipId,
-        type: mapUiProductCategoryToSubmissionType(uploadCategory),
-        title: uploadTitle.trim(),
+        type: uploadCategory,
+        title,
         description: uploadNotes.trim() || undefined,
-        file: uploadFile,
-      });
-      const mapped = mapStudentSubmissionToUpload(created);
-      setUploads((prev) => [mapped, ...prev]);
-      setRawSubmissions((prev) => [created, ...prev]);
+        files: uploadFiles,
+        links: links.map((link) => ({ label: link.label.trim(), url: link.url.trim() })),
+      })];
+      setUploads((prev) => [
+        ...created.map(mapStudentSubmissionToUpload),
+        ...prev,
+      ]);
+      setRawSubmissions((prev) => [...created, ...prev]);
       setHasSubmissions(true);
       setShowUploadModal(false);
-      onShowToast(`Đã nộp sản phẩm: ${uploadTitle}`);
+      onShowToast(`Đã nộp sản phẩm cùng ${uploadFiles.length + links.length} tài nguyên.`);
       setUploadTitle("");
       setUploadNotes("");
-      setUploadFile(null);
+      setUploadFiles([]);
+      setUploadLinks([{ label: "", url: "" }]);
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     } finally {
@@ -214,30 +181,20 @@ export const SubmissionsView = ({ onShowToast }) => {
     }
   };
   const handleDownloadUpload = async (item: UploadItem) => {
+    if (item.fileUrl && /^https?:\/\//i.test(item.fileUrl)) {
+      window.open(item.fileUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
     try {
-      const { blob, filename } = await submissionApiService.download(
-        item.id,
-        item.title,
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      await (item.assetId
+        ? submissionApiService.downloadAsset(item.id, item.assetId, item.title)
+        : submissionApiService.download(item.id, item.title));
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
     }
   };
   const handleDeleteUpload = (_id: string, _title: string) => {
     onShowToast("Chức năng xóa sản phẩm chưa được hỗ trợ trên hệ thống.");
-  };
-  const handleUpdateRepo = (e) => {
-    e.preventDefault();
-    setRepoUrl(newRepoUrl.trim());
-    setRepoBranch(newRepoBranch.trim() || "main");
-    setShowUpdateRepoModal(false);
-    onShowToast("Đã lưu liên kết GitHub (chỉ hiển thị trên trình duyệt).");
   };
   const handleSendContact = (e) => {
     e.preventDefault();
@@ -275,7 +232,7 @@ export const SubmissionsView = ({ onShowToast }) => {
           badgeColor="bg-slate-100 text-slate-700 border-slate-200"
           actions={[
             {
-              label: "Bắt đầu tải lên",
+              label: "Nộp báo cáo tốt nghiệp",
               icon: Plus,
               onClick: () => {
                 setHasSubmissions(true);
@@ -285,18 +242,6 @@ export const SubmissionsView = ({ onShowToast }) => {
             },
           ]}
         />
-        <div className="flex items-center justify-between bg-slate-100 p-3 rounded-md border border-slate-200">
-          <span className="text-xs font-bold text-slate-600">
-            Thử nghiệm giao diện:
-          </span>
-          <button
-            onClick={() => setHasSubmissions(true)}
-            className="px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Xem state: Đã có sản phẩm bàn giao
-          </button>
-        </div>
-
         <Panel className="p-8 text-center space-y-4" padding="none">
           <div className="w-16 h-16 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center mx-auto">
             <Package className="w-8 h-8" />
@@ -307,8 +252,8 @@ export const SubmissionsView = ({ onShowToast }) => {
               Chưa có sản phẩm thực tập nào được bàn giao
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Bạn chưa tải lên mã nguồn, báo cáo cuối kỳ hay slide thuyết trình
-              đợt thực tập này.
+              Bạn cần nộp Báo cáo thực tập tốt nghiệp. Sản phẩm thực tế như web,
+              app, source code hoặc link deploy là tùy chọn để cộng thêm điểm.
             </p>
           </div>
 
@@ -320,7 +265,7 @@ export const SubmissionsView = ({ onShowToast }) => {
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" /> Bắt đầu tải lên
+              <Plus className="w-4 h-4" /> Nộp báo cáo tốt nghiệp
             </button>
           </div>
         </Panel>
@@ -342,92 +287,44 @@ export const SubmissionsView = ({ onShowToast }) => {
             onClick: () => setShowUploadModal(true),
             variant: "primary",
           },
-          {
-            label: "Git Repo",
-            icon: Github,
-            onClick: () => setShowUpdateRepoModal(true),
-            variant: "secondary",
-          },
         ]}
       >
         <span className="px-2 py-0.5 font-semibold text-[10px] rounded-md border bg-emerald-100 text-emerald-800 border-emerald-200">
-          Checklist {completedChecklistCount}/{checklist.length}
+          {uploads.length} tài nguyên
         </span>
       </PageHeader>
 
       <Toolbar
         left={
           <span className="text-xs font-semibold text-slate-600">
-            Checklist{" "}
-            <span className="text-emerald-700 font-bold">
-              {completedChecklistCount}/{checklist.length}
-            </span>{" "}
-            · {uploads.length} tệp đã nộp
+            <span className="text-slate-900 font-bold">{uploads.length}</span>{" "}
+            tài nguyên đã nộp · tệp hoặc liên kết tùy chọn
           </span>
-        }
-        right={
-          <button
-            type="button"
-            onClick={() => setShowUploadModal(true)}
-            className="il-btn il-btn-primary text-xs py-1.5 px-3"
-          >
-            <Plus className="w-3.5 h-3.5" /> Thêm sản phẩm
-          </button>
         }
       />
 
       <Panel className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-md text-white font-bold text-base flex items-center justify-center shrink-0">
-              {profile.company.slice(0, 3).toUpperCase()}
-            </div>
+            <CompanyAvatar
+              name={profile.company !== "—" ? profile.company : "Sản phẩm"}
+              size={40}
+            />
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Hệ thống Quản lý Thực tập Doanh nghiệp InternLink
+                Thông tin sản phẩm
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Vị trí: Full-Stack Developer Intern • Doanh nghiệp:{" "}
-                {profile.company}
+                Vị trí: {profile.position !== "—" ? profile.position : "Chưa cập nhật"} • Doanh nghiệp:{" "}
+                {profile.company !== "—" ? profile.company : "Chưa cập nhật"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {repoUrl ? (
-              <a
-                href={repoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center gap-1.5 border border-slate-200"
-              >
-                <Github className="w-3.5 h-3.5 text-slate-800" /> GitHub Repo{" "}
-                <ExternalLink className="w-3 h-3 text-slate-400" />
-              </a>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setNewRepoUrl("");
-                  setNewRepoBranch("main");
-                  setShowUpdateRepoModal(true);
-                }}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md border border-slate-200"
-              >
-                <Github className="w-3.5 h-3.5 inline mr-1" /> Thêm GitHub
-              </button>
-            )}
-            <button
-              onClick={handleCopyGit}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors border border-slate-200"
-            >
-              <Copy className="w-3.5 h-3.5 text-slate-500" />
-            </button>
-          </div>
         </div>
 
         {/* Project Meta Info Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-3 bg-slate-50/80 rounded-md border border-slate-200/80">
             <span className="text-[10px] font-bold text-slate-400 uppercase">
               Giảng viên hướng dẫn
@@ -446,18 +343,10 @@ export const SubmissionsView = ({ onShowToast }) => {
           </div>
           <div className="p-3 bg-slate-50/80 rounded-md border border-slate-200/80">
             <span className="text-[10px] font-bold text-slate-400 uppercase">
-              Git Branch
+              Tài nguyên đính kèm
             </span>
-            <p className="font-mono font-bold text-blue-700 mt-0.5 flex items-center gap-1">
-              <GitBranch className="w-3 h-3 text-blue-600" /> {repoBranch || "main"}
-            </p>
-          </div>
-          <div className="p-3 bg-slate-50/80 rounded-md border border-slate-200/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">
-              Công nghệ chính
-            </span>
-            <p className="font-bold text-slate-800 mt-0.5 truncate">
-              React, TypeScript, Express, SQL
+            <p className="font-bold text-slate-800 mt-0.5">
+              {uploads.reduce((total, item) => total + (item.fileType.endsWith("tài nguyên") ? Number.parseInt(item.fileType, 10) || 0 : 0), 0)} tài nguyên
             </p>
           </div>
         </div>
@@ -576,44 +465,6 @@ export const SubmissionsView = ({ onShowToast }) => {
         </div>
 
         <div className="lg:col-span-1 space-y-5">
-          {/* DELIVERABLE CHECKLIST CARD */}
-          <Panel className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Checklist
-                bàn giao
-              </h3>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                {completedChecklistCount}/{checklist.length}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              {checklist.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => toggleChecklist(item.id)}
-                  className={`p-3 rounded-md border transition-all cursor-pointer flex items-center justify-between gap-2 select-none ${item.completed ? "bg-emerald-50/70 border-emerald-200 text-emerald-950 font-bold" : "bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-300"}`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 ${item.completed ? "bg-emerald-600 text-white font-bold" : "border border-slate-300 bg-white"}`}
-                    >
-                      {item.completed && "\u2713"}
-                    </div>
-                    <span className="truncate font-bold">{item.label}</span>
-                  </div>
-
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${item.required ? "bg-rose-100 text-rose-800" : "bg-slate-200 text-slate-700"}`}
-                  >
-                    {item.required ? "B\u1EAFt bu\u1ED9c" : "T\xF9y ch\u1ECDn"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
           {/* LECTURER FEEDBACK & REQUIREMENTS */}
           <Panel className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -654,35 +505,6 @@ export const SubmissionsView = ({ onShowToast }) => {
             </div>
           </Panel>
 
-          {/* QUICK ACTIONS */}
-          <Panel className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Thao tác nhanh
-            </h3>
-
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs transition-colors flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <Upload className="w-4 h-4" /> Tải lên sản phẩm mới
-                </span>
-                <ChevronRight className="w-4 h-4 opacity-75" />
-              </button>
-
-              <button
-                onClick={() => setShowContactModal(true)}
-                className="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-slate-500" /> Liên hệ
-                  Giảng viên
-                </span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-            </div>
-          </Panel>
         </div>
       </div>
 
@@ -709,13 +531,12 @@ export const SubmissionsView = ({ onShowToast }) => {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Tên tệp sản phẩm *
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Tên sản phẩm
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="Ví dụ: Mã nguồn hệ thống (ZIP), Slide thuyết trình..."
+                  placeholder="Ví dụ: Báo cáo thực tập tốt nghiệp"
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium focus:border-blue-500 focus:bg-white"
@@ -725,36 +546,27 @@ export const SubmissionsView = ({ onShowToast }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Loại sản phẩm
+                    Sản phẩm
                   </label>
                   <select
                     value={uploadCategory}
                     onChange={(e) => setUploadCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium"
                   >
-                    <option value="Source Code">Mã nguồn (.zip)</option>
-                    <option value="Slide">
-                      Slide thuyết trình (.pptx / .pdf)
-                    </option>
-                    <option value="Video Demo">Video Demo (.mp4)</option>
-                    <option value="User Manual">
-                      Tài liệu / Báo cáo (.pdf)
-                    </option>
-                    <option value="Database Backup">
-                      Kịch bản CSDL (.sql)
-                    </option>
+                    <option value="FinalReport">Báo cáo thực tập tốt nghiệp (bắt buộc)</option>
+                    <option value="Product">Sản phẩm thực tế (tùy chọn, cộng điểm)</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Phiên bản
+                    Ghi chú phiên bản
                   </label>
                   <input
                     type="text"
                     value={uploadVersion}
                     onChange={(e) => setUploadVersion(e.target.value)}
-                    placeholder="v1.0"
+                    placeholder="Ví dụ: Bản hoàn thiện"
                     className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium"
                   />
                 </div>
@@ -767,19 +579,65 @@ export const SubmissionsView = ({ onShowToast }) => {
                 <label className="border-2 border-dashed border-slate-200 bg-slate-50/60 p-4 text-center rounded-md hover:border-blue-400 transition-colors cursor-pointer space-y-1 block">
                   <input
                     type="file"
+                    multiple
                     className="hidden"
-                    onChange={(e) =>
-                      setUploadFile(e.target.files?.[0] ?? null)
-                    }
+                    onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
                   />
                   <Upload className="w-5 h-5 text-blue-600 mx-auto" />
                   <p className="font-bold text-slate-800 text-xs">
-                    {uploadFile?.name || "Bấm để chọn tệp từ máy tính"}
+                    {uploadFiles.length > 0
+                      ? `${uploadFiles.length} tệp đã chọn`
+                      : "Bấm để chọn một hoặc nhiều tệp"}
                   </p>
                   <p className="text-[11px] text-slate-400 font-medium">
-                    ZIP, PDF, PPTX, MP4, SQL (tối đa theo cấu hình hệ thống)
+                    PDF, ZIP, DOCX, PPTX, MP4, ảnh hoặc tài liệu liên quan (tùy chọn)
                   </p>
                 </label>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Liên kết sản phẩm (tùy chọn)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setUploadLinks((prev) => [...prev, { label: "", url: "" }])}
+                    className="text-blue-600 font-bold hover:text-blue-800"
+                  >
+                    + Thêm link
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {uploadLinks.map((link, index) => (
+                    <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] gap-2">
+                      <input
+                        type="text"
+                        placeholder="GitHub / Website / Docker"
+                        value={link.label}
+                        onChange={(e) => setUploadLinks((prev) => prev.map((item, i) => i === index ? { ...item, label: e.target.value } : item))}
+                        className="min-w-0 px-2.5 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium focus:border-blue-500 focus:bg-white"
+                      />
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={link.url}
+                        onChange={(e) => setUploadLinks((prev) => prev.map((item, i) => i === index ? { ...item, url: e.target.value } : item))}
+                        className="min-w-0 px-2.5 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium focus:border-blue-500 focus:bg-white"
+                      />
+                      {uploadLinks.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setUploadLinks((prev) => prev.filter((_, i) => i !== index))}
+                          className="px-2 text-slate-400 hover:text-rose-600"
+                          aria-label="Xóa liên kết"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -889,74 +747,6 @@ export const SubmissionsView = ({ onShowToast }) => {
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-md shadow-xs disabled:opacity-50"
               >
                 {isSubmitting ? "Đang nộp lại..." : "Lưu thay thế"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* UPDATE REPOSITORY MODAL */}
-      {showUpdateRepoModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleUpdateRepo}
-            className="bg-white rounded-lg max-w-md w-full p-6 space-y-4 shadow-md border border-slate-200 animate-in zoom-in-95"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Github className="w-4 h-4 text-slate-800" /> Cập nhật GitHub
-                Repository
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowUpdateRepoModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  GitHub Repository URL *
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={newRepoUrl}
-                  onChange={(e) => setNewRepoUrl(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Branch chính
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newRepoBranch}
-                  onChange={(e) => setNewRepoBranch(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-md outline-none font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowUpdateRepoModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs"
-              >
-                Cập nhật
               </button>
             </div>
           </form>

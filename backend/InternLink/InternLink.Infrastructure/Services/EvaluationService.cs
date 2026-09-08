@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AutoMapper;
 using InternLink.Application.DTOs;
 using InternLink.Application.Interfaces;
@@ -194,6 +195,31 @@ public class EvaluationService : IEvaluationService
         }
 
         return MapToDetailDto(evaluation);
+    }
+
+    public async Task<EvaluationScoresResponse?> GetEvaluationScoresAsync(Guid id, Guid userId, bool isLecturerOrAdmin)
+    {
+        var evaluation = await GetEvaluationByIdAsync(id, userId, isLecturerOrAdmin);
+        if (evaluation == null)
+            return null;
+
+        var criteriaScoresJson = await _db.Evaluations
+            .Where(item => item.Id == id && !item.IsDeleted)
+            .Select(item => item.CriteriaScoresJson)
+            .FirstOrDefaultAsync();
+
+        var criteriaScores = string.IsNullOrWhiteSpace(criteriaScoresJson)
+            ? new List<CriterionScoreDto>()
+            : JsonSerializer.Deserialize<List<CriterionScoreDto>>(criteriaScoresJson)
+              ?? new List<CriterionScoreDto>();
+
+        return new EvaluationScoresResponse
+        {
+            EvaluationId = id,
+            CriteriaScores = criteriaScores,
+            FinalGrade = evaluation.FinalGrade,
+            IsFinalized = evaluation.IsFinalized,
+        };
     }
 
     public async Task<EvaluationDetailDto?> GetEvaluationByInternshipAsync(Guid internshipId)

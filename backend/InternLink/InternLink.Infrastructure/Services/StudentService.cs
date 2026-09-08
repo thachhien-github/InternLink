@@ -186,11 +186,35 @@ public class StudentService : IStudentService
             .ThenByDescending(i => i.Id)
             .FirstOrDefaultAsync();
 
+        var progressPercent = 0;
+        if (internship != null)
+        {
+            var weeklyReportCount = await _db.WeeklyReports
+                .CountAsync(r => !r.IsDeleted && r.InternshipId == internship.Id);
+            var submissionCount = await _db.Submissions
+                .CountAsync(s => !s.IsDeleted && s.InternshipId == internship.Id);
+            var effectiveStatus = internship.Status == InternshipStatus.NotStarted && internship.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : internship.Status;
+
+            progressPercent = effectiveStatus switch
+            {
+                InternshipStatus.Completed or InternshipStatus.Graded => 100,
+                InternshipStatus.InProgress or InternshipStatus.BehindSchedule
+                    or InternshipStatus.AwaitingFeedback or InternshipStatus.RequiresRevision
+                    => Math.Min(95, Math.Max(10, weeklyReportCount * 8 + submissionCount * 2)),
+                _ when weeklyReportCount > 0 || submissionCount > 0
+                    => Math.Min(95, Math.Max(10, weeklyReportCount * 8 + submissionCount * 2)),
+                _ => 0,
+            };
+        }
+
         return new StudentPortalProfileDto
         {
             Student = _mapper.Map<StudentDto>(student),
             Internship = internship == null ? null : _mapper.Map<InternshipDto>(internship),
             LecturerName = internship?.Lecturer?.FullName,
+            ProgressPercent = progressPercent,
         };
     }
 

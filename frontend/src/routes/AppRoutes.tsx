@@ -39,7 +39,6 @@ import { AccountView as AdminAccountView } from "../features/admin/pages/Account
 
 // Lecturer Pages
 import { DashboardView as LecturerDashboardView } from "../features/lecturer/pages/DashboardView";
-import { ExportView as LecturerExportView } from "../features/lecturer/pages/ExportView";
 import { StudentsView as LecturerStudentsView } from "../features/lecturer/pages/StudentsView";
 import { EnterprisesView as LecturerEnterprisesView } from "../features/lecturer/pages/EnterprisesView";
 import { EnterprisesDetailView as LecturerEnterprisesDetailView } from "../features/lecturer/pages/EnterprisesDetailView";
@@ -332,15 +331,7 @@ export function AppRoutes() {
                   path="evaluations/:internshipId"
                   element={<LecturerEvaluationsView onShowToast={showToast} />}
                 />
-                <Route
-                  path="export"
-                  element={
-                    <LecturerExportView
-                      onShowToast={showToast}
-                      studentCount={appState.assignedStudents.length}
-                    />
-                  }
-                />
+                <Route path="export" element={<Navigate to="/lecturer/evaluations" replace />} />
                 <Route
                   path="reports"
                   element={

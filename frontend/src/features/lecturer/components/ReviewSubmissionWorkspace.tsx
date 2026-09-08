@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toast } from "../../../components/common/Toast";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import {
   ArrowLeft,
   Download,
@@ -86,8 +87,7 @@ export const ReviewSubmissionWorkspace = ({
       id: `c-${Date.now()}`,
       author: "TS. Ph\u1EA1m Minh Anh",
       role: "Gi\u1EA3ng vi\xEAn h\u01B0\u1EDBng d\u1EABn",
-      avatar:
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80",
+      avatar: "",
       time: "M\u1EDBi xong",
       paragraphRef: selectedHighlightText
         ? `N\u1ED9i dung \u0111\xE3 ch\u1ECDn: "${selectedHighlightText.substring(0, 35)}..."`
@@ -187,10 +187,11 @@ export const ReviewSubmissionWorkspace = ({
           {/* Card 1: Student Information Card */}
           <div className="p-4 border-b border-slate-800/80 space-y-3">
             <div className="flex items-center gap-3">
-              <img
-                src={student.avatar}
-                alt={student.name}
-                className="w-12 h-12 rounded-md object-cover border border-slate-700 shrink-0"
+              <InitialsAvatar
+                name={student.name}
+                seed={student.mssv}
+                size={48}
+                className="border border-slate-700"
               />
               <div className="min-w-0">
                 <h3 className="font-bold text-white text-sm truncate">
@@ -640,10 +641,11 @@ export const ReviewSubmissionWorkspace = ({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={c.avatar}
-                        alt={c.author}
-                        className="w-6 h-6 rounded-full object-cover border border-slate-700"
+                      <InitialsAvatar
+                        name={c.author}
+                        seed={c.author}
+                        size={24}
+                        className="rounded-full border border-slate-700"
                       />
                       <div>
                         <span className="font-bold text-white text-[11px] block">

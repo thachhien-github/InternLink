@@ -8,13 +8,13 @@ export const EvaluationView = ({
   onShowToast: (msg: string) => void;
 }) => {
   const { internshipId, profile } = useStudentPortal();
-  const { selectedSemesterId } = useSemester();
+  const { activeSemesterId } = useSemester();
 
   return (
     <div className="animate-in fade-in duration-200">
       <EvaluationDetailView
         internshipId={internshipId ?? undefined}
-        semesterId={selectedSemesterId || undefined}
+        semesterId={activeSemesterId || undefined}
         studentName={profile.name}
         studentCode={profile.mssv}
         onShowToast={onShowToast}

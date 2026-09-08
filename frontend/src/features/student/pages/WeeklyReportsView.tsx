@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   FileCheck2,
@@ -50,6 +51,7 @@ type WeeklyReportRow = {
 };
 
 export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) => void }) => {
+  const navigate = useNavigate();
   const { internshipId, profile } = useStudentPortal();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -292,19 +294,6 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       onShowToast(getApiErrorMessage(err));
     }
   };
-  const handleDownloadWordTemplate = () => {
-    const templateContent = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n--------------------------------\n\nBÁO CÁO THỰC TẬP TỐT NGHIỆP - TUẦN ${selectedWeek}\n\nSinh viên thực hiện: ${profile?.name || "Sinh viên"}\nMã số sinh viên: ${profile?.mssv || "2421160088"}\nLớp: ${profile?.class || "C24A.TH1"}\nGiảng viên hướng dẫn: ${profile?.lecturerName || "ThS. Nguyễn Văn Phước"}\nĐơn vị thực tập: ${profile?.company || "Doanh nghiệp tiếp nhận"}\nMentor hướng dẫn: ${profile?.supervisorName || "Cán bộ hướng dẫn DN"}\n\nI. NỘI DUNG CÔNG VIỆC TRONG TUẦN ${selectedWeek}:\n1. Công việc 1: [Ghi rõ chi tiết công việc đã thực hiện]\n2. Công việc 2: [Ghi rõ kết quả đạt được]\n\nII. KẾ HOẠCH TUẦN TIẾP THEO (TUẦN ${Math.min(selectedWeek + 1, INTERNSHIP_WEEKS)}):\n1. Mục tiêu công việc kế tiếp:\n2. Dự kiến sản phẩm/chức năng hoàn thành:\n\nIII. KHÓ KHĂN VÀ ĐỀ XUẤT HỖ TRỢ:\n1. Khó khăn gặp phải (nếu có):\n2. Đề xuất ý kiến với GVHD / Mentor:\n\n                                  Ngày ..... tháng ..... năm 2026\n                                        Sinh viên ký tên\n`;
-    const blob = new Blob([templateContent], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Mau_Bao_Cao_Thuc_Tap_Tuan_${selectedWeek}_Khoa_CNTT.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    onShowToast(`Đã tải xuống biểu mẫu báo cáo tuần ${selectedWeek}`);
-  };
   const filteredReports = allWeekRows.filter((r) => {
     const matchesSearch =
       r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -321,16 +310,10 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
       <PageHeader
         icon={FileCheck2}
         title="Báo cáo thực tập tuần"
-        subtitle="Tải mẫu Word, xuất file PDF và nộp báo cáo đúng hạn cho Giảng viên hướng dẫn."
+        subtitle="Xem biểu mẫu, theo dõi tiến độ và nộp báo cáo đúng hạn cho Giảng viên hướng dẫn."
         badge={`Tiến độ: ${completedCount} / ${INTERNSHIP_WEEKS} tuần hoàn thành`}
         badgeColor="bg-blue-100 text-blue-800 border-blue-200"
         actions={[
-          {
-            label: "Tải mẫu Word",
-            icon: Download,
-            onClick: handleDownloadWordTemplate,
-            variant: "primary",
-          },
           {
             label: "Quy định nộp",
             icon: ShieldCheck,
@@ -674,11 +657,10 @@ export const WeeklyReportsView = ({ onShowToast }: { onShowToast: (msg: string) 
               </div>
 
               <button
-                onClick={handleDownloadWordTemplate}
+                onClick={() => navigate("/student/templates")}
                 className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-2"
               >
-                <Download className="w-4 h-4 text-slate-500" /> Tải mẫu báo cáo
-                .docx
+                <FileText className="w-4 h-4 text-slate-500" /> Xem mẫu báo cáo
               </button>
             </div>
           </Panel>

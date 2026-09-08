@@ -15,7 +15,9 @@ export const lecturerInternshipsService = {
 
   getStudents(semesterId?: string): Promise<LecturerStudentListItemDto[]> {
     const params = semesterId && semesterId !== "all" ? `?semesterId=${semesterId}` : "";
-    return apiRequest<LecturerStudentListItemDto[]>(`/api/Lecturer/students${params}`);
+    return apiRequest<LecturerStudentListItemDto[]>(`/api/Lecturer/students${params}`, {
+      skipCache: true,
+    });
   },
 
   getStudentById(studentId: string): Promise<StudentDto> {

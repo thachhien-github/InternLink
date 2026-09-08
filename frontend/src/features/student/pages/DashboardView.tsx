@@ -23,6 +23,7 @@ import {
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import { useWeeklyReports } from "../../../hooks/useWeeklyReports";
 import { useStudentNotifications } from "../../../hooks/useStudentNotifications";
 import { getApiErrorMessage } from "../../../lib/apiClient";
@@ -549,15 +550,7 @@ export const DashboardView = ({
                         className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 -mx-1 px-1 rounded-md transition-colors"
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                            {fb.avatar ? (
-                            <img
-                              src={fb.avatar}
-                              alt={fb.senderName}
-                              className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                            />
-                          ) : (
-                            <InitialsAvatar name={fb.senderName} size={32} />
-                          )}
+                          <InitialsAvatar name={fb.senderName} size={32} seed={fb.senderName} />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-xs font-bold text-slate-800">
@@ -601,9 +594,7 @@ export const DashboardView = ({
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md shadow-blue-500/20">
-                      {profile.company.slice(0, 3).toUpperCase()}
-                    </div>
+                    <CompanyAvatar name={profile.company} size={48} />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">
                         {profile.company}
@@ -734,15 +725,11 @@ export const DashboardView = ({
           <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-md border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                {selectedFeedback.avatar ? (
-                  <img
-                    src={selectedFeedback.avatar}
-                    alt={selectedFeedback.senderName}
-                    className="w-10 h-10 rounded-full border border-slate-200 object-cover"
-                  />
-                ) : (
-                  <InitialsAvatar name={selectedFeedback.senderName} size={40} />
-                )}
+                <InitialsAvatar
+                  name={selectedFeedback.senderName}
+                  size={40}
+                  seed={selectedFeedback.senderName}
+                />
                 <div>
                   <h3 className="font-bold text-slate-800 text-sm">
                     {selectedFeedback.senderName}

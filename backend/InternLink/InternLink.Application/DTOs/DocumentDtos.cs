@@ -36,6 +36,8 @@ public class UpdateDocumentRequest
     public string? Description { get; set; }
     public string? Category { get; set; }
     public bool? IsRequired { get; set; }
+    public bool? IsPublished { get; set; }
+    public string? ArchiveReason { get; set; }
 }
 
 /// <summary>
@@ -49,10 +51,15 @@ public class DocumentListItemDto
     public string? Description { get; set; }
     public string FileName { get; set; } = null!;
     public long FileSize { get; set; }
+    public int DownloadCount { get; set; }
     public string MimeType { get; set; } = null!;
     public DateTime UploadedAt { get; set; }
     public string? Category { get; set; }
     public bool IsRequired { get; set; }
+    public bool IsPublished { get; set; }
+    public string? ArchiveReason { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
     public UserSummaryDto? UploadedBy { get; set; }
 }
 
@@ -68,12 +75,17 @@ public class DocumentDetailDto
     public string FileName { get; set; } = null!;
     public string FilePath { get; set; } = null!;
     public long FileSize { get; set; }
+    public int DownloadCount { get; set; }
     public string MimeType { get; set; } = null!;
     public DateTime UploadedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string? Category { get; set; }
     public bool IsRequired { get; set; }
+    public bool IsPublished { get; set; }
+    public string? ArchiveReason { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
     public UserSummaryDto? UploadedBy { get; set; }
 }
 

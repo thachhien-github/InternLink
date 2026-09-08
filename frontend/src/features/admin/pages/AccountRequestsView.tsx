@@ -35,6 +35,8 @@ import {
   Bell,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
 export const AccountRequestsView = ({
@@ -757,15 +759,15 @@ export const AccountRequestsView = ({
 
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2.5">
-                                  <div
-                                    className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border ${req.role === "lecturer" ? "bg-slate-100 text-slate-700 border-slate-200" : req.role === "enterprise" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}
-                                  >
-                                    {
-                                      req.requesterName
-                                        .split(" ")
-                                        .slice(-1)[0][0]
-                                    }
-                                  </div>
+                                  {req.role === "enterprise" ? (
+                                    <CompanyAvatar name={req.requesterName} size={32} />
+                                  ) : (
+                                    <InitialsAvatar
+                                      name={req.requesterName}
+                                      seed={req.requesterCode || req.requesterName}
+                                      size={32}
+                                    />
+                                  )}
                                   <div>
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-bold text-slate-900">
@@ -1106,11 +1108,15 @@ export const AccountRequestsView = ({
                     >
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border ${acc.role === "admin" ? "bg-rose-50 text-rose-700 border-rose-200" : acc.role === "lecturer" ? "bg-slate-100 text-slate-700 border-slate-200" : acc.role === "enterprise" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}
-                          >
-                            {acc.fullName.split(" ").slice(-1)[0][0]}
-                          </div>
+                          {acc.role === "enterprise" ? (
+                            <CompanyAvatar name={acc.fullName} size={32} />
+                          ) : (
+                            <InitialsAvatar
+                              name={acc.fullName}
+                              seed={acc.username || acc.fullName}
+                              size={32}
+                            />
+                          )}
                           <div>
                             <span className="font-bold text-slate-900 block">
                               {acc.fullName}
@@ -1319,11 +1325,16 @@ export const AccountRequestsView = ({
                 </span>
 
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`w-12 h-12 rounded-lg font-bold text-base flex items-center justify-center shrink-0 border ${selectedRequest.role === "lecturer" ? "bg-slate-100 text-slate-800 border-slate-200" : selectedRequest.role === "enterprise" ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-blue-100 text-blue-800 border-blue-200"}`}
-                  >
-                    {selectedRequest.requesterName.split(" ").slice(-1)[0][0]}
-                  </div>
+                  {selectedRequest.role === "enterprise" ? (
+                    <CompanyAvatar name={selectedRequest.requesterName} size={48} />
+                  ) : (
+                    <InitialsAvatar
+                      name={selectedRequest.requesterName}
+                      seed={selectedRequest.requesterCode || selectedRequest.requesterName}
+                      size={48}
+                      className="text-base"
+                    />
+                  )}
 
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">

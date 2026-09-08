@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Toast } from "../../../components/common/Toast";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import {
   Save,
   ArrowLeft,
@@ -348,9 +349,7 @@ export const DynamicRubricEvaluation = ({
 
       {/* Student Info */}
       <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-xs flex items-center gap-3">
-        <div className="w-12 h-12 rounded-md bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-          {student.name.split(" ").pop()?.charAt(0) ?? "S"}
-        </div>
+        <InitialsAvatar name={student.name} seed={student.mssv} size={48} />
         <div>
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-slate-900 text-sm">{student.name}</h2>

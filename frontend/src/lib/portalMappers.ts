@@ -2,6 +2,7 @@ import type {
   EvaluationListItemDto,
   FeedbackDto,
   InternshipDto,
+  LecturerStudentListItemDto,
   LecturerCompanySummaryDto,
   NotificationDto,
   SubmissionDto,
@@ -18,9 +19,19 @@ function isPlaceholderAvatar(url: string): boolean {
 
 const DEFAULT_AVATAR = "";
 
-function formatViDate(iso?: string | null): string {
+export function formatViDate(iso?: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("vi-VN");
+  const value = iso.trim();
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  const date = new Date(hasTimezone ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return "—";
+  const dateLabel = date.toLocaleDateString("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+  const timeLabel = date.toLocaleTimeString("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+  return `${dateLabel} ${timeLabel}`;
 }
 
 function formatFileSize(bytes?: number | null): string {
@@ -183,6 +194,40 @@ export function mapInternshipDtoToStudent(
   };
 }
 
+export function mapLecturerStudentDtoToStudent(
+  item: LecturerStudentListItemDto,
+  lecturerName = "—",
+): Student {
+  const status = mapInternshipStatusToUi(item.internshipStatus);
+  return {
+    id: item.internshipId,
+    name: item.fullName,
+    mssv: item.studentCode,
+    class: item.class ?? "—",
+    gpa: 0,
+    company: item.companyName ?? "Chưa có",
+    position: item.position ?? "—",
+    supervisor: "—",
+    lecturer: lecturerName,
+    major: item.major ?? "—",
+    status,
+    progress: item.progressPercent,
+    riskFlag:
+      item.internshipStatus === "BehindSchedule" ||
+      item.internshipStatus === "RequiresRevision",
+    avatar: DEFAULT_AVATAR,
+    email: item.email ?? undefined,
+    phone: item.phone ?? undefined,
+    startDate: item.startDate ?? undefined,
+    endDate: item.endDate ?? undefined,
+    lastReportName: "—",
+    lastReportDate: "—",
+    updatedAt: formatViDate(item.endDate),
+    notesCount: 0,
+    chatCount: 0,
+  };
+}
+
 export function mapCompanyDetailDtoToEnterpriseDetail(detail: CompanyDetailDto): EnterpriseDetail {
   return {
     id: detail.id,
@@ -199,9 +244,12 @@ export function mapCompanyDetailDtoToEnterpriseDetail(detail: CompanyDetailDto):
     internships: detail.internships.map((i) => ({
       id: i.id,
       studentId: i.studentId,
+      studentCode: i.studentCode,
       studentName: i.studentName,
       position: i.position ?? "—",
-      status: i.status,
+      status: i.status === "NotStarted" && i.submissionCount > 0
+        ? "InProgress"
+        : i.status,
       startDate: i.startDate ?? undefined,
       endDate: i.endDate ?? undefined,
       submissionCount: i.submissionCount,
@@ -255,6 +303,8 @@ export function mapSubmissionDtoToRow(
   } = {},
 ): Submission {
   const latestFeedback = s.feedbacks?.[s.feedbacks.length - 1];
+  const firstFile = s.assets?.find((asset) => asset.assetType === "file");
+  const firstAsset = s.assets?.[0];
   return {
     id: s.id,
     studentName: ctx.studentName ?? "—",
@@ -265,11 +315,15 @@ export function mapSubmissionDtoToRow(
     time: formatViDate(s.submittedAt).split(" ")[1] ?? "—",
     date: formatViDate(s.submittedAt).split(" ")[0] ?? "—",
     status: mapSubmissionStatusToUi(s.status),
-    fileUrl: s.fileUrl ?? "#",
-    fileSize: "—",
+    fileName: s.fileName ?? firstFile?.fileName ?? firstAsset?.label ?? "",
+    fileUrl: s.fileUrl ?? firstFile?.fileUrl ?? "",
+    fileSize: firstFile?.fileSize ? formatFileSize(firstFile.fileSize) : "—",
     summary: s.description ?? s.title ?? "—",
+    assetCount: s.assets?.length ?? 0,
     duplicateScore: 0,
     lecturerNote: latestFeedback?.comment ?? "",
+    feedbacks: s.feedbacks ?? [],
+    assets: s.assets ?? [],
     approvedAt:
       s.status === "Approved" ? formatViDate(s.submittedAt) : undefined,
   };
@@ -637,16 +691,19 @@ export function mapWeeklyReportFeedbackToStudentUi(
 }
 
 export function mapStudentSubmissionToUpload(s: SubmissionDto) {
+  const assets = s.assets ?? [];
+  const firstAsset = assets[0];
   return {
     id: s.id,
     title: s.title ?? mapSubmissionTypeToUi(s.type),
-    category: mapSubmissionToProductCategory(s.type, s.fileName),
-    fileType: s.fileName?.split(".").pop()?.toUpperCase() ?? "FILE",
+    category: s.type === "FinalReport" ? "Báo cáo tốt nghiệp" : "Sản phẩm thực tế",
+    fileType: assets.length > 0 ? `${assets.length} tài nguyên` : "—",
+    assetId: firstAsset?.id,
     size: "—",
     version: `v${s.version}`,
     uploadDate: formatViDate(s.submittedAt),
     status: mapSubmissionStatusToUi(s.status),
     notes: s.description ?? "",
-    fileUrl: s.fileUrl ?? "#",
+    fileUrl: firstAsset?.fileUrl ?? s.fileUrl ?? "#",
   };
 }

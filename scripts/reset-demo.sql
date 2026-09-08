@@ -5,6 +5,7 @@ SET QUOTED_IDENTIFIER ON;
 BEGIN TRAN;
 
 DELETE FROM Feedbacks;
+IF OBJECT_ID(N'SubmissionAssets', N'U') IS NOT NULL DELETE FROM SubmissionAssets;
 DELETE FROM WeeklyReports;
 DELETE FROM Documents;
 DELETE FROM Submissions;

@@ -177,6 +177,9 @@ export function StudentReportsTab({
                         </td>
                         <td className="py-3 px-3 font-bold text-slate-900">
                           {s.title ?? "—"}
+                          <span className="block text-[10px] font-medium text-slate-500">
+                            {s.assets?.length ?? 0} tài nguyên đính kèm
+                          </span>
                         </td>
                         <td className="py-3 px-3 text-slate-600">
                           {s.submittedAt

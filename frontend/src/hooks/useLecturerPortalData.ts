@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { getApiErrorMessage } from "../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../lib/adminMappers";
 import {
-  mapInternshipDtoToStudent,
+  mapLecturerStudentDtoToStudent,
   mapSubmissionDtoToRow,
+  mapWeeklyReportStatusToUi,
   mapUiWeeklyReportReviewStatusToApi,
+  formatViDate,
 } from "../lib/portalMappers";
 import { lecturerCompaniesService } from "../services/lecturerCompanies.service";
 import { lecturerInternshipsService } from "../services/lecturerInternships.service";
@@ -16,6 +18,7 @@ import type { Submission } from "../types/submission";
 import type { Enterprise } from "../types/enterprise";
 import type {
   LecturerDashboardStatsDto,
+  LecturerStudentListItemDto,
   LecturerWeeklyTrendDto,
   WeeklyReportDto,
 } from "../types/api";
@@ -55,9 +58,10 @@ export function useLecturerPortalData(
     setIsLoading(true);
     setError(null);
     try {
-      const [internships, companies, allSubmissions, allWeeklyReports, stats, trend] =
+      const [internships, assignedStudents, companies, allSubmissions, allWeeklyReports, stats, trend] =
         await Promise.all([
           lecturerInternshipsService.getAll(semesterId ?? undefined),
+          lecturerInternshipsService.getStudents(semesterId ?? undefined),
           lecturerCompaniesService.getActive(semesterId ?? undefined),
           lecturerInternshipsService.getAllSubmissions(semesterId ?? undefined),
           loadWeeklyReports(),
@@ -65,8 +69,8 @@ export function useLecturerPortalData(
           lecturerDashboardService.getWeeklyTrend(semesterId ?? undefined),
         ]);
 
-      const studentRows = internships.map((i) =>
-        mapInternshipDtoToStudent(i, lecturerName),
+      const studentRows = assignedStudents.map((item: LecturerStudentListItemDto) =>
+        mapLecturerStudentDtoToStudent(item, lecturerName),
       );
 
       const internshipCtx = new Map(
@@ -89,8 +93,39 @@ export function useLecturerPortalData(
         });
       });
 
+      const weeklyReportRows: Submission[] = allWeeklyReports.map((report) => {
+        const ctx = internshipCtx.get(report.internshipId);
+        const submittedAt = report.submittedAt ? formatViDate(report.submittedAt) : "—";
+        return {
+          id: `weekly:${report.id}`,
+          sourceId: report.id,
+          sourceType: "weeklyReport",
+          studentName: ctx?.studentName ?? "—",
+          mssv: ctx?.mssv ?? "—",
+          avatar: "",
+          company: ctx?.company ?? "—",
+          reportType: "Báo cáo tuần",
+          time: submittedAt !== "—" ? submittedAt.split(" ").slice(1).join(" ") : "—",
+          date: submittedAt !== "—" ? submittedAt.split(" ")[0] : "—",
+          status: report.status === "Submitted"
+            ? "Chờ duyệt"
+            : report.status === "RevisionRequested"
+              ? "Yêu cầu sửa"
+              : report.status === "Approved"
+                ? "Đã duyệt"
+                : mapWeeklyReportStatusToUi(report.status),
+          fileName: report.fileName ?? "",
+          fileUrl: report.fileUrl ?? "",
+          fileSize: report.fileSize ? `${(report.fileSize / (1024 * 1024)).toFixed(1)} MB` : "—",
+          summary: report.title,
+          duplicateScore: 0,
+          lecturerNote: report.lecturerComment ?? "",
+          approvedAt: report.status === "Approved" ? report.updatedAt ?? undefined : undefined,
+        };
+      });
+
       setStudents(studentRows);
-      setSubmissions(submissionRows);
+      setSubmissions([...weeklyReportRows, ...submissionRows]);
       setWeeklyReports(allWeeklyReports);
       setEnterprises(companies.map(mapCompanyDtoToEnterprise));
       setDashboardStats(stats);
@@ -116,7 +151,14 @@ export function useLecturerPortalData(
     async (id: string, uiStatus: string, note?: string) => {
       if (!enabled) return;
       try {
-        await submissionApiService.review(id, uiStatus, note);
+        if (id.startsWith("weekly:")) {
+          await weeklyReportService.review(id.slice("weekly:".length), {
+            status: mapUiWeeklyReportReviewStatusToApi(uiStatus),
+            lecturerComment: note?.trim() || undefined,
+          });
+        } else {
+          await submissionApiService.review(id, uiStatus, note);
+        }
       } catch (err) {
         onError?.(getApiErrorMessage(err));
         throw err;

@@ -45,6 +45,22 @@ public sealed class UploadSubmissionFormRequest
     public IFormFile? File { get; set; }
 }
 
+public sealed class UploadSubmissionBundleFormRequest
+{
+    public Guid InternshipId { get; set; }
+    public string Type { get; set; } = null!;
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public string? LinksJson { get; set; }
+    public List<IFormFile> Files { get; set; } = new();
+}
+
+public sealed class SubmissionAssetInput
+{
+    public string? Label { get; set; }
+    public string Url { get; set; } = null!;
+}
+
 /// <summary>Multipart form for resubmitting with a new file.</summary>
 public sealed class ResubmitSubmissionFormRequest
 {

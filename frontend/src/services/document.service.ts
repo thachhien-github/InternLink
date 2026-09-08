@@ -40,6 +40,8 @@ export const documentService = {
       description?: string;
       category?: string;
       isRequired?: boolean;
+      isPublished?: boolean;
+      archiveReason?: string;
     },
   ): Promise<DocumentDetailDto> {
     return apiRequest<DocumentDetailDto>(`/api/Document/${id}`, {

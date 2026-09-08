@@ -19,5 +19,7 @@ public class SubmissionProfile : Profile
             .ForMember(d => d.Type, o => o.MapFrom(s => s.Type.ToString()))
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()))
             .ForMember(d => d.Feedbacks, o => o.MapFrom(s => s.Feedbacks.Where(f => !f.IsDeleted)));
+
+        CreateMap<SubmissionAsset, SubmissionAssetDto>();
     }
 }

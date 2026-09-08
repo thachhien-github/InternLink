@@ -19,6 +19,7 @@ import {
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { EmptyState } from "../../../components/common/EmptyState";
 import { TableSkeleton } from "../../../components/common/SkeletonLoader";
@@ -433,10 +434,11 @@ export const FeedbackView = ({
                         className={`p-3.5 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isSelected ? "bg-blue-50/70 border-l-4 border-l-blue-600" : fb.status === "Chưa xem" ? "bg-slate-50/80 font-bold" : "hover:bg-slate-50/50"}`}
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <img
-                            src={fb.avatar}
-                            alt={fb.senderName}
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                          <InitialsAvatar
+                            name={fb.senderName}
+                            seed={fb.senderName}
+                            size={32}
+                            className="mt-0.5"
                           />
                           <div className="space-y-0.5 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -514,10 +516,10 @@ export const FeedbackView = ({
               <Panel className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={selectedFeedback.avatar}
-                      alt={selectedFeedback.senderName}
-                      className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                    <InitialsAvatar
+                      name={selectedFeedback.senderName}
+                      seed={selectedFeedback.senderName}
+                      size={36}
                     />
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
@@ -638,10 +640,11 @@ export const FeedbackView = ({
                         key={msg.id}
                         className={`flex gap-2.5 text-xs ${msg.sender === "student" ? "flex-row-reverse" : ""}`}
                       >
-                        <img
-                          src={msg.avatar}
-                          alt={msg.senderName}
-                          className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                        <InitialsAvatar
+                          name={msg.senderName}
+                          seed={msg.sender === "student" ? profile.mssv : msg.senderName}
+                          size={28}
+                          className="mt-0.5"
                         />
                         <div
                           className={`space-y-1 max-w-[85%] ${msg.sender === "student" ? "items-end text-right" : ""}`}

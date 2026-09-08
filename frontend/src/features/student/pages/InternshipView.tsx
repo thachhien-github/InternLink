@@ -6,7 +6,6 @@ import {
   MapPin,
   Calendar,
   CheckCircle2,
-  Download,
   Briefcase,
   ChevronRight,
   FileText,
@@ -20,10 +19,10 @@ import {
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { INTERNSHIP_WEEKS } from "../../../config/internship";
 import { mapWeeklyReportStatusToUi } from "../../../lib/portalMappers";
-import { studentPortalService } from "../../../services/studentPortal.service";
 import { weeklyReportService } from "../../../services/weeklyReport.service";
 
 function formatDateVi(value?: string | null, style: "short" | "full" = "full") {
@@ -301,19 +300,6 @@ export const InternshipView = ({ onShowToast, onNavigate }) => {
             onClick: () => goTo("weekly-reports"),
             variant: "primary",
           },
-          {
-            label: "Xuất phiếu",
-            icon: Download,
-            onClick: async () => {
-              try {
-                await studentPortalService.downloadCertificate();
-                onShowToast("Đã tải xuống phiếu thực tập (PDF)");
-              } catch {
-                onShowToast("Xuất phiếu PDF thất bại");
-              }
-            },
-            variant: "secondary",
-          },
         ]}
       >
         <span className="px-2 py-0.5 font-semibold text-[10px] rounded-md border bg-emerald-100 text-emerald-800 border-emerald-200 flex items-center gap-1.5">
@@ -344,9 +330,7 @@ export const InternshipView = ({ onShowToast, onNavigate }) => {
         {/* Company Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
-              {initials(profile.company)}
-            </div>
+            <CompanyAvatar name={profile.company} size={48} />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-slate-900">

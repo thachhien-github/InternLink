@@ -134,9 +134,7 @@ export const StudentDocumentLibrary = ({
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-md text-xs font-bold transition-all whitespace-nowrap ${selectedCategory === cat ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
             >
-              {cat === "T\u1EA5t c\u1EA3"
-                ? "\u{1F4C1} T\u1EA5t c\u1EA3"
-                : `\u{1F4C1} ${cat}`}
+                {cat}
             </button>
           ))}
         </div>

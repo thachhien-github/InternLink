@@ -29,6 +29,7 @@ interface CompanyDetailDto {
   internships: {
     id: string;
     studentId: string;
+    studentCode?: string | null;
     studentName: string;
     position: string;
     status: string;
@@ -275,7 +276,7 @@ export const CompanyDetailView = ({
                         {internship.studentName}
                       </span>
                       <span className="text-[10px] text-slate-500">
-                        MSSV: {internship.studentId.slice(0, 8)} · {internship.position}
+                        MSSV: {internship.studentCode ?? "—"} · {internship.position}
                       </span>
                     </div>
                   </div>

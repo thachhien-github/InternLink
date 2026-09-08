@@ -228,6 +228,38 @@ public class SubmissionServiceTests
     }
 
     [Fact]
+    public async Task AddFeedbackAsync_AssignedLecturerCanReviewProductSubmission()
+    {
+        var db = GetDb();
+        var (_, lecturerUser, _, _, internship, _) = await SeedDataAsync(db);
+        var product = new Submission
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = internship.Id,
+            Type = SubmissionType.Product,
+            Title = "Deployed product",
+            Status = SubmissionStatus.Submitted,
+            Version = 1,
+            SubmittedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        };
+        await db.Submissions.AddAsync(product);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.AddFeedbackAsync(product.Id, lecturerUser.Id, new CreateFeedbackRequest
+        {
+            Comment = "Vui lòng bổ sung ảnh triển khai.",
+            IsPublic = true,
+            NewStatus = "RevisionRequested",
+        });
+
+        result.Should().NotBeNull();
+        result!.Comment.Should().Be("Vui lòng bổ sung ảnh triển khai.");
+        (await db.Submissions.FindAsync(product.Id))!.Status.Should().Be(SubmissionStatus.RevisionRequested);
+    }
+
+    [Fact]
     public async Task GetFeedbacksAsync_StudentOwner_ShouldReturnOnlyPublicFeedbacks()
     {
         var db = GetDb();

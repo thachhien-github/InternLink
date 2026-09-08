@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toast } from "../../../components/common/Toast";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { useSemester } from "../../../contexts/SemesterContext";
 import {
   ArrowLeft,
@@ -228,13 +229,11 @@ export const EvaluationWorkspace = ({
           {/* STUDENT INFORMATION CARD */}
           <div className="bg-white p-5 rounded-lg border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center gap-4">
-              <img
-                src={
-                  student.avatar ||
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-                }
-                alt={student.name}
-                className="w-16 h-16 rounded-lg object-cover border-2 border-blue-500 shadow-sm shrink-0"
+              <InitialsAvatar
+                name={student.name}
+                seed={student.mssv}
+                size={64}
+                className="border-2 border-blue-500"
               />
               <div className="space-y-1">
                 <div className="flex items-center gap-2">

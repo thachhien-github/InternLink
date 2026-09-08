@@ -97,17 +97,8 @@ public class LecturerService : ILecturerService
 
         if (semesterId.HasValue)
             query = query.Where(i => i.SemesterId == semesterId.Value);
-        else
-        {
-            var activeSemesterId = await _db.Semesters
-                .Where(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
-                .Select(s => (Guid?)s.Id)
-                .FirstOrDefaultAsync();
-            if (activeSemesterId.HasValue)
-                query = query.Where(i => i.SemesterId == activeSemesterId.Value);
-        }
-
         var internships = await query
+            .Include(i => i.Company)
             .Include(i => i.Submissions)
             .Include(i => i.WeeklyReports)
             .ToListAsync();
@@ -119,12 +110,18 @@ public class LecturerService : ILecturerService
             .ToListAsync();
 
         var total = internships.Count;
+        var assignedCompanyCount = internships.Count(i => i.CompanyId.HasValue && i.Company != null);
         var interning = internships.Count(i =>
-            i.Status is InternshipStatus.InProgress
+            (i.Status == InternshipStatus.NotStarted && i.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : i.Status) is InternshipStatus.InProgress
                 or InternshipStatus.BehindSchedule
                 or InternshipStatus.AwaitingFeedback
                 or InternshipStatus.RequiresRevision);
-        var completed = internships.Count(i => i.Status == InternshipStatus.Completed);
+        var completed = internships.Count(i =>
+            (i.Status == InternshipStatus.NotStarted && i.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : i.Status) is InternshipStatus.Completed or InternshipStatus.Graded);
         
         var pendingSubmissions = internships.Sum(i => i.Submissions.Count(s => !s.IsDeleted && s.Status == SubmissionStatus.Submitted));
         var pendingReports = internships.Sum(i => i.WeeklyReports.Count(w => !w.IsDeleted && w.Status == WeeklyReportStatus.Submitted));
@@ -136,13 +133,33 @@ public class LecturerService : ILecturerService
         var avgGrade = finalizedEvals.Any() ? Math.Round(finalizedEvals.Average(e => e.FinalGrade), 2) : 0m;
 
         var statusDict = internships
-            .GroupBy(i => i.Status.ToString())
+            .GroupBy(i => (i.Status == InternshipStatus.NotStarted && i.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : i.Status).ToString())
             .ToDictionary(g => g.Key, g => g.Count());
+
+        var averageProgress = total == 0
+            ? 0
+            : (int)Math.Round(internships.Average(i => (i.Status == InternshipStatus.NotStarted && i.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : i.Status) switch
+            {
+                InternshipStatus.NotStarted => 0,
+                InternshipStatus.InProgress => 50,
+                InternshipStatus.BehindSchedule => 40,
+                InternshipStatus.AwaitingFeedback => 70,
+                InternshipStatus.RequiresRevision => 60,
+                InternshipStatus.Completed => 100,
+                InternshipStatus.Graded => 100,
+                _ => 0,
+            }));
 
         return new LecturerDashboardStatsDto
         {
             TotalStudents = total,
+            AssignedCompanyCount = assignedCompanyCount,
             InterningCount = interning,
+            AverageProgress = averageProgress,
             PendingReviewsCount = pendingReviews,
             CompletedCount = completed,
             OverdueReportsCount = overdueReports,
@@ -203,21 +220,21 @@ public class LecturerService : ILecturerService
             var weeklyCount = i.WeeklyReports?.Count(w => !w.IsDeleted) ?? 0;
             var pendingReportCount = i.WeeklyReports?.Count(w => !w.IsDeleted && w.Status == WeeklyReportStatus.Submitted) ?? 0;
             var submissionCount = i.Submissions?.Count(s => !s.IsDeleted) ?? 0;
+            var effectiveStatus = i.Status == InternshipStatus.NotStarted && i.CompanyId.HasValue
+                ? InternshipStatus.InProgress
+                : i.Status;
 
-            // Simple progress calculation based on weeks/reports/status
-            int progressPercent = 0;
-            if (i.Status == InternshipStatus.Completed)
+            // Progress reflects submitted work even before the internship status is advanced.
+            int progressPercent = effectiveStatus switch
             {
-                progressPercent = 100;
-            }
-            else if (i.Status is InternshipStatus.InProgress
-                or InternshipStatus.BehindSchedule
-                or InternshipStatus.AwaitingFeedback
-                or InternshipStatus.RequiresRevision)
-            {
-                // Typically 10-12 weekly reports expected
-                progressPercent = Math.Min(95, Math.Max(10, weeklyCount * 8));
-            }
+                InternshipStatus.Completed or InternshipStatus.Graded => 100,
+                InternshipStatus.InProgress or InternshipStatus.BehindSchedule
+                    or InternshipStatus.AwaitingFeedback or InternshipStatus.RequiresRevision
+                    => Math.Min(95, Math.Max(10, weeklyCount * 8 + submissionCount * 2)),
+                _ when weeklyCount > 0 || submissionCount > 0
+                    => Math.Min(95, Math.Max(10, weeklyCount * 8 + submissionCount * 2)),
+                _ => 0,
+            };
 
             result.Add(new LecturerStudentListItemDto
             {
@@ -232,7 +249,7 @@ public class LecturerService : ILecturerService
                 CompanyId = i.CompanyId,
                 CompanyName = i.Company?.CompanyName,
                 Position = i.Position,
-                InternshipStatus = i.Status.ToString(),
+                InternshipStatus = effectiveStatus.ToString(),
                 StartDate = i.StartDate,
                 EndDate = i.EndDate,
                 WeeklyReportCount = weeklyCount,
@@ -414,6 +431,7 @@ public class LecturerService : ILecturerService
         var submissions = await _db.Submissions
             .AsNoTracking()
             .Where(s => internshipIds.Contains(s.InternshipId) && !s.IsDeleted)
+            .Include(s => s.Assets.Where(a => !a.IsDeleted))
             .Include(s => s.Internship)
                 .ThenInclude(i => i.Student)
             .Include(s => s.Internship)
@@ -823,16 +841,6 @@ public class LecturerService : ILecturerService
 
         if (semesterId.HasValue)
             query = query.Where(i => i.SemesterId == semesterId.Value);
-        else
-        {
-            var activeSemesterId = await _db.Semesters
-                .Where(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
-                .Select(s => (Guid?)s.Id)
-                .FirstOrDefaultAsync();
-            if (activeSemesterId.HasValue)
-                query = query.Where(i => i.SemesterId == activeSemesterId.Value);
-        }
-
         var internships = await query.ToListAsync();
         var totalStudents = internships.Count;
 
@@ -1019,13 +1027,19 @@ public class LecturerService : ILecturerService
             Id = i.Id,
             StudentId = i.StudentId,
             StudentName = i.Student?.FullName ?? string.Empty,
+            StudentCode = i.Student?.StudentCode,
             CompanyId = i.CompanyId,
             CompanyName = i.Company?.CompanyName,
             StartDate = i.StartDate,
             EndDate = i.EndDate,
-            Status = i.Status.ToString(),
+            Status = (i.Status == InternshipStatus.NotStarted &&
+                (i.CompanyId.HasValue ||
+                 i.Submissions.Any(s => !s.IsDeleted) ||
+                 i.WeeklyReports.Any(w => !w.IsDeleted))
+                ? InternshipStatus.InProgress
+                : i.Status).ToString(),
             Position = i.Position,
-            SubmissionCount = i.Submissions?.Count ?? 0,
+            SubmissionCount = i.Submissions?.Count(s => !s.IsDeleted) ?? 0,
             CreatedAt = i.CreatedAt
         }).ToList();
 

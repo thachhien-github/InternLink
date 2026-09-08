@@ -1,4 +1,5 @@
 using InternLink.Application.Interfaces;
+using InternLink.API.Extensions;
 using InternLink.Shared.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +17,18 @@ public class ExportController : ControllerBase
     private readonly IExcelExportService _excelExportService;
     private readonly IInternshipReportService _reportService;
     private readonly ILogger<ExportController> _logger;
+    private readonly ILecturerAccessService _lecturerAccessService;
 
     public ExportController(
         IExcelExportService excelExportService,
         IInternshipReportService reportService,
-        ILogger<ExportController> logger)
+        ILogger<ExportController> logger,
+        ILecturerAccessService lecturerAccessService)
     {
         _excelExportService = excelExportService;
         _reportService = reportService;
         _logger = logger;
+        _lecturerAccessService = lecturerAccessService;
     }
 
     /// <summary>
@@ -37,8 +41,8 @@ public class ExportController : ControllerBase
         try
         {
             _logger.LogInformation("Admin/Lecturer initiated Excel export for semester: {SemesterId}", semesterId);
-            var fileBytes = await _excelExportService.GenerateInternshipExportExcelAsync(semesterId, cancellationToken);
-            var fileName = $"Danh-sach-thuc-tap-{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileBytes = await _excelExportService.GenerateInternshipExportExcelAsync(semesterId, cancellationToken: cancellationToken);
+            var fileName = $"DanhSachThucTap_{DateTime.Now:yyyy-MM-dd}.xlsx";
 
             return File(
                 fileBytes,
@@ -54,6 +58,21 @@ public class ExportController : ControllerBase
                 Detail = ex.Message
             }));
         }
+    }
+
+    [HttpGet("lecturer-internship-excel")]
+    public async Task<IActionResult> ExportLecturerInternshipExcel([FromQuery] Guid? semesterId = null, CancellationToken cancellationToken = default)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var lecturerId = await _lecturerAccessService.ResolveLecturerIdAsync(userId.Value);
+        if (lecturerId == null)
+            return Forbid();
+
+        var fileBytes = await _excelExportService.GenerateInternshipExportExcelAsync(semesterId, lecturerId.Value, cancellationToken);
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"DanhSachThucTap_{DateTime.Now:yyyy-MM-dd}.xlsx");
     }
 
     /// <summary>

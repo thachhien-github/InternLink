@@ -48,6 +48,28 @@ function isGuid(id?: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
+type DefenseStatus = EvaluationDetailDto["defenseStatus"];
+
+const defenseStatusValues: Record<DefenseStatus, number> = {
+  NotScheduled: 0,
+  Scheduled: 1,
+  Completed: 2,
+};
+
+function normalizeDefenseStatus(value: DefenseStatus | number): DefenseStatus {
+  if (typeof value === "number") {
+    return value === 2 ? "Completed" : value === 1 ? "Scheduled" : "NotScheduled";
+  }
+  return value;
+}
+
+function normalizeEvaluationDetail(evaluation: EvaluationDetailDto): EvaluationDetailDto {
+  return {
+    ...evaluation,
+    defenseStatus: normalizeDefenseStatus(evaluation.defenseStatus),
+  };
+}
+
 export const evaluationService = {
   list(skip = 0, take = 500): Promise<EvaluationListItemDto[]> {
     return apiRequestRaw<EvaluationListItemDto[]>(
@@ -56,13 +78,13 @@ export const evaluationService = {
   },
 
   getById(id: string): Promise<EvaluationDetailDto> {
-    return apiRequestRaw<EvaluationDetailDto>(`/api/Evaluation/${id}`);
+    return apiRequestRaw<EvaluationDetailDto>(`/api/Evaluation/${id}`).then(normalizeEvaluationDetail);
   },
 
   getByInternship(internshipId: string): Promise<EvaluationDetailDto | null> {
     return apiRequestRaw<EvaluationDetailDto>(
       `/api/Evaluation/internship/${internshipId}`,
-    ).catch((error) => {
+    ).then(normalizeEvaluationDetail).catch((error) => {
       if (error instanceof Error && error.message.includes("404")) return null;
       throw error;
     });
@@ -103,8 +125,8 @@ export const evaluationService = {
   ): Promise<EvaluationDetailDto> {
     return apiRequestRaw<EvaluationDetailDto>(`/api/Lecturer/evaluations/${id}/defense`, {
       method: "PUT",
-      body,
-    });
+      body: { ...body, defenseStatus: defenseStatusValues[body.defenseStatus] },
+    }).then(normalizeEvaluationDetail);
   },
 
   /**

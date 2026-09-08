@@ -99,6 +99,8 @@ export interface LecturerEvaluationStudentDto {
   weeklyReportCount: number;
   pendingReportCount?: number;
   submissionCount?: number;
+  finalReportSubmitted?: boolean;
+  practicalProductSubmitted?: boolean;
   evaluationId?: string | null;
   finalGrade?: number | null;
   evaluatedAt?: string | null;

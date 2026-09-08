@@ -3,6 +3,7 @@ import { Building2, ChevronLeft, ChevronRight, Eye, GraduationCap, RefreshCw, Se
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { useNavigate } from "react-router-dom";
 import type { Enterprise } from "../../../types/enterprise";
@@ -123,7 +124,7 @@ export const EnterprisesView = ({
                   <td className="py-3 px-3 text-center text-slate-400 font-mono font-bold">{(currentPage - 1) * pageSize + index + 1}</td>
                   <td className="py-3 px-3 pl-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center border border-blue-100 shrink-0">{company.shortCode}</div>
+                      <CompanyAvatar name={company.name} size={40} />
                       <div className="min-w-0">
                         <span className="font-bold text-slate-900 text-xs block truncate">{company.name}</span>
                         <span className="text-[10px] text-slate-400">Mã: {company.shortCode}</span>
@@ -180,7 +181,7 @@ export const EnterprisesView = ({
         <Panel className="space-y-4 border-blue-200">
           <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-md bg-blue-50 text-blue-700 font-bold flex items-center justify-center border border-blue-100">{selectedCompany.shortCode}</div>
+              <CompanyAvatar name={selectedCompany.name} size={48} />
               <div><h2 className="text-base font-bold text-slate-900">{selectedCompany.name}</h2><p className="text-xs text-slate-500">Thông tin theo học kỳ đang chọn</p></div>
             </div>
             <button type="button" onClick={() => setSelectedCompany(null)} className="text-xs font-bold text-blue-600 hover:text-blue-800">Đóng</button>

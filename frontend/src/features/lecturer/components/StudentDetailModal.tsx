@@ -122,15 +122,7 @@ export const StudentDetailModal = ({
         {/* Avatar + info */}
         <div className="space-y-4 text-xs">
           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-            {student.avatar ? (
-              <img
-                src={student.avatar}
-                alt={student.name}
-                className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs"
-              />
-            ) : (
-              <InitialsAvatar name={student.name} size={56} />
-            )}
+            <InitialsAvatar name={student.name} seed={student.mssv} size={56} />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h4 className="font-bold text-base text-slate-900">{student.name}</h4>

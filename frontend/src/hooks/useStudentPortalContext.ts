@@ -50,19 +50,6 @@ function internshipStatusToBadge(status: string): string {
   return map[status] ?? mapInternshipStatusToUi(status);
 }
 
-function internshipStatusToProgress(status: string): number {
-  const map: Record<string, number> = {
-    NotStarted: 0,
-    InProgress: 55,
-    BehindSchedule: 25,
-    AwaitingFeedback: 70,
-    RequiresRevision: 40,
-    Completed: 90,
-    Graded: 100,
-  };
-  return map[status] ?? 50;
-}
-
 export function buildStudentProfileFromPortal(
   portal: StudentPortalProfileDto,
   weeklyReportCount = 0,
@@ -82,7 +69,7 @@ export function buildStudentProfileFromPortal(
     companyLogo: DEFAULT_LOGO,
     position: i?.position ?? "—",
     statusBadge: i ? internshipStatusToBadge(i.status) : "Chưa có hồ sơ TT",
-    overallProgress: i ? internshipStatusToProgress(i.status) : 0,
+    overallProgress: i ? (portal.progressPercent ?? 0) : 0,
     currentGrade: 0,
     reportsSubmitted: approvedWeeklyCount,
     totalReports: Math.max(weeklyReportCount, approvedWeeklyCount, INTERNSHIP_WEEKS),

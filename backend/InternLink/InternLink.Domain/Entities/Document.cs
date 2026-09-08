@@ -42,6 +42,8 @@ public class Document : BaseEntity
     /// </summary>
     public long FileSize { get; set; }
 
+    public int DownloadCount { get; set; }
+
     /// <summary>
     /// File MIME type (e.g., application/pdf, application/msword)
     /// </summary>
@@ -56,6 +58,11 @@ public class Document : BaseEntity
     /// Flag indicating if this is a required document
     /// </summary>
     public bool IsRequired { get; set; } = false;
+
+    public bool IsPublished { get; set; } = true;
+    public string? ArchiveReason { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
 
     /// <summary>
     /// Document category/type (e.g., "WeeklyReport", "MidtermReport", "FinalReport", "Other")

@@ -8,6 +8,10 @@ import type {
 } from "../types/api";
 
 export const submissionApiService = {
+  getById(id: string): Promise<SubmissionDto> {
+    return apiRequest<SubmissionDto>(`/api/Submission/${id}`);
+  },
+
   getMine(): Promise<SubmissionDto[]> {
     return apiRequest<SubmissionDto[]>("/api/Submission/mine");
   },
@@ -54,6 +58,27 @@ export const submissionApiService = {
     });
   },
 
+  bundle(params: {
+    internshipId: string;
+    type: string;
+    title: string;
+    description?: string;
+    files: File[];
+    links: { label: string; url: string }[];
+  }): Promise<SubmissionDto> {
+    const form = new FormData();
+    form.append("InternshipId", params.internshipId);
+    form.append("Type", params.type);
+    form.append("Title", params.title);
+    if (params.description) form.append("Description", params.description);
+    form.append("LinksJson", JSON.stringify(params.links));
+    params.files.forEach((file) => form.append("Files", file));
+    return apiRequest<SubmissionDto>("/api/Submission/bundle", {
+      method: "POST",
+      body: form,
+    });
+  },
+
   resubmitUpload(
     id: string,
     params: { title?: string; description?: string; file: File },
@@ -68,10 +93,19 @@ export const submissionApiService = {
     });
   },
 
-  download(id: string, fallbackFilename: string) {
+  download(id: string, fallbackFilename: string, autoTrigger = true) {
     return downloadAuthenticatedFile(
       `/api/Submission/${id}/download`,
       fallbackFilename,
+      autoTrigger,
+    );
+  },
+
+  downloadAsset(submissionId: string, assetId: string, fallbackFilename: string, autoTrigger = true) {
+    return downloadAuthenticatedFile(
+      `/api/Submission/${submissionId}/assets/${assetId}/download`,
+      fallbackFilename,
+      autoTrigger,
     );
   },
 

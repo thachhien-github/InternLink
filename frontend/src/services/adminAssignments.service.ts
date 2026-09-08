@@ -33,16 +33,18 @@ export const adminAssignmentsService = {
     );
   },
 
-  unassign(body: { lecturerId: string; studentId: string }) {
+  unassign(body: { lecturerId: string; studentId: string; semesterId?: string }) {
     return apiRequest<null>("/api/Admin/assignments", {
       method: "DELETE",
       body,
     });
   },
 
-  getHistory(limit = 50) {
+  getHistory(limit = 50, semesterId?: string) {
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (semesterId && semesterId !== "all") qs.set("semesterId", semesterId);
     return apiRequest<AssignmentHistoryItemDto[]>(
-      `/api/Admin/assignments/history?limit=${limit}`,
+      `/api/Admin/assignments/history?${qs.toString()}`,
     );
   },
 

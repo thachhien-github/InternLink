@@ -15,15 +15,18 @@ namespace InternLink.API.Controllers;
 public class EvaluationController : ControllerBase
 {
     private readonly IEvaluationService _evaluationService;
+    private readonly IRubricService _rubricService;
     private readonly ILecturerAccessService _lecturerAccessService;
     private readonly ILogger<EvaluationController> _logger;
 
     public EvaluationController(
-        IEvaluationService evaluationService, 
+        IEvaluationService evaluationService,
+        IRubricService rubricService,
         ILecturerAccessService lecturerAccessService,
         ILogger<EvaluationController> logger)
     {
         _evaluationService = evaluationService;
+        _rubricService = rubricService;
         _lecturerAccessService = lecturerAccessService;
         _logger = logger;
     }
@@ -119,6 +122,54 @@ public class EvaluationController : ControllerBase
             _logger.LogError(ex, "Error retrieving evaluation {EvaluationId}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving evaluation" });
         }
+    }
+
+    /// <summary>
+    /// Get rubric score details for the assigned student or lecturer.
+    /// </summary>
+    [HttpGet("{id}/scores")]
+    [ProducesResponseType(typeof(EvaluationScoresResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EvaluationScoresResponse>> GetEvaluationScores(Guid id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var isLecturerOrAdmin = User.IsInRole("Lecturer") || User.IsInRole("SuperAdmin");
+            var scores = await _evaluationService.GetEvaluationScoresAsync(id, userId.Value, isLecturerOrAdmin);
+            if (scores == null)
+                return NotFound(new { message = "Evaluation not found" });
+
+            return Ok(scores);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving evaluation scores {EvaluationId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving evaluation scores" });
+        }
+    }
+
+    /// <summary>
+    /// Get the approved evaluation rubric for a student's semester.
+    /// </summary>
+    [HttpGet("rubric")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(RubricDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RubricDto>> GetStudentRubric([FromQuery] Guid semesterId)
+    {
+        var rubric = await _rubricService.GetApprovedRubricAsync(semesterId);
+        if (rubric == null)
+            return NotFound(new { message = "Chưa có rubric đã phê duyệt cho kỳ này." });
+
+        return Ok(rubric);
     }
 
     /// <summary>

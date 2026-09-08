@@ -95,8 +95,22 @@ public sealed class SubmissionDto
 
     public DateTime SubmittedAt { get; set; }
 
+    public IEnumerable<SubmissionAssetDto> Assets { get; set; } = Array.Empty<SubmissionAssetDto>();
+
     public IEnumerable<FeedbackDto> Feedbacks { get; set; } = Array.Empty<FeedbackDto>();
 
+}
+
+public sealed class SubmissionAssetDto
+{
+    public Guid Id { get; set; }
+    public string? Label { get; set; }
+    public string? FileName { get; set; }
+    public string? FileUrl { get; set; }
+    public string AssetType { get; set; } = "file";
+    public long? FileSize { get; set; }
+    public string? MimeType { get; set; }
+    public DateTime UploadedAt { get; set; }
 }
 
 
@@ -209,7 +223,9 @@ public sealed class LecturerCompanySummaryDto
 public sealed class LecturerDashboardStatsDto
 {
     public int TotalStudents { get; set; }
+    public int AssignedCompanyCount { get; set; }
     public int InterningCount { get; set; }
+    public int AverageProgress { get; set; }
     public int PendingReviewsCount { get; set; }
     public int CompletedCount { get; set; }
     public int OverdueReportsCount { get; set; }

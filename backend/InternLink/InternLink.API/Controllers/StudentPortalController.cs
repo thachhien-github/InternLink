@@ -38,6 +38,35 @@ public class StudentPortalController : ControllerBase
         return Ok(ApiResponse<StudentPortalProfileDto>.Ok(profile));
     }
 
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateStudentProfileRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Họ tên không được để trống" }));
+
+        var current = await _studentService.GetStudentByUserIdAsync(userId.Value);
+        if (current == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Student profile not found" }));
+
+        try
+        {
+            var updated = await _studentService.UpdateStudentAsync(current.Id, new UpdateStudentRequest
+            {
+                FullName = request.FullName,
+                Email = request.Email,
+                Phone = request.Phone,
+            });
+            return Ok(ApiResponse<StudentDto>.Ok(updated!));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
+    }
+
     /// <summary>
     /// Download internship certificate/evaluation sheet as PDF.
     /// </summary>

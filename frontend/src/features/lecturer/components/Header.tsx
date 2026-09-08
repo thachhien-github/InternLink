@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Search, User, CalendarDays } from "lucide-react";
 import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { useAuth } from "../../../hooks/useAuth";
 import { useSemester } from "../../../contexts/SemesterContext";
 import type { UserRole } from "../../../types/common";
 
@@ -27,6 +29,8 @@ export const Header = ({
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { user } = useAuth();
+  const lecturerName = user?.name || currentLecturer || "Giảng viên";
 
   const getTabLabel = (tab: string) => {
     switch (tab) {
@@ -102,10 +106,14 @@ export const Header = ({
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-8 h-8 rounded-full bg-[#0b132b] text-white flex items-center justify-center font-bold text-xs hover:bg-[#1c2541] transition-colors cursor-pointer"
+            className="rounded-full cursor-pointer focus-visible:outline-none"
             title="Tài khoản Giảng viên"
           >
-            <User className="w-4 h-4" />
+            <InitialsAvatar
+              name={lecturerName}
+              seed={user?.id || user?.email || lecturerName}
+              size={32}
+            />
           </button>
 
           {showProfileMenu && (
@@ -167,14 +175,15 @@ function SemesterBadge({
   currentLecturer?: string;
   assignedStudentsCount?: number;
 }) {
-  const { selectedSemester, activeSemesterId } = useSemester();
-  const semesterLabel = activeSemesterId
-    ? `${selectedSemester.term} (${selectedSemester.academicYear})`
+  const { semesters } = useSemester();
+  const activeSemester = semesters.find((semester) => semester.status === "active");
+  const semesterLabel = activeSemester
+    ? activeSemester.name || `${activeSemester.term} (${activeSemester.academicYear})`
     : "Chưa có kỳ hoạt động";
 
   return (
     <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
-      <span className={`w-2 h-2 rounded-full shrink-0 ${activeSemesterId ? "bg-emerald-500" : "bg-slate-400"}`} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${activeSemester ? "bg-emerald-500" : "bg-slate-400"}`} />
       <span className="truncate max-w-[280px] sm:max-w-none flex items-center gap-1.5">
         <CalendarDays className="w-3 h-3 text-slate-400 shrink-0" />
         {semesterLabel} · GV: {currentLecturer} · {assignedStudentsCount} SV HD

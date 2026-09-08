@@ -26,7 +26,7 @@ public class ExcelExportService : IExcelExportService
     }
 
     /// <inheritdoc />
-    public async Task<InternshipExportDataDto> GetExportDataAsync(Guid? semesterId = null, CancellationToken cancellationToken = default)
+    public async Task<InternshipExportDataDto> GetExportDataAsync(Guid? semesterId = null, Guid? lecturerId = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Retrieving export datasets from relational tables. SemesterId: {SemesterId}", semesterId);
 
@@ -37,12 +37,13 @@ public class ExcelExportService : IExcelExportService
         // Lecturer (LEFT JOIN), Evaluation (LEFT JOIN), and WeeklyReports.
         var students = await _db.Students
             .AsNoTracking()
-            .Include(s => s.Internships.Where(i => !semesterId.HasValue || i.SemesterId == semesterId.Value))
+            .Include(s => s.Internships.Where(i => !i.IsDeleted && (!semesterId.HasValue || i.SemesterId == semesterId.Value) && (!lecturerId.HasValue || i.LecturerId == lecturerId.Value)))
                 .ThenInclude(i => i.Company)
-            .Include(s => s.Internships.Where(i => !semesterId.HasValue || i.SemesterId == semesterId.Value))
+            .Include(s => s.Internships.Where(i => !i.IsDeleted && (!semesterId.HasValue || i.SemesterId == semesterId.Value) && (!lecturerId.HasValue || i.LecturerId == lecturerId.Value)))
                 .ThenInclude(i => i.Lecturer)
-            .Include(s => s.Internships.Where(i => !semesterId.HasValue || i.SemesterId == semesterId.Value))
+            .Include(s => s.Internships.Where(i => !i.IsDeleted && (!semesterId.HasValue || i.SemesterId == semesterId.Value) && (!lecturerId.HasValue || i.LecturerId == lecturerId.Value)))
                 .ThenInclude(i => i.WeeklyReports)
+            .Where(s => !lecturerId.HasValue || s.Internships.Any(i => !i.IsDeleted && i.LecturerId == lecturerId.Value && (!semesterId.HasValue || i.SemesterId == semesterId.Value)))
             .OrderBy(s => s.Class)
             .ThenBy(s => s.FullName)
             .ToListAsync(cancellationToken);
@@ -136,7 +137,7 @@ public class ExcelExportService : IExcelExportService
                 CompanyId = c.Id,
                 CompanyName = c.CompanyName,
                 Address = c.Address ?? "—",
-                StudentCount = c.Internships.Count(i => !semesterId.HasValue || i.SemesterId == semesterId.Value),
+                StudentCount = c.Internships.Count(i => !i.IsDeleted && (!semesterId.HasValue || i.SemesterId == semesterId.Value) && (!lecturerId.HasValue || i.LecturerId == lecturerId.Value)),
                 ContactInfo = string.IsNullOrWhiteSpace(c.ContactPhone)
                     ? (c.ContactPerson ?? "—")
                     : $"{c.ContactPerson} - {c.ContactPhone}"
@@ -155,7 +156,7 @@ public class ExcelExportService : IExcelExportService
         // ────────────────────────────────────────────────────────────────────
         var assignments = await _db.Internships
             .AsNoTracking()
-            .Where(i => !semesterId.HasValue || i.SemesterId == semesterId.Value)
+            .Where(i => !i.IsDeleted && (!semesterId.HasValue || i.SemesterId == semesterId.Value) && (!lecturerId.HasValue || i.LecturerId == lecturerId.Value))
             .Select(i => new LecturerAssignmentExportDto
             {
                 StudentFullName = i.Student.FullName,
@@ -183,9 +184,9 @@ public class ExcelExportService : IExcelExportService
     }
 
     /// <inheritdoc />
-    public async Task<byte[]> GenerateInternshipExportExcelAsync(Guid? semesterId = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GenerateInternshipExportExcelAsync(Guid? semesterId = null, Guid? lecturerId = null, CancellationToken cancellationToken = default)
     {
-        var data = await GetExportDataAsync(semesterId, cancellationToken);
+        var data = await GetExportDataAsync(semesterId, lecturerId, cancellationToken);
         return GenerateFromData(data);
     }
 

@@ -96,6 +96,7 @@ public class InternshipListItemDto
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
     public string? StudentName { get; set; }
+    public string? StudentCode { get; set; }
     public Guid? CompanyId { get; set; } // Changed: nullable because company assigned later
     public string? CompanyName { get; set; }
     public DateTime? StartDate { get; set; }

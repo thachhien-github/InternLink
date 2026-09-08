@@ -18,6 +18,7 @@ namespace InternLink.API.Controllers;
 public class LecturerController : ControllerBase
 {
     private readonly ILecturerService _lecturerService;
+    private readonly ILecturerProfileService _lecturerProfileService;
     private readonly IEvaluationService _evaluationService;
     private readonly IWeeklyReportService _weeklyReportService;
     private readonly IDocumentService _documentService;
@@ -28,6 +29,7 @@ public class LecturerController : ControllerBase
 
     public LecturerController(
         ILecturerService lecturerService,
+        ILecturerProfileService lecturerProfileService,
         IEvaluationService evaluationService,
         IWeeklyReportService weeklyReportService,
         IDocumentService documentService,
@@ -37,6 +39,7 @@ public class LecturerController : ControllerBase
         ILogger<LecturerController> logger)
     {
         _lecturerService = lecturerService;
+        _lecturerProfileService = lecturerProfileService;
         _evaluationService = evaluationService;
         _weeklyReportService = weeklyReportService;
         _documentService = documentService;
@@ -78,6 +81,30 @@ public class LecturerController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer profile not found" }));
 
         return Ok(ApiResponse<LecturerOverviewDto>.Ok(me));
+    }
+
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateLecturerRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = "Họ tên không được để trống" }));
+
+        var current = await _lecturerProfileService.GetByUserIdAsync(userId.Value);
+        if (current == null)
+            return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "Lecturer profile not found" }));
+
+        try
+        {
+            var updated = await _lecturerProfileService.UpdateAsync(current.Id, request);
+            return Ok(ApiResponse<LecturerDto>.Ok(updated!));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(new ApiError { Title = ex.Message }));
+        }
     }
 
     /// <summary>

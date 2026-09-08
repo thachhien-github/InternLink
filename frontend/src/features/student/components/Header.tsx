@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Search, User, Building2, CalendarDays } from "lucide-react";
+import { Search, User, Building2, CalendarDays, Menu } from "lucide-react";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 
 import type { UserRole } from "../../../types/common";
 
@@ -13,18 +14,26 @@ export interface HeaderProps {
   onLogout: () => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  onMenuOpen?: () => void;
 }
 
 export const Header = ({
   activeTab,
   onNavigate,
-  onSwitchPortal,
+  onSwitchPortal: _onSwitchPortal,
   onLogout,
   searchQuery,
   onSearchChange,
+  onMenuOpen,
 }: HeaderProps) => {
   const { profile } = useStudentPortal();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery ?? "");
+  const currentSearchQuery = searchQuery ?? localSearchQuery;
+  const updateSearchQuery = (query: string) => {
+    setLocalSearchQuery(query);
+    onSearchChange?.(query);
+  };
   const getTabLabel = (tab: string) => {
     switch (tab) {
       case "student-dashboard":
@@ -52,6 +61,14 @@ export const Header = ({
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 flex items-center justify-between gap-4">
       {/* Left Greeting & Context Info */}
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-label="Mở menu điều hướng"
+          className="student-menu-button md:hidden"
+          onClick={onMenuOpen}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs md:text-sm text-slate-500 font-medium">
           <span
@@ -77,14 +94,14 @@ export const Header = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={currentSearchQuery}
+            onChange={(e) => updateSearchQuery(e.target.value)}
             placeholder="Tìm bài nộp, biểu mẫu..."
             className="w-full pl-9 pr-3 py-1.5 text-xs md:text-sm bg-slate-100 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-blue-500 rounded-md outline-none transition-colors placeholder:text-slate-400"
           />
-          {searchQuery && (
+          {currentSearchQuery && (
             <button
-              onClick={() => onSearchChange("")}
+              onClick={() => updateSearchQuery("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
             >
               ✕
@@ -99,10 +116,10 @@ export const Header = ({
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-8 h-8 rounded-full bg-[#0b132b] text-white flex items-center justify-center font-bold text-xs hover:bg-[#1c2541] transition-colors"
+            className="rounded-full focus-visible:outline-none"
             title="Hồ sơ Sinh viên"
           >
-            SV
+            <InitialsAvatar name={profile.name} seed={profile.mssv} size={32} />
           </button>
 
           {showProfileMenu && (
@@ -166,15 +183,16 @@ export const Header = ({
 };
 
 function StudentSemesterBadge({ profile }: { profile: { company: string; position: string; statusBadge: string } }) {
-  const { selectedSemester, activeSemesterId } = useSemester();
-  const semesterLabel = activeSemesterId
-    ? `${selectedSemester.term} (${selectedSemester.academicYear})`
+  const { semesters } = useSemester();
+  const activeSemester = semesters.find((semester) => semester.status === "active");
+  const semesterLabel = activeSemester
+    ? activeSemester.name || `${activeSemester.term} (${activeSemester.academicYear})`
     : "Chưa có kỳ hoạt động";
 
   return (
     <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-800 rounded-md border border-slate-200 font-semibold text-xs">
-      <CalendarDays className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-      <span className="truncate max-w-[160px]">
+      <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      <span className="truncate max-w-[180px]">
         {semesterLabel}
       </span>
       <span className="text-slate-300">•</span>
@@ -182,7 +200,7 @@ function StudentSemesterBadge({ profile }: { profile: { company: string; positio
       <span className="truncate max-w-[200px]">
         {profile.company} • {profile.position}
       </span>
-      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1" />
+      <span className={`w-2 h-2 rounded-full shrink-0 ml-1 ${activeSemester ? "bg-emerald-500" : "bg-slate-400"}`} />
       <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-bold">
         {profile.statusBadge}
       </span>

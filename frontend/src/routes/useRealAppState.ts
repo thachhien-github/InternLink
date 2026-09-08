@@ -14,11 +14,13 @@ export function useRealAppState(
   const { selectedSemester, activeSemesterId } = useSemester();
   const lecturerName = user?.name ?? "Giảng viên";
 
-  // For lecturer/student: prefer the active semester, fall back to selectedSemesterId
+  // Lecturers can explicitly inspect all semesters; students remain scoped to the active one.
   const effectiveSemesterId =
-    (role === "lecturer" || role === "student")
-      ? (activeSemesterId || (semesterId && semesterId !== "all" ? semesterId : undefined))
-      : semesterId;
+    role === "lecturer"
+      ? (semesterId && semesterId !== "all" ? semesterId : undefined)
+      : role === "student"
+        ? (activeSemesterId || (semesterId && semesterId !== "all" ? semesterId : undefined))
+        : semesterId;
 
   const lecturerPortal = useLecturerPortalData(
     role === "lecturer" && isLoggedIn,
@@ -45,7 +47,9 @@ export function useRealAppState(
       });
     }
     const pendingSubCount = lecturerPortal.submissions.filter(
-      (s) => s.status === "Chờ duyệt" || s.status === "Cần nhận xét",
+      (s) =>
+        s.sourceType !== "weeklyReport" &&
+        (s.status === "Chờ duyệt" || s.status === "Cần nhận xét"),
     ).length;
     if (pendingSubCount > 0) {
       items.push({
@@ -107,11 +111,11 @@ export function useRealAppState(
     const apiStats = lecturerPortal.dashboardStats;
     return {
       total: apiStats?.totalStudents ?? total,
-      interning: apiStats?.interningCount ?? interning,
+      interning: apiStats?.assignedCompanyCount ?? interning,
       pending: apiStats?.pendingReviewsCount ?? pending,
       overdue: apiStats?.overdueReportsCount ?? overdue,
       completed: apiStats?.completedCount ?? completed,
-      avgProg,
+      avgProg: total > 0 ? avgProg : apiStats?.averageProgress ?? 0,
       statusDistribution: apiStats?.statusDistribution ?? {},
     };
   }, [assignedStudents, lecturerPortal.dashboardStats]);
@@ -151,14 +155,7 @@ export function useRealAppState(
       if (r.status === "Approved" || r.status === "Reviewed") entry.approved++;
     }
     const weeks = Array.from(weekMap.entries()).sort((a, b) => a[0] - b[0]);
-    if (weeks.length === 0) {
-      // Generate placeholder weeks 1-10
-      return Array.from({ length: 6 }, (_, i) => ({
-        label: `T${i + 1}`,
-        value: 0,
-        target: assignedStudents.length || 0,
-      }));
-    }
+    if (weeks.length === 0) return [];
     return weeks.map(([wk, counts]) => ({
       label: `T${wk}`,
       value: counts.submitted,
@@ -174,36 +171,42 @@ export function useRealAppState(
     dynamicActionItems,
     weeklyTrendData,
     deadlines: (() => {
-      if (!selectedSemester?.startDate || !selectedSemester?.endDate) return [];
-      const start = new Date(selectedSemester.startDate);
-      const end = new Date(selectedSemester.endDate);
-      const now = new Date();
+      const reportsWithDueDates = lecturerPortal.weeklyReports.filter(
+        (report) => report.dueDate,
+      );
       const fmt = (d: Date) => ({ day: String(d.getDate()), month: `Th${d.getMonth() + 1}` });
       const daysLeft = (d: Date) => {
-        const diff = Math.ceil((d.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+        const diff = Math.ceil((d.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
         return diff > 0 ? `Còn ${diff} ngày` : "Đã hết hạn";
       };
-      const weeklyMilestones = Array.from({ length: 6 }, (_, index) => {
-        const week = index + 1;
-        const date = new Date(start.getTime() + week * 7 * 24 * 60 * 60 * 1000);
-        return {
-          id: `dl-week-${week}`,
-          title: `Báo cáo tuần ${week}`,
-          ...fmt(date),
-          subtitle: `Tuần ${week} / 6 – ${daysLeft(date)}`,
-          studentCount: assignedStudents.length,
-        };
-      });
-      return [
-        ...weeklyMilestones,
-        {
-          id: "dl-defense",
-          title: "Bảo vệ luận án / thực tập",
-          ...fmt(end),
-          subtitle: `Kết thúc học kỳ – ${daysLeft(end)}`,
-          studentCount: assignedStudents.length,
-        },
-      ];
+
+      if (reportsWithDueDates.length > 0) {
+        return reportsWithDueDates
+          .sort(
+            (a, b) =>
+              new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime(),
+          )
+          .map((report) => {
+            const dueDate = new Date(report.dueDate!);
+            return {
+              id: `dl-week-${report.id}`,
+              title: `Báo cáo tuần ${report.weekNumber}`,
+              ...fmt(dueDate),
+              subtitle: `${report.status} – ${daysLeft(dueDate)}`,
+              studentCount: 1,
+            };
+          });
+      }
+
+      if (!selectedSemester?.endDate) return [];
+      const end = new Date(selectedSemester.endDate);
+      return [{
+        id: "dl-defense",
+        title: "Bảo vệ luận án / thực tập",
+        ...fmt(end),
+        subtitle: `Kết thúc học kỳ – ${daysLeft(end)}`,
+        studentCount: assignedStudents.length,
+      }];
     })(),
     stats,
     weeklyReports: lecturerPortal.weeklyReports,

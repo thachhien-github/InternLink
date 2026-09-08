@@ -12,6 +12,7 @@ public class UnassignRequest
 {
     public Guid LecturerId { get; set; }
     public Guid StudentId { get; set; }
+    public Guid? SemesterId { get; set; }
 }
 
 public class BulkAssignResultDto
@@ -52,6 +53,7 @@ public class AutoAssignRequest
 {
     /// <summary>"department" or "even".</summary>
     public string Strategy { get; set; } = "even";
+    public Guid? SemesterId { get; set; }
 }
 
 public class AutoAssignResultDto

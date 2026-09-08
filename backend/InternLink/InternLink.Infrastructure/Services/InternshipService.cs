@@ -414,6 +414,8 @@ public class InternshipService : IInternshipService
         }
 
         internship.CompanyId = request.CompanyId;
+        if (internship.Status == InternshipStatus.NotStarted)
+            internship.Status = InternshipStatus.InProgress;
         if (!string.IsNullOrWhiteSpace(request.SupervisorName))
             internship.SupervisorName = request.SupervisorName;
         if (!string.IsNullOrWhiteSpace(request.Position))

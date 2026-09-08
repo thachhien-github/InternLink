@@ -6,6 +6,8 @@ using InternLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternLink.Infrastructure.Services;
 
@@ -17,6 +19,7 @@ public class DocumentService : IDocumentService
     private readonly AppDbContext _db;
     private readonly IMapper _mapper;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<DocumentService> _logger;
 
     private const string UploadFolder = "uploads/documents";
     private static readonly string[] AllowedExtensions =
@@ -25,11 +28,16 @@ public class DocumentService : IDocumentService
         ".jpg", ".jpeg", ".png", ".gif"
     };
 
-    public DocumentService(AppDbContext db, IMapper mapper, IWebHostEnvironment env)
+    public DocumentService(
+        AppDbContext db,
+        IMapper mapper,
+        IWebHostEnvironment env,
+        ILogger<DocumentService>? logger = null)
     {
         _db = db;
         _mapper = mapper;
         _env = env;
+        _logger = logger ?? NullLogger<DocumentService>.Instance;
     }
 
 
@@ -62,7 +70,7 @@ public class DocumentService : IDocumentService
                 }
                 else
                 {
-                    query = query.Where(d => d.Internship.Student.UserId == userId.Value);
+                    query = query.Where(d => d.Internship.Student.UserId == userId.Value && d.IsPublished);
                 }
             }
         }
@@ -321,6 +329,14 @@ public class DocumentService : IDocumentService
         if (request.IsRequired.HasValue)
             document.IsRequired = request.IsRequired.Value;
 
+        if (request.IsPublished.HasValue)
+        {
+            document.IsPublished = request.IsPublished.Value;
+            document.ArchiveReason = request.IsPublished.Value ? null : request.ArchiveReason;
+            document.ArchivedAt = request.IsPublished.Value ? null : DateTime.UtcNow;
+            document.ArchivedBy = request.IsPublished.Value ? null : "Giảng viên";
+        }
+
         document.UpdatedAt = DateTime.UtcNow;
 
         _db.Documents.Update(document);
@@ -397,6 +413,9 @@ public class DocumentService : IDocumentService
             return null;
 
         var fileContent = await File.ReadAllBytesAsync(fullPath);
+        document.DownloadCount++;
+        document.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
 
         return new DocumentDownloadDto
         {
@@ -431,6 +450,19 @@ public class DocumentService : IDocumentService
         document.IsDeleted = true;
         document.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        // Best-effort: also remove the physical file from disk.
+        if (!string.IsNullOrWhiteSpace(document.FilePath))
+        {
+            try
+            {
+                await DeleteFileAsync(document.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete physical file for document {DocumentId} ({FilePath})", id, document.FilePath);
+            }
+        }
 
         return true;
     }
@@ -475,15 +507,34 @@ public class DocumentService : IDocumentService
 
         try
         {
-            var fullPath = Path.Combine(GetUploadRoot(), filePath);
-            if (File.Exists(fullPath))
+            var normalizedPath = filePath
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            var roots = new[] { GetUploadRoot(), _env.ContentRootPath }
+                .Where(root => !string.IsNullOrWhiteSpace(root))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var root in roots)
             {
+                var fullRoot = Path.GetFullPath(root);
+                var fullPath = Path.GetFullPath(Path.Combine(fullRoot, normalizedPath));
+                if (!fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!File.Exists(fullPath))
+                    continue;
+
                 File.Delete(fullPath);
+                return true;
             }
-            return true;
+
+            return false;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to delete physical file {FilePath}", filePath);
             return false;
         }
     }

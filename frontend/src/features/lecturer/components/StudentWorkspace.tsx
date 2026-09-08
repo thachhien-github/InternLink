@@ -23,6 +23,7 @@ import { useStudentWorkspace } from "../../../hooks/useStudentWorkspace";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { mapInternshipStatusToUi, mapWeeklyReportStatusToUi } from "../../../lib/portalMappers";
 import { INTERNSHIP_WEEKS } from "../../../config/internship";
 import { WeeklyReportTimeline } from "./WeeklyReportTimeline";
@@ -179,9 +180,7 @@ export function StudentWorkspace({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
-              {student.fullName.split(" ").slice(-1)[0]?.[0] ?? "S"}
-            </div>
+            <InitialsAvatar name={student.fullName} seed={student.studentCode} size={56} className="text-lg" />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">

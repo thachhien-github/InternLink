@@ -37,6 +37,13 @@ public class UpdateStudentRequest
     public bool GrantAccount { get; set; }
 }
 
+public sealed class UpdateStudentProfileRequest
+{
+    public string FullName { get; set; } = null!;
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+}
+
 public class StudentDto
 {
     public Guid Id { get; set; }

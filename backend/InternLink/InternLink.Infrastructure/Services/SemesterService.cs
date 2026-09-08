@@ -42,7 +42,25 @@ public class SemesterService : ISemesterService
             .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
             .FirstOrDefaultAsync();
 
-        return semester == null ? null : MapToDto(semester);
+        if (semester == null)
+            return null;
+
+        var pendingInternships = await _context.Internships
+            .Where(i => !i.IsDeleted && i.SemesterId == semester.Id && i.Status == InternshipStatus.NotStarted)
+            .ToListAsync();
+
+        foreach (var internship in pendingInternships)
+        {
+            internship.Status = InternshipStatus.InProgress;
+            internship.StartDate ??= semester.StartDate;
+            internship.EndDate ??= semester.EndDate;
+            internship.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (pendingInternships.Count > 0)
+            await _context.SaveChangesAsync();
+
+        return MapToDto(semester);
     }
 
     public async Task<SemesterDto?> GetSemesterByIdAsync(Guid id)

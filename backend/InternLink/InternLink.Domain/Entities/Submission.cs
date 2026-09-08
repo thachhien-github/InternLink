@@ -18,4 +18,5 @@ public class Submission : BaseEntity
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+    public ICollection<SubmissionAsset> Assets { get; set; } = new List<SubmissionAsset>();
 }

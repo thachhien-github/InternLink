@@ -7,7 +7,6 @@ import {
   Building2,
   GraduationCap,
   ShieldCheck,
-  Camera,
   Edit3,
   Key,
   LogOut,
@@ -15,14 +14,16 @@ import {
   X,
   Eye,
   EyeOff,
-  Check,
   AlertCircle,
   Loader2,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { PasswordStrengthMeter } from "../../../components/common/PasswordStrengthMeter";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
+import { studentPortalService } from "../../../services/studentPortal.service";
 import { useStudentPortal } from "../../../contexts/StudentPortalContext";
 import type { StudentProfile } from "../../../types/common";
 import type { StudentPortalProfileDto } from "../../../types/api";
@@ -35,19 +36,7 @@ type PersonalInfo = {
   address: string;
   className: string;
   major: string;
-  faculty: string;
 };
-
-const DEFAULT_AVATAR =
-  "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&auto=format&fit=crop&q=80";
-
-function contactStorageKey(mssv: string) {
-  return `internlink_student_contact_${mssv}`;
-}
-
-function avatarStorageKey(mssv: string) {
-  return `internlink_student_avatar_${mssv}`;
-}
 
 function buildPersonalInfo(
   profile: StudentProfile,
@@ -59,21 +48,10 @@ function buildPersonalInfo(
     studentId: s?.studentCode ?? profile.mssv ?? "—",
     email: s?.email ?? (profile.mssv ? `${profile.mssv}@student.edu.vn` : "—"),
     phone: s?.phone ?? "—",
-    address: "—",
+    address: "Chưa cập nhật",
     className: s?.class ?? profile.class ?? "—",
     major: s?.major ?? profile.major ?? "—",
-    faculty: "Khoa Công nghệ Thông tin",
   };
-}
-
-function loadContactOverrides(mssv: string): Partial<PersonalInfo> | null {
-  if (!mssv || mssv === "—") return null;
-  try {
-    const raw = localStorage.getItem(contactStorageKey(mssv));
-    return raw ? (JSON.parse(raw) as Partial<PersonalInfo>) : null;
-  } catch {
-    return null;
-  }
 }
 
 export const AccountView = ({
@@ -84,7 +62,7 @@ export const AccountView = ({
   onNavigate?: (tab: string) => void;
   onLogout?: () => void;
 }) => {
-  const { profile, portalData } = useStudentPortal();
+  const { profile, portalData, refresh } = useStudentPortal();
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(() =>
     buildPersonalInfo(profile, portalData),
   );
@@ -92,9 +70,6 @@ export const AccountView = ({
   const [tempPersonalInfo, setTempPersonalInfo] = useState<PersonalInfo>(() =>
     buildPersonalInfo(profile, portalData),
   );
-  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
-  const [tempAvatarInput, setTempAvatarInput] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -107,35 +82,26 @@ export const AccountView = ({
 
   useEffect(() => {
     const base = buildPersonalInfo(profile, portalData);
-    const overrides = loadContactOverrides(base.studentId);
-    const merged = overrides ? { ...base, ...overrides } : base;
-    setPersonalInfo(merged);
+    setPersonalInfo(base);
     if (!isEditingProfile) {
-      setTempPersonalInfo(merged);
+      setTempPersonalInfo(base);
     }
-
-    const storedAvatar = localStorage.getItem(avatarStorageKey(base.studentId));
-    setAvatarUrl(storedAvatar || DEFAULT_AVATAR);
   }, [portalData, profile, isEditingProfile]);
 
-  const handleSavePersonalInfo = (e: FormEvent) => {
+  const handleSavePersonalInfo = async (e: FormEvent) => {
     e.preventDefault();
-    const next = { ...tempPersonalInfo };
-    setPersonalInfo(next);
-    setIsEditingProfile(false);
-    if (next.studentId && next.studentId !== "—") {
-      localStorage.setItem(
-        contactStorageKey(next.studentId),
-        JSON.stringify({
-          email: next.email,
-          phone: next.phone,
-          address: next.address,
-        }),
-      );
+    try {
+      await studentPortalService.updateMe({
+        fullName: tempPersonalInfo.fullName.trim(),
+        email: tempPersonalInfo.email.trim() || undefined,
+        phone: tempPersonalInfo.phone.trim() || undefined,
+      });
+      await refresh();
+      setIsEditingProfile(false);
+      onShowToast("Đã cập nhật thông tin tài khoản.");
+    } catch (err) {
+      onShowToast(getApiErrorMessage(err));
     }
-    onShowToast(
-      "Đã lưu thông tin liên hệ trên thiết bị này (chưa đồng bộ lên hệ thống).",
-    );
   };
   const handleCancelPersonalInfo = () => {
     setTempPersonalInfo({ ...personalInfo });
@@ -218,24 +184,12 @@ export const AccountView = ({
           <Panel className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-4">
-                <div className="relative group shrink-0">
-                  <img
-                    src={avatarUrl}
-                    alt={personalInfo.fullName}
-                    className="w-14 h-14 rounded-lg object-cover border border-slate-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTempAvatarInput(avatarUrl);
-                      setShowAvatarModal(true);
-                    }}
-                    className="absolute -bottom-1 -right-1 p-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md border border-white transition-colors"
-                    title="Đổi ảnh đại diện"
-                  >
-                    <Camera className="w-3 h-3" />
-                  </button>
-                </div>
+                <InitialsAvatar
+                  name={personalInfo.fullName}
+                  seed={personalInfo.studentId}
+                  size={56}
+                  className="text-lg"
+                />
                 <div>
                   <h2 className="text-base font-bold text-slate-900">
                     {personalInfo.fullName}
@@ -392,19 +346,9 @@ export const AccountView = ({
                     </label>
                     <input
                       type="text"
-                      value={
-                        isEditingProfile
-                          ? tempPersonalInfo.address
-                          : personalInfo.address
-                      }
-                      onChange={(e) =>
-                        setTempPersonalInfo({
-                          ...tempPersonalInfo,
-                          address: e.target.value,
-                        })
-                      }
-                      disabled={!isEditingProfile}
-                      className={`w-full px-3.5 py-2 rounded-md border font-medium outline-none transition-all ${isEditingProfile ? "bg-white border-blue-400 focus:border-blue-600 text-slate-900 shadow-xs" : "bg-slate-50 border-slate-200/80 text-slate-900"}`}
+                      value={personalInfo.address}
+                      disabled
+                      className="w-full px-3.5 py-2 rounded-md border font-medium outline-none bg-slate-50 border-slate-200/80 text-slate-500"
                     />
                   </div>
                 </div>
@@ -417,7 +361,7 @@ export const AccountView = ({
                   viên (Cố định)
                 </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                   <div className="bg-slate-50 p-3 rounded-md border border-slate-200/80">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">
                       MSSV
@@ -445,14 +389,6 @@ export const AccountView = ({
                     </p>
                   </div>
 
-                  <div className="bg-slate-50 p-3 rounded-md border border-slate-200/80">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">
-                      Khoa
-                    </p>
-                    <p className="font-bold text-slate-900 mt-0.5">
-                      {personalInfo.faculty}
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -485,18 +421,6 @@ export const AccountView = ({
               <ShieldCheck className="w-4 h-4 text-emerald-600" /> Bảo mật
             </h3>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-md border border-slate-200/80">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">
-                  Lần đăng nhập gần nhất
-                </p>
-                <p className="font-bold text-slate-900 mt-0.5">—</p>
-                <p className="text-[10px] text-slate-500">
-                  Thông tin đăng nhập chưa được hiển thị
-                </p>
-              </div>
-            </div>
-
             {passwordSaved && (
               <div className="p-3 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -518,8 +442,7 @@ export const AccountView = ({
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Mật khẩu hiện tại{" "}
-                  <span className="text-slate-400 font-medium">(tuỳ chọn)</span>
+                    Mật khẩu hiện tại *
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -528,7 +451,7 @@ export const AccountView = ({
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     autoComplete="current-password"
-                    placeholder="Bỏ trống nếu lần đăng nhập đầu"
+                    placeholder="Nhập mật khẩu hiện tại"
                     className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-md font-medium outline-none focus:bg-white focus:border-blue-500"
                   />
                   <button
@@ -605,9 +528,14 @@ export const AccountView = ({
                 </div>
               </div>
 
+              <PasswordStrengthMeter
+                password={newPassword}
+                confirmPassword={confirmPassword}
+              />
+
               <button
                 type="submit"
-                disabled={isPasswordLoading}
+                disabled={isPasswordLoading || newPassword.length < 8 || newPassword !== confirmPassword}
                 className="il-btn il-btn-primary w-full justify-center py-2 disabled:opacity-60"
               >
                 {isPasswordLoading ? (
@@ -645,80 +573,6 @@ export const AccountView = ({
         </div>
       </div>
 
-      {/* MODAL: EDIT AVATAR */}
-      {showAvatarModal && (
-        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-md max-w-sm w-full p-6 space-y-4 animate-in zoom-in-95 relative">
-            <button
-              onClick={() => setShowAvatarModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-sm"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-md shrink-0">
-                <Camera className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-base">
-                Đổi ảnh đại diện
-              </h3>
-            </div>
-
-            <div className="text-center space-y-3">
-              <img
-                src={tempAvatarInput || avatarUrl}
-                alt="Avatar Preview"
-                className="w-20 h-20 rounded-lg object-cover mx-auto ring-2 ring-blue-100 border border-slate-200 shadow-sm"
-              />
-
-              <div className="text-left text-xs space-y-1">
-                <label className="block font-bold text-slate-700">
-                  Đường dẫn ảnh (URL Image)
-                </label>
-                <input
-                  type="text"
-                  value={tempAvatarInput}
-                  onChange={(e) => setTempAvatarInput(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-medium outline-none focus:bg-white focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
-              <button
-                type="button"
-                onClick={() => setShowAvatarModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition-colors"
-              >
-                Hủy
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (tempAvatarInput) {
-                    setAvatarUrl(tempAvatarInput);
-                    if (personalInfo.studentId && personalInfo.studentId !== "—") {
-                      localStorage.setItem(
-                        avatarStorageKey(personalInfo.studentId),
-                        tempAvatarInput,
-                      );
-                    }
-                  }
-                  setShowAvatarModal(false);
-                  onShowToast("Đã cập nhật ảnh đại diện trên thiết bị này.");
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md shadow-xs transition-colors flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" />
-                <span>Cập nhật</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

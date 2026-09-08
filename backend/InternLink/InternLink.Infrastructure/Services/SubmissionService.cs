@@ -21,6 +21,7 @@ public class SubmissionService : ISubmissionService
     private static readonly string[] AllowedExtensions =
     {
         ".zip", ".rar", ".pdf", ".pptx", ".ppt", ".mp4", ".mov", ".sql", ".docx", ".doc",
+        ".png", ".jpg", ".jpeg", ".webp", ".gif",
     };
 
     public SubmissionService(
@@ -38,6 +39,7 @@ public class SubmissionService : ISubmissionService
     public async Task<SubmissionDto?> GetByIdAsync(Guid id)
     {
         var submission = await _db.Submissions
+            .Include(s => s.Assets.Where(a => !a.IsDeleted))
             .Include(s => s.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
@@ -52,6 +54,7 @@ public class SubmissionService : ISubmissionService
                 .ThenInclude(i => i.Student)
             .Include(s => s.Internship)
                 .ThenInclude(i => i.Lecturer)
+            .Include(s => s.Assets.Where(a => !a.IsDeleted))
             .Include(s => s.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
@@ -88,6 +91,7 @@ public class SubmissionService : ISubmissionService
 
         var submissions = await _db.Submissions
             .Where(s => s.InternshipId == internshipId && !s.IsDeleted)
+            .Include(s => s.Assets.Where(a => !a.IsDeleted))
             .Include(s => s.Feedbacks.Where(f => !f.IsDeleted))
                 .ThenInclude(f => f.Lecturer)
             .OrderByDescending(s => s.SubmittedAt)
@@ -119,6 +123,12 @@ public class SubmissionService : ISubmissionService
 
         if (!Enum.TryParse<SubmissionType>(request.Type, true, out var type))
             throw new InvalidOperationException($"Invalid submission type: {request.Type}");
+
+        if (type == SubmissionType.Product && !await _db.Submissions.AnyAsync(s =>
+            s.InternshipId == request.InternshipId &&
+            s.Type == SubmissionType.FinalReport &&
+            !s.IsDeleted))
+            throw new InvalidOperationException("Báo cáo thực tập tốt nghiệp là sản phẩm bắt buộc trước khi nộp sản phẩm thực tế.");
 
         var submission = new Submission
         {
@@ -155,6 +165,92 @@ public class SubmissionService : ISubmissionService
         request.FileName = savedFileName;
         request.FileUrl = relativePath;
         return await CreateAsync(userId, request);
+    }
+
+    public async Task<SubmissionDto> CreateBundleAsync(
+        Guid userId,
+        CreateSubmissionRequest request,
+        IEnumerable<(Stream Stream, string FileName, long Length, string? ContentType)> files,
+        IEnumerable<SubmissionAssetInput> links)
+    {
+        if (!Enum.TryParse<SubmissionType>(request.Type, true, out var type))
+            throw new InvalidOperationException($"Invalid submission type: {request.Type}");
+
+        var internship = await _db.Internships
+            .Include(i => i.Student)
+            .FirstOrDefaultAsync(i => i.Id == request.InternshipId && !i.IsDeleted);
+        if (internship == null)
+            throw new InvalidOperationException("Internship not found");
+        if (internship.Student?.UserId != userId)
+            throw new UnauthorizedAccessException("Internship does not belong to the current student");
+
+        var fileItems = files.ToList();
+        var linkItems = links
+            .Where(link => !string.IsNullOrWhiteSpace(link.Url))
+            .ToList();
+        if (fileItems.Count == 0 && linkItems.Count == 0)
+            throw new InvalidOperationException("At least one file or link is required");
+
+        if (type == SubmissionType.Product)
+        {
+            var hasFinalReport = await _db.Submissions.AnyAsync(s =>
+                s.InternshipId == request.InternshipId &&
+                s.Type == SubmissionType.FinalReport &&
+                !s.IsDeleted);
+            if (!hasFinalReport)
+                throw new InvalidOperationException("Báo cáo thực tập tốt nghiệp là sản phẩm bắt buộc trước khi nộp sản phẩm thực tế.");
+        }
+
+        var submission = new Submission
+        {
+            Id = Guid.NewGuid(),
+            InternshipId = request.InternshipId,
+            Type = type,
+            Status = SubmissionStatus.Submitted,
+            Version = 1,
+            Title = request.Title,
+            Description = request.Description,
+            SubmittedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        foreach (var file in fileItems)
+        {
+            var (relativePath, savedFileName) = await SaveSubmissionFileAsync(
+                file.Stream,
+                file.FileName,
+                request.InternshipId);
+            submission.Assets.Add(new SubmissionAsset
+            {
+                Id = Guid.NewGuid(),
+                Label = file.FileName,
+                FileName = savedFileName,
+                FileUrl = relativePath,
+                AssetType = "file",
+                FileSize = file.Length,
+                MimeType = file.ContentType,
+                UploadedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await file.Stream.DisposeAsync();
+        }
+
+        foreach (var link in linkItems)
+        {
+            submission.Assets.Add(new SubmissionAsset
+            {
+                Id = Guid.NewGuid(),
+                Label = string.IsNullOrWhiteSpace(link.Label) ? link.Url : link.Label,
+                FileUrl = link.Url.Trim(),
+                AssetType = "link",
+                UploadedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+            });
+        }
+
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(submission.Id))!;
     }
 
     public async Task<SubmissionDto?> ResubmitAsync(Guid id, Guid userId, ResubmitRequest request)
@@ -265,6 +361,43 @@ public class SubmissionService : ISubmissionService
             FileContent = await File.ReadAllBytesAsync(fullPath),
             FileName = submission.FileName ?? Path.GetFileName(fullPath),
             MimeType = GetMimeType(extension),
+        };
+    }
+
+    public async Task<SubmissionFileDownloadDto?> DownloadAssetAsync(
+        Guid submissionId,
+        Guid assetId,
+        Guid userId,
+        bool isLecturerOrAdmin)
+    {
+        var submission = await _db.Submissions
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
+            .Include(s => s.Assets)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && !s.IsDeleted);
+        var asset = submission?.Assets.FirstOrDefault(a => a.Id == assetId && !a.IsDeleted);
+        if (submission == null || asset == null || asset.AssetType != "file" || string.IsNullOrWhiteSpace(asset.FileUrl))
+            return null;
+
+        var ownsInternship = submission.Internship.Student?.UserId == userId;
+        var isAssignedLecturer = submission.Internship.Lecturer?.UserId == userId;
+        var isSuperAdmin = isLecturerOrAdmin && await _db.Users.AnyAsync(u =>
+            u.Id == userId && u.Role == Role.SuperAdmin && !u.IsDeleted);
+        if ((!isLecturerOrAdmin && !ownsInternship) ||
+            (isLecturerOrAdmin && !isAssignedLecturer && !ownsInternship && !isSuperAdmin))
+            throw new UnauthorizedAccessException("You do not have access to this asset");
+
+        var fullPath = Path.Combine(GetUploadRoot(), asset.FileUrl.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        if (!File.Exists(fullPath))
+            return null;
+
+        return new SubmissionFileDownloadDto
+        {
+            FileContent = await File.ReadAllBytesAsync(fullPath),
+            FileName = asset.FileName ?? Path.GetFileName(fullPath),
+            MimeType = asset.MimeType ?? GetMimeType(Path.GetExtension(fullPath).ToLowerInvariant()),
         };
     }
 
@@ -393,6 +526,8 @@ public class SubmissionService : ISubmissionService
         var submission = await _db.Submissions
             .Include(s => s.Internship)
                 .ThenInclude(i => i.Student)
+            .Include(s => s.Internship)
+                .ThenInclude(i => i.Lecturer)
             .FirstOrDefaultAsync(s => s.Id == submissionId && !s.IsDeleted);
 
         if (submission == null)

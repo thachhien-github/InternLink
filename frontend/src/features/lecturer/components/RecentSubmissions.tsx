@@ -8,6 +8,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { Submission } from "../../../types/submission";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 
 interface RecentSubmissionsProps {
   submissions: Submission[];
@@ -66,14 +67,7 @@ export const RecentSubmissions = ({
                 {/* Student Info */}
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={
-                        sub.avatar ||
-                        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                      }
-                      alt={sub.studentName}
-                      className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-xs"
-                    />
+                    <InitialsAvatar name={sub.studentName} seed={sub.mssv} size={32} />
                     <div>
                       <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                         {sub.studentName}

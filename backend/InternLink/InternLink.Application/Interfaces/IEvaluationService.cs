@@ -22,6 +22,7 @@ public interface IEvaluationService
     /// </summary>
     Task<EvaluationDetailDto?> GetEvaluationByIdAsync(Guid id);
     Task<EvaluationDetailDto?> GetEvaluationByIdAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
+    Task<EvaluationScoresResponse?> GetEvaluationScoresAsync(Guid id, Guid userId, bool isLecturerOrAdmin);
 
     /// <summary>
     /// Get evaluation for a specific internship (only one per internship)

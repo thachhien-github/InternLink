@@ -344,6 +344,52 @@ textarea {
   font-weight: 500;
 }
 
+.student-menu-button,
+.student-sidebar-close {
+  border: 1px solid var(--il-surface-border);
+  background: var(--il-surface-card);
+  color: var(--il-text-secondary);
+  border-radius: var(--il-radius-base);
+  cursor: pointer;
+}
+
+.student-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.student-sidebar-close {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .student-sidebar-drawer {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(17rem, calc(100vw - 2rem));
+    transform: translateX(-100%);
+    transition: transform var(--il-transition-base);
+    box-shadow: 4px 0 16px rgba(15, 23, 42, 0.12);
+  }
+
+  .student-sidebar-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .student-sidebar-close {
+    display: block;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+}
+
 /* KPI — unified stat strip inside one panel */
 .il-kpi-strip {
   display: grid;

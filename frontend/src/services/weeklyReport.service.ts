@@ -9,6 +9,10 @@ import type {
 } from "../types/api";
 
 export const weeklyReportService = {
+  getById(id: string): Promise<WeeklyReportDto> {
+    return apiRequest<WeeklyReportDto>(`/api/WeeklyReport/${id}`);
+  },
+
   getMine(): Promise<WeeklyReportDto[]> {
     return apiRequest<WeeklyReportDto[]>("/api/WeeklyReport/mine");
   },
@@ -69,16 +73,16 @@ export const weeklyReportService = {
     });
   },
 
-  download(id: string, fallbackFilename: string) {
-    return downloadAuthenticatedFile(`/api/WeeklyReport/${id}/download`, fallbackFilename);
+  download(id: string, fallbackFilename: string, autoTrigger = true) {
+    return downloadAuthenticatedFile(`/api/WeeklyReport/${id}/download`, fallbackFilename, autoTrigger);
   },
 
   getVersions(id: string) {
     return apiRequest<WeeklyReportVersionDto[]>(`/api/WeeklyReport/${id}/versions`);
   },
 
-  downloadVersion(id: string, fallbackFilename: string) {
-    return downloadAuthenticatedFile(`/api/WeeklyReport/versions/${id}/download`, fallbackFilename);
+  downloadVersion(id: string, fallbackFilename: string, autoTrigger = true) {
+    return downloadAuthenticatedFile(`/api/WeeklyReport/versions/${id}/download`, fallbackFilename, autoTrigger);
   },
 
   studentReply(id: string, comment: string): Promise<FeedbackDto> {

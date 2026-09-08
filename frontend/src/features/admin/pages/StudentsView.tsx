@@ -35,6 +35,7 @@ import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { EmptyState } from "../../../components/common/EmptyState";
 import { SkeletonBox } from "../../../components/common/SkeletonLoader";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapStudentDtoToRow } from "../../../lib/adminMappers";
 import { adminStudentsService } from "../../../services/adminStudents.service";
@@ -582,9 +583,7 @@ export const StudentsView = ({
                       {/* Họ & tên */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                            {st.fullName.split(" ").slice(-1)[0][0]}
-                          </div>
+                          <InitialsAvatar name={st.fullName} seed={st.mssv} size={32} />
                           <div className="min-w-0">
                             <p
                               className="font-bold text-slate-900 truncate leading-tight"
@@ -842,9 +841,12 @@ export const StudentsView = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-lg bg-[#1d4ed8] text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md">
-                {selectedStudent.fullName.split(" ").slice(-1)[0][0]}
-              </div>
+              <InitialsAvatar
+                name={selectedStudent.fullName}
+                seed={selectedStudent.mssv}
+                size={56}
+                className="text-lg"
+              />
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">
                   {selectedStudent.fullName}

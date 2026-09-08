@@ -53,6 +53,9 @@ public class AssignmentService : IAssignmentService
             targetSemesterId = activeSemester.Id;
         }
 
+        var targetSemesterIsActive = await _db.Semesters
+            .AnyAsync(s => s.Id == targetSemesterId && s.Status == SemesterStatus.Active && !s.IsDeleted);
+
         var result = new BulkAssignResultDto();
         var errors = new List<AssignmentErrorDto>();
 
@@ -85,7 +88,7 @@ public class AssignmentService : IAssignmentService
                     SemesterId = targetSemesterId,
                     CompanyId = null,
                     LecturerId = request.LecturerId,
-                    Status = InternshipStatus.NotStarted,
+                    Status = targetSemesterIsActive ? InternshipStatus.InProgress : InternshipStatus.NotStarted,
                     Notes = request.Note ?? "Phân công giảng viên — chờ gán doanh nghiệp",
                     CreatedAt = DateTime.UtcNow
                 };
@@ -194,11 +197,19 @@ public class AssignmentService : IAssignmentService
 
     public async Task<bool> UnassignAsync(UnassignRequest request)
     {
-        var internship = await _db.Internships
-            .FirstOrDefaultAsync(i =>
+        var query = _db.Internships
+            .Where(i =>
                 !i.IsDeleted &&
                 i.LecturerId == request.LecturerId &&
                 i.StudentId == request.StudentId);
+
+        if (request.SemesterId.HasValue && request.SemesterId.Value != Guid.Empty)
+        {
+            query = query.Where(i => i.SemesterId == request.SemesterId.Value);
+        }
+
+        var internship = await query
+            .FirstOrDefaultAsync();
 
         if (internship == null)
             return false;
@@ -209,13 +220,20 @@ public class AssignmentService : IAssignmentService
         return true;
     }
 
-    public async Task<IReadOnlyList<AssignmentHistoryItemDto>> GetHistoryAsync(int limit = 50)
+    public async Task<IReadOnlyList<AssignmentHistoryItemDto>> GetHistoryAsync(int limit = 50, Guid? semesterId = null)
     {
-        var internships = await _db.Internships
+        IQueryable<Internship> query = _db.Internships
             .AsNoTracking()
             .Where(i => !i.IsDeleted && i.LecturerId != null)
             .Include(i => i.Lecturer)
-            .Include(i => i.Student)
+            .Include(i => i.Student);
+
+        if (semesterId.HasValue && semesterId.Value != Guid.Empty)
+        {
+            query = query.Where(i => i.SemesterId == semesterId.Value);
+        }
+
+        var internships = await query
             .OrderByDescending(i => i.UpdatedAt ?? i.CreatedAt)
             .Take(Math.Min(limit * 20, 1000))
             .ToListAsync();
@@ -337,15 +355,24 @@ public class AssignmentService : IAssignmentService
         if (lecturers.Count == 0)
             return new AutoAssignResultDto();
 
-        var students = await _db.Students
+        var studentsQuery = _db.Students
             .AsNoTracking()
-            .Where(s => !s.IsDeleted)
+            .Where(s => !s.IsDeleted);
+
+        var internshipsQuery = _db.Internships
+            .Where(i => !i.IsDeleted);
+
+        if (request.SemesterId.HasValue && request.SemesterId.Value != Guid.Empty)
+        {
+            internshipsQuery = internshipsQuery.Where(i => i.SemesterId == request.SemesterId.Value);
+            studentsQuery = studentsQuery.Where(s => s.Internships.Any(i => !i.IsDeleted && i.SemesterId == request.SemesterId.Value));
+        }
+
+        var students = await studentsQuery
             .OrderBy(s => s.StudentCode)
             .ToListAsync();
 
-        var internships = await _db.Internships
-            .Where(i => !i.IsDeleted)
-            .ToListAsync();
+        var internships = await internshipsQuery.ToListAsync();
 
         var assignedStudentIds = internships
             .Where(i => i.LecturerId != null)
@@ -385,9 +412,10 @@ public class AssignmentService : IAssignmentService
             lecturerCounts[lecturerId.Value] = lecturerCounts.GetValueOrDefault(lecturerId.Value) + 1;
         }
 
-        var activeSemester = await _db.Semesters
-            .FirstOrDefaultAsync(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
-            ?? await _db.Semesters.FirstOrDefaultAsync(s => !s.IsDeleted);
+        var activeSemester = request.SemesterId.HasValue
+            ? await _db.Semesters.FirstOrDefaultAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted)
+            : await _db.Semesters.FirstOrDefaultAsync(s => s.Status == SemesterStatus.Active && !s.IsDeleted)
+                ?? await _db.Semesters.FirstOrDefaultAsync(s => !s.IsDeleted);
 
         if (activeSemester == null)
             throw new InvalidOperationException("No active semester found for auto assignment");
@@ -565,6 +593,8 @@ public class AssignmentService : IAssignmentService
         }
 
         var targetSemesterId = await ResolveTargetSemesterIdAsync(semesterId);
+        var targetSemesterIsActive = await _db.Semesters
+            .AnyAsync(s => s.Id == targetSemesterId && s.Status == SemesterStatus.Active && !s.IsDeleted);
 
         var allStudents = await _db.Students.Where(s => !s.IsDeleted).ToListAsync();
         var allCompanies = await _db.Companies.Where(c => !c.IsDeleted).ToListAsync();
@@ -709,7 +739,7 @@ public class AssignmentService : IAssignmentService
                     StudentId = matchedStudent.Id,
                     SemesterId = targetSemesterId,
                     CompanyId = matchedCompany.Id,
-                    Status = InternshipStatus.NotStarted,
+                    Status = targetSemesterIsActive ? InternshipStatus.InProgress : InternshipStatus.NotStarted,
                     Notes = $"Phân bổ doanh nghiệp: {matchedCompany.CompanyName}",
                     CreatedAt = DateTime.UtcNow
                 };
@@ -897,6 +927,8 @@ public class AssignmentService : IAssignmentService
         }
 
         var targetSemesterId = await ResolveTargetSemesterIdAsync(semesterId);
+        var targetSemesterIsActive = await _db.Semesters
+            .AnyAsync(s => s.Id == targetSemesterId && s.Status == SemesterStatus.Active && !s.IsDeleted);
 
         var allStudents = await _db.Students.Where(s => !s.IsDeleted).ToListAsync();
         var allLecturers = await _db.Lecturers.Where(l => !l.IsDeleted).ToListAsync();
@@ -995,7 +1027,7 @@ public class AssignmentService : IAssignmentService
                     StudentId = matchedStudent.Id,
                     SemesterId = targetSemesterId,
                     LecturerId = matchedLecturer.Id,
-                    Status = InternshipStatus.NotStarted,
+                    Status = targetSemesterIsActive ? InternshipStatus.InProgress : InternshipStatus.NotStarted,
                     Notes = $"Phân công GVHD: {matchedLecturer.FullName}",
                     CreatedAt = DateTime.UtcNow
                 };

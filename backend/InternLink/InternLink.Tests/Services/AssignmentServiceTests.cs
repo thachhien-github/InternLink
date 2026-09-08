@@ -76,7 +76,7 @@ public class AssignmentServiceTests
 
         var internships = await db.Internships.Where(i => i.LecturerId == lecturer.Id).ToListAsync();
         internships.Should().HaveCount(5);
-        internships.Should().OnlyContain(i => i.Status == InternshipStatus.NotStarted);
+        internships.Should().OnlyContain(i => i.Status == InternshipStatus.InProgress);
         internships.Should().OnlyContain(i => i.CompanyId == null);
     }
 

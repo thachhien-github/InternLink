@@ -53,7 +53,7 @@ export const EvaluationDetailView = ({
       setIsLoading(true);
       try {
         // Load rubric
-        const rubricData = await rubricService.getApproved(semesterId);
+        const rubricData = await rubricService.getStudentApproved(semesterId);
         if (rubricData) {
           setRubric(rubricData);
         }
@@ -68,7 +68,7 @@ export const EvaluationDetailView = ({
             // Try to load criteria scores
             if (evalDetail.id) {
               try {
-                const scores = await rubricService.getScores(evalDetail.id);
+                const scores = await rubricService.getStudentScores(evalDetail.id);
                 if (scores.criteriaScores && scores.criteriaScores.length > 0) {
                   setCriteriaScores(scores.criteriaScores);
                   setFinalGrade(scores.finalGrade);

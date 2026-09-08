@@ -9,7 +9,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { formatRelativeTimeVi } from "../../../lib/formatRelativeTimeVi";
-import { getNameInitials } from "../../../lib/userDisplay";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { NotificationDropdown } from "../../../components/common/NotificationDropdown";
 import type { AdminNavStats } from "../../../hooks/useAdminNavStats";
@@ -42,7 +42,6 @@ export const Header = ({
 
   const displayName = user?.name ?? "Quản trị viên";
   const displayEmail = user?.email ?? user?.username ?? "—";
-  const initials = getNameInitials(displayName);
 
   const getTabTitle = (tab: string) => {
     const normalized = tab?.startsWith("admin-") ? tab : `admin-${tab}`;
@@ -227,10 +226,14 @@ export const Header = ({
           <button
             type="button"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-8 h-8 rounded-full bg-[#0b132b] text-white flex items-center justify-center font-bold text-xs hover:bg-[#1c2541] transition-colors"
+            className="rounded-full focus-visible:outline-none"
             title="Tài khoản"
           >
-            {initials.length <= 2 ? initials : <User className="w-4 h-4" />}
+            <InitialsAvatar
+              name={displayName}
+              seed={user?.id || user?.email || displayName}
+              size={32}
+            />
           </button>
 
           {showProfileMenu && (
