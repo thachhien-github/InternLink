@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { getApiErrorMessage } from "../../../lib/apiClient";
+import { formatDateTimeVi } from "../../../lib/formatDateTimeVi";
 import { authService } from "../../../services/auth.service";
 import type { AuthActivityDto, AuthSessionDto } from "../../../types/api";
 import { useAuth } from "../../../hooks/useAuth";
@@ -863,7 +864,7 @@ export const AccountView = ({
                       </div>
 
                       <span className="text-[11px] text-slate-500 font-medium">
-                        {sess.lastActive}
+                        {formatDateTimeVi(sess.lastActive)}
                       </span>
                     </div>
                   ))}
@@ -1022,7 +1023,7 @@ export const AccountView = ({
                       </p>
                     </div>
                     <span className="text-[11px] text-slate-400 font-medium shrink-0">
-                      {new Date(log.time).toLocaleString("vi-VN")}
+                      {formatDateTimeVi(log.time)}
                     </span>
                   </div>
                 ))}
