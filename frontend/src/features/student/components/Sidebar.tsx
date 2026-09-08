@@ -10,22 +10,35 @@ import {
   Award,
 } from "lucide-react";
 import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { useStudentPortal } from "../../../contexts/StudentPortalContext";
+import type { UserRole } from "../../../types/common";
 export const Sidebar = ({
   activeTab,
   onNavigate,
-  onSwitchPortal,
+  onSwitchPortal: _onSwitchPortal,
   studentName = "Nguyễn Văn A",
+  isOpen = false,
+  onClose,
 }: {
   activeTab: string;
   onNavigate: (tab: string) => void;
-  onSwitchPortal?: (role: any) => void;
+  onSwitchPortal?: (role: UserRole) => void;
   studentName?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }) => {
+  const { profile } = useStudentPortal();
+  const displayName = profile.name || studentName;
   const navSections = [
     {
       title: "TỔNG QUAN",
       items: [
         { id: "student-dashboard", label: "Tổng quan", icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: "KỲ THỰC TẬP",
+      items: [
         {
           id: "student-internship",
           label: "Kỳ thực tập của tôi",
@@ -35,8 +48,13 @@ export const Sidebar = ({
       ],
     },
     {
-      title: "BÁO CÁO & ĐÁNH GIÁ",
+      title: "TÀI LIỆU & BÁO CÁO",
       items: [
+        {
+          id: "student-templates",
+          label: "Biểu mẫu & Tài liệu",
+          icon: FileText,
+        },
         {
           id: "student-weekly-reports",
           label: "Báo cáo tuần",
@@ -47,6 +65,11 @@ export const Sidebar = ({
           label: "Sản phẩm thực tập",
           icon: FolderKanban,
         },
+      ],
+    },
+    {
+      title: "PHẢN HỒI & HỆ THỐNG",
+      items: [
         {
           id: "student-feedback",
           label: "Phản hồi & Chỉnh sửa",
@@ -56,16 +79,6 @@ export const Sidebar = ({
           id: "student-evaluation",
           label: "Kết quả Đánh giá",
           icon: Award,
-        },
-      ],
-    },
-    {
-      title: "TÀI NGUYÊN & HỆ THỐNG",
-      items: [
-        {
-          id: "student-templates",
-          label: "Biểu mẫu & Tài liệu",
-          icon: FileText,
         },
         {
           id: "student-notifications",
@@ -79,7 +92,17 @@ export const Sidebar = ({
   ];
 
   return (
-    <aside className="il-sidebar w-64 flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
+    <aside
+      className={`il-sidebar w-64 flex flex-col justify-between h-screen sticky top-0 z-40 select-none student-sidebar-drawer ${isOpen ? "is-open" : ""}`}
+    >
+      <button
+        type="button"
+        aria-label="Đóng menu điều hướng"
+        className="student-sidebar-close md:hidden"
+        onClick={onClose}
+      >
+        Đóng
+      </button>
       <div>
         <div className="il-sidebar-header">
           <div className="il-sidebar-logo">
@@ -143,7 +166,11 @@ export const Sidebar = ({
           className="il-sidebar-profile"
         >
           <div className="relative shrink-0">
-            <InitialsAvatar name={studentName} size={36} />
+            <InitialsAvatar
+              name={displayName}
+              seed={profile.mssv}
+              size={36}
+            />
             <span
               className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"
               title="Trực tuyến"
@@ -151,8 +178,8 @@ export const Sidebar = ({
           </div>
 
           <div className="overflow-hidden min-w-0 flex-1">
-            <p className="il-sidebar-profile-name">{studentName}</p>
-            <p className="il-sidebar-profile-meta">MSSV: 20110123</p>
+            <p className="il-sidebar-profile-name">{displayName}</p>
+            <p className="il-sidebar-profile-meta">MSSV: {profile.mssv}</p>
           </div>
         </div>
       </div>
