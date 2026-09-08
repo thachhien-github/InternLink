@@ -52,7 +52,7 @@ export function DashboardTrendChart({
   data: TrendPoint[];
   valueLabel?: string;
   targetLabel?: string;
-  variant?: "area" | "bar";
+  variant?: "area" | "bar" | "horizontalBar";
   stacked?: boolean;
 }) {
   return (
@@ -65,7 +65,49 @@ export function DashboardTrendChart({
       </div>
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          {variant === "bar" ? (
+          {variant === "horizontalBar" ? (
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 8, right: 12, left: 12, bottom: 0 }}
+            >
+              <CartesianGrid
+                stroke="#e2e8f0"
+                strokeDasharray="3 3"
+                horizontal={false}
+              />
+              <XAxis
+                type="number"
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#64748b", fontSize: 11 }}
+              />
+              <YAxis
+                type="category"
+                dataKey="label"
+                width={92}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#475569", fontSize: 10 }}
+              />
+              <Tooltip
+                cursor={{ fill: "#f8fafc" }}
+                contentStyle={{
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  fontSize: 12,
+                }}
+              />
+              <Bar
+                dataKey="value"
+                name={valueLabel}
+                fill="#1d4ed8"
+                radius={[0, 4, 4, 0]}
+                barSize={18}
+              />
+            </BarChart>
+          ) : variant === "bar" ? (
             <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
               <XAxis

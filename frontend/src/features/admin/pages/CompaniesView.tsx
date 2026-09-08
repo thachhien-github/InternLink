@@ -14,11 +14,14 @@ import {
   Globe,
   Download,
   Eye,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { CompanyAvatar } from "../../../components/common/CompanyAvatar";
 import type { Enterprise } from "../../../types/enterprise";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapCompanyDtoToEnterprise } from "../../../lib/adminMappers";
@@ -49,6 +52,8 @@ export const CompaniesView = ({
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [editing, setEditing] = useState<Enterprise | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -98,6 +103,23 @@ export const CompaniesView = ({
     () => Array.from(new Set(companies.map((c) => c.status))),
     [companies],
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visiblePage = Math.min(currentPage, totalPages);
+  const paginatedCompanies = useMemo(() => {
+    const start = (visiblePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, pageSize, visiblePage]);
+
+  const updateSearch = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const updateStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -283,14 +305,14 @@ export const CompaniesView = ({
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateSearch(e.target.value)}
                 placeholder="Tìm tên, mã, lĩnh vực…"
                 className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-md bg-slate-50 focus:bg-white focus:border-blue-500 outline-none w-56"
               />
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => updateStatusFilter(e.target.value)}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-md bg-slate-50 font-medium outline-none cursor-pointer"
             >
               <option value="all">Tất cả trạng thái</option>
@@ -316,16 +338,21 @@ export const CompaniesView = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((c) => (
+              {paginatedCompanies.map((c) => (
                 <tr
                   key={c.id}
                   className="hover:bg-slate-50/80 cursor-pointer"
                   onClick={() => navigate(`/admin/companies/${c.id}`)}
                 >
                   <td className="py-3 pr-3">
-                    <div className="font-bold text-slate-900">{c.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                      {c.shortCode}
+                    <div className="flex items-center gap-3">
+                      <CompanyAvatar name={c.name} size={40} />
+                      <div>
+                        <div className="font-bold text-slate-900">{c.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          {c.shortCode}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="py-3 pr-3 text-slate-600 max-w-[180px]">
@@ -417,6 +444,51 @@ export const CompaniesView = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>
+              Hiển thị {filtered.length === 0 ? 0 : (visiblePage - 1) * pageSize + 1}
+              –{Math.min(visiblePage * pageSize, filtered.length)} / {filtered.length} doanh nghiệp
+            </span>
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 border border-slate-200 rounded-md bg-white font-medium text-slate-700 outline-none"
+              aria-label="Số doanh nghiệp mỗi trang"
+            >
+              <option value={10}>10 / trang</option>
+              <option value={25}>25 / trang</option>
+              <option value={50}>50 / trang</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={visiblePage === 1}
+              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="Trang trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="min-w-16 text-center font-semibold text-slate-700">
+              {visiblePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={visiblePage === totalPages}
+              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="Trang sau"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </Panel>
 

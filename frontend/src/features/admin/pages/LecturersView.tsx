@@ -4,7 +4,6 @@ import {
   UserPlus,
   Search,
   Upload,
-  Download,
   FileSpreadsheet,
   CheckCircle2,
   KeyRound,
@@ -34,6 +33,7 @@ import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { Panel } from "../../../components/common/Panel";
 import { Toolbar } from "../../../components/common/Toolbar";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import {
   buildAssignmentMaps,
@@ -317,28 +317,12 @@ export const LecturersView = ({
     }
   };
 
-  const handleExportLecturers = async () => {
-
-    try {
-      await adminLecturersService.downloadExport();
-      onShowToast("Đã tải xuống danh sách giảng viên (.xlsx)");
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    }
-  };
-
   return (
     <div className="space-y-5 max-w-[1500px] mx-auto">
       <PageHeader
         icon={GraduationCap}
         title="Quản lý Giảng viên"
         actions={[
-          {
-            label: "Xuất Excel",
-            icon: Download,
-            onClick: () => void handleExportLecturers(),
-            variant: "secondary",
-          },
           {
             label: "Import Excel",
             icon: FileUp,
@@ -500,9 +484,11 @@ export const LecturersView = ({
                       {/* Name & Academic Degree */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                            {lec.fullName.split(" ").slice(-1)[0][0]}
-                          </div>
+                          <InitialsAvatar
+                            name={lec.fullName}
+                            seed={lec.lecturerCode || lec.email || lec.fullName}
+                            size={32}
+                          />
                           <div>
                             <p className="font-bold text-slate-900">
                               {lec.fullName}
@@ -762,9 +748,12 @@ export const LecturersView = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-lg bg-[#1d4ed8] text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md">
-                {selectedLecturer.fullName.split(" ").slice(-1)[0][0]}
-              </div>
+              <InitialsAvatar
+                name={selectedLecturer.fullName}
+                seed={selectedLecturer.employeeId || selectedLecturer.fullName}
+                size={56}
+                className="text-lg"
+              />
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">
                   {selectedLecturer.fullName}

@@ -61,6 +61,10 @@ export const SettingsView = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [settingsLoadError, setSettingsLoadError] = useState(false);
+  const [savedSettings, setSavedSettings] = useState<FacultySettings>(settings);
+  const hasUnsavedChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,16 +73,22 @@ export const SettingsView = ({
         const data = await adminSettingsService.getSettings();
         if (!cancelled && data) {
           setSettings(data);
+          setSavedSettings(data);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch {
-        // Fallback to local storage
+        if (!cancelled) {
+          setSettingsLoadError(true);
+          onShowToast("Không thể tải cài đặt từ hệ thống; đang dùng bản nháp cục bộ.");
+        }
+      } finally {
+        if (!cancelled) setIsLoadingSettings(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onShowToast]);
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -90,17 +100,33 @@ export const SettingsView = ({
       onShowToast("Vui lòng nhập Email hỗ trợ.");
       return;
     }
+    if (settings.maxStudentsPerLecturer < 5 || settings.maxStudentsPerLecturer > 100) {
+      onShowToast("Số sinh viên tối đa mỗi giảng viên phải từ 5 đến 100.");
+      return;
+    }
+    if (settings.maxFileSizeMb < 5 || settings.maxFileSizeMb > 100) {
+      onShowToast("Dung lượng tệp phải từ 5 đến 100 MB.");
+      return;
+    }
 
     setIsSaving(true);
     try {
-      
-        const updated = await adminSettingsService.updateSettings(settings);
-        setSettings(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      const payload = {
+        ...settings,
+        departmentName: settings.departmentName.trim(),
+        supportEmail: settings.supportEmail.trim(),
+        phone: settings.phone.trim(),
+        address: settings.address.trim(),
+      };
+      const updated = await adminSettingsService.updateSettings(payload);
+      setSettings(updated);
+      setSavedSettings(updated);
+      setSettingsLoadError(false);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       onShowToast("Đã lưu các thiết lập cài đặt thành công!");
     } catch (err) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      onShowToast(`Đã lưu cục bộ: ${getApiErrorMessage(err)}`);
+      onShowToast(`Không thể lưu lên hệ thống; đã giữ bản nháp cục bộ. ${getApiErrorMessage(err)}`);
     } finally {
       setIsSaving(false);
     }
@@ -112,10 +138,14 @@ export const SettingsView = ({
       
         const res = await adminSettingsService.resetSettings();
         setSettings(res);
+        setSavedSettings(res);
+        setSettingsLoadError(false);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(res));
       onShowToast("Đã khôi phục tất cả cài đặt về giá trị mặc định của Khoa.");
     } catch (err) {
       setSettings(DEFAULT_FACULTY_SETTINGS);
+      setSavedSettings(DEFAULT_FACULTY_SETTINGS);
+      setSettingsLoadError(true);
       localStorage.removeItem(STORAGE_KEY);
       onShowToast(`Đã khôi phục mặc định: ${getApiErrorMessage(err)}`);
     } finally {
@@ -172,6 +202,24 @@ export const SettingsView = ({
           <span>{isSaving ? "Đang lưu..." : "Lưu thay đổi"}</span>
         </button>
       </PageHeader>
+
+      {settingsLoadError && (
+        <div className="flex items-start gap-2.5 border border-amber-200 bg-amber-50 px-4 py-3 rounded-md text-xs text-amber-900">
+          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
+          <div>
+            <p className="font-bold">Đang dùng bản nháp cục bộ</p>
+            <p className="mt-0.5 text-amber-800">
+              Cài đặt chưa đồng bộ với máy chủ. Kiểm tra kết nối rồi lưu lại để cập nhật hệ thống.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isLoadingSettings && (
+        <div className="border border-slate-200 bg-white px-4 py-3 rounded-md text-xs text-slate-500">
+          Đang tải cài đặt hiện tại…
+        </div>
+      )}
 
       {/* 2. SUMMARY STRIP */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
@@ -480,8 +528,16 @@ export const SettingsView = ({
         {/* BOTTOM SAVE BAR */}
         <div className="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
           <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Các thay đổi được áp dụng ngay sau khi lưu.</span>
+            {hasUnsavedChanges ? (
+              <ShieldAlert className="w-4 h-4 text-amber-600" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            )}
+            <span>
+              {hasUnsavedChanges
+                ? "Bạn còn thay đổi chưa lưu."
+                : "Cài đặt đã được đồng bộ."}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">

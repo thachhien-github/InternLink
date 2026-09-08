@@ -3,7 +3,6 @@ import {
   Users,
   CalendarDays,
   Building2,
-  TrendingUp,
 } from "lucide-react";
 import { KpiCard, KpiGrid } from "../../../components/common/KpiCard";
 import type { AdminDashboardStats } from "../../../hooks/useAdminDashboardStats";
@@ -37,17 +36,10 @@ export const AdminKpiSection = ({
         unit="giảng viên"
         icon={UserCheck}
         footer={
-          <span className="flex items-center justify-between gap-2">
-            <span className="font-medium text-slate-500">
-              {stats
-                ? `${stats.lecturersWithStudents} đang hướng dẫn SV`
-                : "Đang tải…"}
-            </span>
-            {stats && (
-              <span className="flex items-center gap-1 shrink-0">
-                <TrendingUp className="w-3 h-3" /> API
-              </span>
-            )}
+          <span className="font-medium text-slate-500">
+            {stats
+              ? `${stats.lecturersWithStudents} đang hướng dẫn SV`
+              : "Đang tải…"}
           </span>
         }
         onClick={() => onCardClick?.("lecturers")}
@@ -76,11 +68,8 @@ export const AdminKpiSection = ({
         unit="đang thực hiện"
         icon={CalendarDays}
         footer={
-          <span className="flex items-center justify-between gap-2">
-            <span className="font-medium text-slate-500">
-              {stats ? `${stats.internshipTotal} tổng đợt` : "Đang tải…"}
-            </span>
-            <span className="shrink-0">Theo API</span>
+          <span className="font-medium text-slate-500">
+            {stats ? `${stats.internshipTotal} tổng đợt` : "Đang tải…"}
           </span>
         }
         onClick={() => onCardClick?.("semesters")}

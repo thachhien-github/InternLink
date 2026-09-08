@@ -15,27 +15,24 @@ import {
   X,
   History,
   Check,
-  Download,
   BarChart3,
   TrendingUp,
   Clock,
-  FileSpreadsheet,
   FileUp,
   UserX,
   ChevronDown,
   ChevronUp,
   UserMinus,
   ArrowLeftRight,
-  Plus,
   Mail,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
-import { getApiErrorMessage, triggerBlobDownload } from "../../../lib/apiClient";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 import { formatRelativeTimeVi } from "../../../lib/formatRelativeTimeVi";
 import { adminAssignmentsService } from "../../../services/adminAssignments.service";
-import { exportService } from "../../../services/export.service";
 import { useAdminAssignmentMatrix } from "../../../hooks/useAdminAssignmentMatrix";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { CompanyAllocationsTab } from "../components/CompanyAllocationsTab";
@@ -51,6 +48,7 @@ export const AssignmentsView = ({
   const { semesters, selectedSemesterId, selectedSemester: currentSemesterObj, selectSemester } = useSemester();
   const selectedSemester = selectedSemesterId;
   const setSelectedSemester = selectSemester;
+  const effectiveSemesterId = selectedSemester === "all" ? undefined : selectedSemester;
   const apiMatrix = useAdminAssignmentMatrix(true, selectedSemesterId, onShowToast);
   const [activeTab, setActiveTab] = useState("by-lecturer");
 
@@ -72,7 +70,7 @@ export const AssignmentsView = ({
   const [lecturerDeptFilter, setLecturerDeptFilter] = useState("all");
   const [assignedStudentSearch, setAssignedStudentSearch] = useState("");
   const [assignedClassFilter, setAssignedClassFilter] = useState("all");
-  const [groupViewMode, setGroupViewMode] = useState("single");
+  const groupViewMode = "single";
   const [selectedAssignedStudentIds, setSelectedAssignedStudentIds] = useState(
     [],
   );
@@ -85,15 +83,10 @@ export const AssignmentsView = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [recentAssignments, setRecentAssignments] = useState([]);
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [targetReassignLecturerId, setTargetReassignLecturerId] =
     useState("lec-2");
-  const [batchStrategy, setBatchStrategy] = useState("department");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [expandedLecturerIds, setExpandedLecturerIds] = useState<string[]>([]);
   const unassignedStudents = useMemo(() => {
@@ -102,6 +95,17 @@ export const AssignmentsView = ({
   const assignedStudents = useMemo(() => {
     return students.filter((s) => s.assignmentStatus === "assigned");
   }, [students]);
+  const lecturerDepartments = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          lecturers
+            .map((lecturer) => lecturer.department?.trim())
+            .filter((department): department is string => Boolean(department)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+    [lecturers],
+  );
   const activeLecturerObj = useMemo(() => {
     return lecturers.find((l) => l.id === selectedLecturerId) || lecturers[0];
   }, [lecturers, selectedLecturerId]);
@@ -125,6 +129,17 @@ export const AssignmentsView = ({
       return matchSearch && matchClass;
     });
   }, [activeLecturerStudents, assignedStudentSearch, assignedClassFilter]);
+  const assignedClassOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          activeLecturerStudents
+            .map((student) => student.classCode?.trim())
+            .filter((classCode): classCode is string => Boolean(classCode)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+    [activeLecturerStudents],
+  );
   const filteredLecturers = useMemo(() => {
     return lecturers.filter((l) => {
       const matchSearch =
@@ -155,6 +170,40 @@ export const AssignmentsView = ({
     majorFilter,
     companyFilter,
   ]);
+  const unassignedFilterOptions = useMemo(
+    () => ({
+      classes: Array.from(
+        new Set(
+          unassignedStudents
+            .map((student) => student.classCode?.trim())
+            .filter((classCode): classCode is string => Boolean(classCode)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+      majors: Array.from(
+        new Set(
+          unassignedStudents
+            .map((student) => student.major?.trim())
+            .filter((major): major is string => Boolean(major)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+      companies: Array.from(
+        new Set(
+          unassignedStudents
+            .map((student) => student.companyName?.trim())
+            .filter((company): company is string => Boolean(company)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+    }),
+    [unassignedStudents],
+  );
+  useEffect(() => {
+    setLecturerDeptFilter("all");
+    setAssignedClassFilter("all");
+    setClassFilter("all");
+    setMajorFilter("all");
+    setCompanyFilter("all");
+    setCurrentPage(1);
+  }, [selectedSemesterId]);
   const totalPages =
     Math.ceil(filteredUnassignedStudents.length / pageSize) || 1;
   const paginatedUnassignedStudents = useMemo(() => {
@@ -188,6 +237,7 @@ export const AssignmentsView = ({
       await adminAssignmentsService.unassign({
         lecturerId: activeLecturerObj.id,
         studentId,
+        semesterId: effectiveSemesterId,
       });
       onShowToast(
         `Đã hủy phân công hướng dẫn của sinh viên ${studentName}`,
@@ -214,6 +264,7 @@ export const AssignmentsView = ({
         await adminAssignmentsService.unassign({
           lecturerId: activeLecturerObj.id,
           studentId,
+          semesterId: effectiveSemesterId,
         });
       }
       onShowToast(
@@ -241,29 +292,13 @@ export const AssignmentsView = ({
       const result = await adminAssignmentsService.bulkAssign({
         lecturerId: targetLecturer.id,
         studentIds: selectedAssignedStudentIds,
+        semesterId: effectiveSemesterId,
       });
       onShowToast(
         `Đã chuyển ${result.assignedCount} sinh viên sang giảng viên ${targetLecturer.fullName}!`,
       );
       setSelectedAssignedStudentIds([]);
       setShowReassignModal(false);
-      await apiMatrix.reload();
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-      return;
-    }
-  };
-  const handleAddStudentsToCurrentLecturer = async (studentIdsToAdd) => {
-    if (!activeLecturerObj) return;
-    try {
-      const result = await adminAssignmentsService.bulkAssign({
-        lecturerId: activeLecturerObj.id,
-        studentIds: studentIdsToAdd,
-      });
-      onShowToast(
-        `Đã phân công thành công ${result.assignedCount} sinh viên cho ${activeLecturerObj.fullName}!`,
-      );
-      setShowAddStudentModal(false);
       await apiMatrix.reload();
     } catch (err) {
       onShowToast(getApiErrorMessage(err));
@@ -282,6 +317,7 @@ export const AssignmentsView = ({
       const result = await adminAssignmentsService.bulkAssign({
         lecturerId: targetLecturer.id,
         studentIds: selectedUnassignedIds,
+        semesterId: effectiveSemesterId,
       });
       if (result.failedCount > 0) {
         onShowToast(
@@ -309,7 +345,7 @@ export const AssignmentsView = ({
   const loadAssignmentHistory = useCallback(async () => {
     setIsHistoryLoading(true);
     try {
-      const items = await adminAssignmentsService.getHistory(50);
+      const items = await adminAssignmentsService.getHistory(50, effectiveSemesterId);
       setRecentAssignments(
         items.map((item) => ({
           id: item.id,
@@ -325,71 +361,11 @@ export const AssignmentsView = ({
     } finally {
       setIsHistoryLoading(false);
     }
-  }, [onShowToast]);
-
-  useEffect(() => {
-  }, [loadAssignmentHistory]);
+  }, [effectiveSemesterId, onShowToast]);
 
   const handleOpenHistory = () => {
     setShowHistoryModal(true);
-  };
-
-  const handleRunBatchAssignment = async () => {
-    setIsLoading(true);
-    try {
-      const result = await adminAssignmentsService.autoAssign({
-        strategy: batchStrategy === "department" ? "department" : "even",
-      });
-      setShowBatchModal(false);
-      if (!result || (result.totalAssigned === 0 && result.totalFailed === 0)) {
-        onShowToast(
-          unassignedStudents.length === 0
-            ? "Tất cả sinh viên đã được phân công!"
-            : "Không phân công thêm được — kiểm tra GV còn slot hoặc dữ liệu SV.",
-        );
-        return;
-      }
-      onShowToast(
-        result.totalFailed > 0
-          ? `Phân công tự động: ${result.totalAssigned} thành công, ${result.totalFailed} lỗi`
-          : `Đã tự động phân công ${result.totalAssigned} sinh viên cho ${result.lecturersUsed} giảng viên`,
-      );
-      await apiMatrix.reload();
-      await loadAssignmentHistory();
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  const handleExportExcel = async () => {
-
-    setIsExporting(true);
-    try {
-      const exportSemesterId = selectedSemester === "all" ? undefined : selectedSemester;
-      const { blob, filename } = await adminAssignmentsService.downloadExport(exportSemesterId);
-      if (blob.size < 100) {
-        onShowToast("File xuất ra trống hoặc lỗi — thử restart backend API.");
-        return;
-      }
-      onShowToast(`Đã tải xuống ${filename}`);
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  const handleExportInternshipList = async () => {
-    setIsExporting(true);
-    try {
-      const exportSemesterId = selectedSemester === "all" ? undefined : selectedSemester;
-      await exportService.downloadInternshipExcel(exportSemesterId || undefined);
-      onShowToast("Đã tải xuống Danh sách thực tập (.xlsx)");
-    } catch (err) {
-      onShowToast(getApiErrorMessage(err));
-    } finally {
-      setIsExporting(false);
-    }
+    void loadAssignmentHistory();
   };
 
   return (
@@ -404,36 +380,16 @@ export const AssignmentsView = ({
         }
         actions={[
           {
-            label: "Xuất danh sách thực tập",
-            icon: Download,
-            onClick: () => void handleExportInternshipList(),
-            variant: "secondary",
-            disabled: isExporting,
-          },
-          {
             label: "Import PC Giảng viên",
             icon: FileUp,
             onClick: () => setShowImportLecturerModal(true),
             variant: "secondary",
           },
           {
-            label: isExporting ? "Đang xuất…" : "Xuất ma trận (.xlsx)",
-            icon: FileSpreadsheet,
-            onClick: handleExportExcel,
-            variant: "secondary",
-            disabled: isExporting,
-          },
-          {
             label: "Lịch sử phân công",
             icon: History,
             onClick: handleOpenHistory,
             variant: "secondary",
-          },
-          {
-            label: "Tự động phân công",
-            icon: Sparkles,
-            onClick: () => setShowBatchModal(true),
-            variant: "primary",
           },
         ]}
       />
@@ -476,7 +432,6 @@ export const AssignmentsView = ({
         </Panel>
       ) : (
         <>
-          {/* SEMESTER SELECTOR & MAIN TAB SWITCHER BAR */}
           {currentSemesterObj.status === "completed" && (
             <div className="px-4 py-3 bg-slate-100 border border-slate-300 rounded-lg text-xs text-slate-800 flex items-center gap-2.5">
               <Clock className="w-4 h-4 text-slate-600 shrink-0" />
@@ -520,43 +475,30 @@ export const AssignmentsView = ({
               </div>
             </div>
 
-            {/* View Mode Navigation Tabs */}
+            {/* Primary workflow navigation */}
             <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-md border border-slate-200 text-xs font-bold max-w-full overflow-x-auto shrink-0">
               <button
                 onClick={() => setActiveTab("by-lecturer")}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "by-lecturer" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
+                className={`px-3.5 py-2 rounded-lg transition-all flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "by-lecturer" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
               >
                 <GraduationCap className="w-4 h-4 shrink-0" />
-                <span>Danh sách theo Giảng viên</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("matrix")}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "matrix" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                <UserPlus className="w-4 h-4 shrink-0" />
-                <span>Ghép nối &amp; Phân công mới</span>
-                {unassignedStudents.length > 0 && (
-                  <span className="px-1.5 py-0.2 bg-orange-100 text-orange-800 text-[10px] rounded-full">
-                    {unassignedStudents.length}
-                  </span>
-                )}
+                <span>Phân công GVHD</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("company-allocation")}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "company-allocation" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
+                className={`px-3.5 py-2 rounded-lg transition-all flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "company-allocation" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
               >
                 <Building2 className="w-4 h-4 shrink-0" />
-                <span>Phân bổ Doanh nghiệp</span>
+                <span>Phân bổ doanh nghiệp</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("stats")}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "stats" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
+                className={`px-3.5 py-2 rounded-lg transition-all flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${activeTab === "stats" ? "bg-white text-blue-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
               >
                 <BarChart3 className="w-4 h-4 shrink-0" />
-                <span>Thống kê &amp; Cân bằng tải</span>
+                <span>Thống kê &amp; cân bằng tải</span>
               </button>
             </div>
           </Panel>
@@ -564,35 +506,6 @@ export const AssignmentsView = ({
           {/* TAB 1: DANH SÁCH SINH VIÊN THEO GIẢNG VIÊN (MAIN FEATURE REQUIRED BY USER) */}
           {activeTab === "by-lecturer" && (
             <div className="space-y-6">
-              {/* View Mode Toggle: Single Lecturer Workspace vs Accordion All Cards */}
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200/80">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">
-                    Chế độ hiển thị danh sách:
-                  </span>
-                  <button
-                    onClick={() => setGroupViewMode("single")}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${groupViewMode === "single" ? "bg-blue-600 text-white shadow-2xs" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"}`}
-                  >
-                    Xem theo từng Giảng viên
-                  </button>
-                  <button
-                    onClick={() => setGroupViewMode("accordion")}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${groupViewMode === "accordion" ? "bg-blue-600 text-white shadow-2xs" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"}`}
-                  >
-                    Xem toàn bộ Danh sách Accordion
-                  </button>
-                </div>
-
-                <span className="text-xs font-medium text-slate-500">
-                  Đang chọn:{" "}
-                  <strong className="text-slate-900">
-                    {activeLecturerObj.fullName}
-                  </strong>{" "}
-                  ({activeLecturerStudents.length} sinh viên)
-                </span>
-              </div>
-
               {/* MODE 1: SINGLE LECTURER SPLIT WORKSPACE */}
               {groupViewMode === "single" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -631,9 +544,11 @@ export const AssignmentsView = ({
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 cursor-pointer text-xs"
                       >
                         <option value="all">Tất cả Bộ môn</option>
-                        <option value="Công nghệ Phần mềm">BM CNPM</option>
-                        <option value="Mạng máy tính & TTTT">BM MMT</option>
-                        <option value="Hệ thống Thông tin">BM HTTT</option>
+                        {lecturerDepartments.map((department) => (
+                          <option key={department} value={department}>
+                            {department}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -657,9 +572,11 @@ export const AssignmentsView = ({
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-9 h-9 rounded-md bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                                  {lec.fullName.split(" ").slice(-1)[0][0]}
-                                </div>
+                                <InitialsAvatar
+                                  name={lec.fullName}
+                                  seed={lec.employeeId || lec.fullName}
+                                  size={36}
+                                />
                                 <div className="min-w-0">
                                   <p className="font-bold text-slate-900 text-xs truncate">
                                     {lec.fullName}
@@ -689,9 +606,12 @@ export const AssignmentsView = ({
                     <Panel className="space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-lg bg-[#1d4ed8] text-white font-bold text-xl flex items-center justify-center shrink-0">
-                            {activeLecturerObj.fullName.split(" ").slice(-1)[0][0]}
-                          </div>
+                          <InitialsAvatar
+                            name={activeLecturerObj.fullName}
+                            seed={activeLecturerObj.employeeId || activeLecturerObj.fullName}
+                            size={56}
+                            className="text-xl"
+                          />
                           <div>
                             <div className="flex items-center gap-2">
                               <h2 className="text-lg font-bold text-slate-900">
@@ -745,24 +665,15 @@ export const AssignmentsView = ({
                             className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-800 outline-none cursor-pointer"
                           >
                             <option value="all">Tất cả Lớp</option>
-                            <option value="20CNTT1">20CNTT1</option>
-                            <option value="20CNTT2">20CNTT2</option>
-                            <option value="20KTPM1">20KTPM1</option>
-                            <option value="20KTPM2">20KTPM2</option>
-                            <option value="20MMT1">20MMT1</option>
-                            <option value="20HTTT1">20HTTT1</option>
+                            {assignedClassOptions.map((classCode) => (
+                              <option key={classCode} value={classCode}>
+                                {classCode}
+                              </option>
+                            ))}
                           </select>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setShowAddStudentModal(true)}
-                            className="px-3.5 py-1.5 bg-[#1d4ed8] hover:bg-blue-700 text-white font-bold rounded-md shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>Thêm SV hướng dẫn</span>
-                          </button>
-
                           {selectedAssignedStudentIds.length > 0 && (
                             <>
                               <button
@@ -855,8 +766,8 @@ export const AssignmentsView = ({
                                     viên này!
                                   </p>
                                   <p className="text-xs text-slate-400 mt-0.5">
-                                    Nhấn "Thêm SV hướng dẫn" để gán sinh viên cho
-                                    giảng viên.
+                                    Chọn sinh viên ở hàng chờ bên dưới để phân công
+                                    vào giảng viên này.
                                   </p>
                                 </td>
                               </tr>
@@ -952,13 +863,6 @@ export const AssignmentsView = ({
                           <strong>{activeLecturerStudents.length}</strong> sinh viên
                           hướng dẫn
                         </span>
-                        <button
-                          onClick={handleExportExcel}
-                          className="text-blue-600 hover:underline font-bold flex items-center gap-1"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Export danh sách
-                          (.xlsx)
-                        </button>
                       </div>
                     </Panel>
                   </div>
@@ -986,9 +890,11 @@ export const AssignmentsView = ({
                           className="p-4 bg-slate-50 hover:bg-slate-100/80 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-md bg-[#1d4ed8] text-white font-bold text-xs flex items-center justify-center shrink-0">
-                              {lec.fullName.split(" ").slice(-1)[0][0]}
-                            </div>
+                            <InitialsAvatar
+                              name={lec.fullName}
+                              seed={lec.employeeId || lec.fullName}
+                              size={40}
+                            />
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-slate-900 text-sm">
@@ -1080,11 +986,9 @@ export const AssignmentsView = ({
             </div>
           )}
 
-          {/* TAB 2: GHÉP NỐI & PHÂN CÔNG MỚI (PAIRING MATRIX WORKSPACE) */}
-          {activeTab === "matrix" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* MAIN UNASSIGNED QUEUE (8 COLUMNS) */}
-              <div className="lg:col-span-8 space-y-6">
+          {/* UNASSIGNED STUDENT QUEUE IN THE UNIFIED ASSIGNMENT WORKSPACE */}
+          {activeTab === "by-lecturer" && (
+            <div className="space-y-6">
                 <Panel className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
@@ -1123,6 +1027,15 @@ export const AssignmentsView = ({
                           Bỏ chọn ({selectedUnassignedIds.length})
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={handleConfirmMatrixAssignment}
+                        disabled={selectedUnassignedIds.length === 0}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs rounded-md transition-colors flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Phân công {selectedUnassignedIds.length > 0 ? `(${selectedUnassignedIds.length})` : ""}
+                      </button>
                     </div>
                   </div>
 
@@ -1151,12 +1064,11 @@ export const AssignmentsView = ({
                       className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                     >
                       <option value="all">Tất cả Lớp học</option>
-                      <option value="20CNTT1">20CNTT1</option>
-                      <option value="20CNTT2">20CNTT2</option>
-                      <option value="20KTPM1">20KTPM1</option>
-                      <option value="20KTPM2">20KTPM2</option>
-                      <option value="20MMT1">20MMT1</option>
-                      <option value="20HTTT1">20HTTT1</option>
+                      {unassignedFilterOptions.classes.map((classCode) => (
+                        <option key={classCode} value={classCode}>
+                          {classCode}
+                        </option>
+                      ))}
                     </select>
 
                     <select
@@ -1168,14 +1080,11 @@ export const AssignmentsView = ({
                       className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                     >
                       <option value="all">Tất cả Chuyên ngành</option>
-                      <option value="Công nghệ Thông tin">
-                        Công nghệ Thông tin
-                      </option>
-                      <option value="Kỹ thuật Phần mềm">Kỹ thuật Phần mềm</option>
-                      <option value="Mạng máy tính & TTTT">
-                        Mạng máy tính & TTTT
-                      </option>
-                      <option value="Hệ thống Thông tin">Hệ thống Thông tin</option>
+                      {unassignedFilterOptions.majors.map((major) => (
+                        <option key={major} value={major}>
+                          {major}
+                        </option>
+                      ))}
                     </select>
 
                     <select
@@ -1187,10 +1096,11 @@ export const AssignmentsView = ({
                       className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                     >
                       <option value="all">Tất cả Doanh nghiệp</option>
-                      <option value="FPT">FPT Software</option>
-                      <option value="VNG">VNG Corporation</option>
-                      <option value="Viettel">Viettel Telecom</option>
-                      <option value="TMA">TMA Solutions</option>
+                      {unassignedFilterOptions.companies.map((company) => (
+                        <option key={company} value={company}>
+                          {company}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -1325,109 +1235,6 @@ export const AssignmentsView = ({
                     </div>
                   </div>
                 </Panel>
-
-                {/* CONFIRMATION PREVIEW CARD */}
-                <Panel className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-600" />
-                      <h2 className="text-base font-bold text-slate-900">
-                        Xác nhận Ghép nối Phân công
-                      </h2>
-                    </div>
-                    <span className="text-xs text-slate-600 font-bold">
-                      {selectedUnassignedIds.length} sinh viên được chọn
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="p-3.5 bg-slate-50 rounded-md border border-slate-200 space-y-1">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
-                        Giảng viên nhận hướng dẫn
-                      </span>
-                      <p className="text-base font-bold text-slate-900">
-                        {activeLecturerObj.fullName}
-                      </p>
-                      <p className="text-slate-500">
-                        {activeLecturerObj.title} • {activeLecturerObj.department}
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 bg-slate-50 rounded-md border border-slate-200">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
-                        SV sẽ phân công
-                      </span>
-                      <p className="text-base font-bold text-blue-700 tabular-nums">
-                        {selectedUnassignedIds.length} SV mới → tổng{" "}
-                        {activeLecturerStudents.length +
-                          selectedUnassignedIds.length}{" "}
-                        SV
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => setSelectedUnassignedIds([])}
-                      className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-md cursor-pointer"
-                    >
-                      Hủy lựa chọn
-                    </button>
-                    <button
-                      onClick={handleConfirmMatrixAssignment}
-                      disabled={selectedUnassignedIds.length === 0}
-                      className="px-5 py-2 bg-[#1d4ed8] hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs rounded-md shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Xác nhận phân công ngay</span>
-                    </button>
-                  </div>
-                </Panel>
-              </div>
-
-              {/* RIGHT SIDEBAR: SELECT LECTURER TARGET FOR PAIRING (4 COLUMNS) */}
-              <Panel className="lg:col-span-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center justify-center mr-1.5">
-                      2
-                    </span>
-                    <span className="text-sm font-bold text-slate-900">
-                      Chọn Giảng viên tiếp nhận
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                  {filteredLecturers.map((lec) => {
-                    const isSelected = selectedLecturerId === lec.id;
-                    const count = students.filter(
-                      (s) =>
-                        s.assignmentStatus === "assigned" &&
-                        s.assignedLecturerId === lec.id,
-                    ).length;
-                    return (
-                      <div
-                        key={lec.id}
-                        onClick={() => setSelectedLecturerId(lec.id)}
-                        className={`p-3.5 rounded-lg border cursor-pointer transition-all ${isSelected ? "bg-blue-50/90 border-blue-600 ring-2 ring-blue-500/20" : "bg-white hover:bg-slate-50 border-slate-200"}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-slate-900 text-xs">
-                            {lec.fullName}
-                          </p>
-                          <span className="text-sm font-bold text-slate-800 tabular-nums">
-                            {count} SV
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500">
-                          {lec.title} • {lec.department}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Panel>
             </div>
           )}
 
@@ -1517,74 +1324,7 @@ export const AssignmentsView = ({
         </>
       )}
 
-      {/* MODAL 1: ADD UNASSIGNED STUDENTS DIRECTLY TO ACTIVE LECTURER */}
-      {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 border border-slate-200 shadow-md max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">
-                  Thêm sinh viên cho {activeLecturerObj.fullName}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Chọn sinh viên chưa có giảng viên hướng dẫn
-                </p>
-              </div>
-              <button
-                onClick={() => setShowAddStudentModal(false)}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-              {unassignedStudents.length === 0 ? (
-                <p className="text-center text-slate-400 py-8 font-medium">
-                  Tất cả sinh viên đã được phân công!
-                </p>
-              ) : (
-                unassignedStudents.map((st) => (
-                  <div
-                    key={st.id}
-                    onClick={() => handleAddStudentsToCurrentLecturer([st.id])}
-                    className="p-3 bg-slate-50 hover:bg-blue-50/80 rounded-md border border-slate-200 cursor-pointer transition-colors flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-slate-900">
-                          {st.studentId}
-                        </span>
-                        <span className="font-bold text-slate-900">
-                          {st.fullName}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500">
-                        {st.classCode} • {st.major}
-                      </p>
-                    </div>
-
-                    <button className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg">
-                      + Phân công ngay
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 text-right">
-              <button
-                onClick={() => setShowAddStudentModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-md"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: REASSIGN LECTURER */}
+      {/* MODAL: REASSIGN LECTURER */}
       {showReassignModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4 border border-slate-200 shadow-md">
@@ -1637,74 +1377,6 @@ export const AssignmentsView = ({
                 className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-md shadow-xs"
               >
                 Xác nhận chuyển
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: BATCH AUTO ASSIGNMENT */}
-      {showBatchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 border border-slate-200 shadow-md">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-base">
-                  Phân công Tự động Thông minh
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div
-                onClick={() => setBatchStrategy("department")}
-                className={`p-3.5 rounded-md border cursor-pointer ${batchStrategy === "department" ? "bg-blue-50 border-blue-600" : "bg-slate-50 border-slate-200"}`}
-              >
-                <p className="font-bold text-slate-900">
-                  Ghép nối theo Chuyên ngành &amp; Bộ môn
-                </p>
-                <p className="text-slate-500 text-[11px]">
-                  Ưu tiên xếp sinh viên chuyên ngành phù hợp với bộ môn của
-                  giảng viên.
-                </p>
-              </div>
-
-              <div
-                onClick={() => setBatchStrategy("even")}
-                className={`p-3.5 rounded-md border cursor-pointer ${batchStrategy === "even" ? "bg-blue-50 border-blue-600" : "bg-slate-50 border-slate-200"}`}
-              >
-                <p className="font-bold text-slate-900">
-                  Phân bổ đều theo Chỉ tiêu trống
-                </p>
-                <p className="text-slate-500 text-[11px]">
-                  Chia đều số sinh viên chưa phân công cho các giảng viên còn
-                  slot.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-md"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleRunBatchAssignment}
-                disabled={isLoading}
-                className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-md shadow-xs"
-              >
-                {isLoading
-                  ? "\u0110ang ph\xE2n b\u1ED5..."
-                  : "Ch\u1EA1y ph\xE2n c\xF4ng t\u1EF1 \u0111\u1ED9ng"}
               </button>
             </div>
           </div>

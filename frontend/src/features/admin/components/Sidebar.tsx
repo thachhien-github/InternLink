@@ -11,7 +11,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { FEATURES } from "../../../config/featureFlags";
-import { formatCountBadge, getNameInitials } from "../../../lib/userDisplay";
+import { formatCountBadge } from "../../../lib/userDisplay";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import type { AdminNavStats } from "../../../hooks/useAdminNavStats";
 import type { AuthUser } from "../../../contexts/AuthContext";
 
@@ -48,8 +49,14 @@ export const Sidebar = ({
       ],
     },
     {
-      title: "QUẢN LÝ",
+      title: "CHUẨN BỊ KỲ THỰC TẬP",
       items: [
+        {
+          id: "admin-semesters",
+          label: "Kỳ thực tập",
+          icon: Calendar,
+          flag: "adminSemesters",
+        },
         {
           id: "admin-students",
           label: "Sinh viên",
@@ -73,6 +80,11 @@ export const Sidebar = ({
           label: "Doanh nghiệp",
           icon: Building2,
         },
+      ],
+    },
+    {
+      title: "VẬN HÀNH KỲ THỰC TẬP",
+      items: [
         {
           id: "admin-users",
           label: "Người dùng",
@@ -85,12 +97,6 @@ export const Sidebar = ({
           ...(unassigned > 0
             ? { badgeText: `${unassigned} chưa PC` }
             : {}),
-        },
-        {
-          id: "admin-semesters",
-          label: "Kỳ thực tập",
-          icon: Calendar,
-          flag: "adminSemesters",
         },
       ],
     },
@@ -116,7 +122,6 @@ export const Sidebar = ({
   const displayName = user?.name ?? "Quản trị viên";
   const displayRole =
     user?.role === "admin" ? "Super Admin" : (user?.role ?? "Admin");
-  const initials = getNameInitials(displayName);
 
   const visibleSections = navSections
     .map((section) => ({
@@ -197,9 +202,12 @@ export const Sidebar = ({
           className="il-sidebar-profile"
         >
           <div className="relative shrink-0">
-            <div className="w-9 h-9 rounded-md bg-[#0b132b] text-white font-bold text-xs flex items-center justify-center border border-slate-200">
-              {initials}
-            </div>
+            <InitialsAvatar
+              name={displayName}
+              seed={user?.id || user?.email || displayName}
+              size={36}
+              className="border border-slate-200"
+            />
             <span
               className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"
               title="Trực tuyến"

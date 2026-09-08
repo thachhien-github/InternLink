@@ -11,6 +11,8 @@ import {
   UserPlus,
   Trash2,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
@@ -62,6 +64,8 @@ export const UsersView = ({
   const [statusFilter, setStatusFilter] = useState<"all" | AdminUserStatus>(
     "all",
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -104,6 +108,28 @@ export const UsersView = ({
     }),
     [users],
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visiblePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = useMemo(() => {
+    const start = (visiblePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, pageSize, visiblePage]);
+
+  const updateSearch = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const updateRoleFilter = (value: "all" | AdminUserRole) => {
+    setRoleFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateStatusFilter = (value: "all" | AdminUserStatus) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   const toggleLock = async (u: AdminUser) => {
     try {
@@ -189,16 +215,14 @@ export const UsersView = ({
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateSearch(e.target.value)}
                 placeholder="Tìm mã, tên, email…"
                 className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-md bg-slate-50 focus:bg-white focus:border-blue-500 outline-none w-52"
               />
             </div>
             <select
               value={roleFilter}
-              onChange={(e) =>
-                setRoleFilter(e.target.value as "all" | AdminUserRole)
-              }
+              onChange={(e) => updateRoleFilter(e.target.value as "all" | AdminUserRole)}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-md bg-slate-50 font-medium outline-none cursor-pointer"
             >
               <option value="all">Mọi vai trò</option>
@@ -208,9 +232,7 @@ export const UsersView = ({
             </select>
             <select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | AdminUserStatus)
-              }
+              onChange={(e) => updateStatusFilter(e.target.value as "all" | AdminUserStatus)}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-md bg-slate-50 font-medium outline-none cursor-pointer"
             >
               <option value="all">Mọi trạng thái</option>
@@ -234,7 +256,7 @@ export const UsersView = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((u) => {
+              {paginatedUsers.map((u) => {
                 const RoleIcon =
                   u.role === "admin"
                     ? Shield
@@ -318,6 +340,51 @@ export const UsersView = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>
+              Hiển thị {filtered.length === 0 ? 0 : (visiblePage - 1) * pageSize + 1}
+              –{Math.min(visiblePage * pageSize, filtered.length)} / {filtered.length} tài khoản
+            </span>
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 border border-slate-200 rounded-md bg-white font-medium text-slate-700 outline-none"
+              aria-label="Số tài khoản mỗi trang"
+            >
+              <option value={10}>10 / trang</option>
+              <option value={25}>25 / trang</option>
+              <option value={50}>50 / trang</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={visiblePage === 1}
+              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="Trang trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="min-w-16 text-center font-semibold text-slate-700">
+              {visiblePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={visiblePage === totalPages}
+              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="Trang sau"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </Panel>
 
