@@ -18,7 +18,7 @@ import { mapDocumentListItemToStudentTemplate } from "../../../lib/documentMappe
 import { documentService } from "../../../services/document.service";
 
 export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => void }) => {
-  const { internshipId, profile } = useStudentPortal();
+  const { profile } = useStudentPortal();
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFileType, setSelectedFileType] = useState("Tất cả");
@@ -34,9 +34,7 @@ export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => v
     (async () => {
       setIsLoading(true);
       try {
-        const docs = internshipId
-          ? await documentService.getByInternship(internshipId)
-          : await documentService.getAll();
+        const docs = await documentService.getAll();
         if (!cancelled) {
           // Only show published / circulating documents for students
           const activeDocs = docs.filter((d: any) => d.isPublished !== false);
@@ -51,7 +49,7 @@ export const TemplatesView = ({ onShowToast }: { onShowToast: (msg: string) => v
     return () => {
       cancelled = true;
     };
-  }, [internshipId, onShowToast]);
+  }, [onShowToast]);
 
   const categoriesList = [
     "Tất cả",
