@@ -6,6 +6,8 @@ import {
   clearAuthTokens,
 } from "../lib/apiClient";
 import type {
+  AuthActivityDto,
+  AuthSessionDto,
   ChangePasswordRequestDto,
   CurrentUserDto,
   ForgotPasswordRequestDto,
@@ -44,6 +46,14 @@ export const authService = {
 
   async getMe(): Promise<CurrentUserDto> {
     return apiRequest<CurrentUserDto>("/api/Auth/me");
+  },
+
+  async getSessions(): Promise<AuthSessionDto[]> {
+    return apiRequest<AuthSessionDto[]>("/api/Auth/sessions");
+  },
+
+  async getActivity(limit = 30): Promise<AuthActivityDto[]> {
+    return apiRequest<AuthActivityDto[]>(`/api/Auth/activity?limit=${limit}`);
   },
 
   async logout(): Promise<void> {

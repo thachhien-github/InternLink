@@ -1,8 +1,9 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PageHeader } from "../../../components/common/PageHeader";
-import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { authService } from "../../../services/auth.service";
+import type { AuthActivityDto, AuthSessionDto } from "../../../types/api";
 import { useAuth } from "../../../hooks/useAuth";
 import { useAdminNavStats } from "../../../hooks/useAdminNavStats";
 import {
@@ -13,27 +14,20 @@ import {
   KeyRound,
   Bell,
   Laptop,
-  Clock,
-  LogOut,
   CheckCircle2,
   Camera,
   Save,
-  RotateCcw,
   Mail,
   Phone,
   MapPin,
   Eye,
   EyeOff,
-  Briefcase,
   Layers,
   History,
-  FileCheck,
   Users,
   Building,
   GraduationCap,
   Calendar,
-  ExternalLink,
-  Sparkles,
 } from "lucide-react";
 
 interface AdminProfileData {
@@ -65,6 +59,7 @@ const DEFAULT_ADMIN_PROFILE: AdminProfileData = {
 };
 
 const STORAGE_KEY = "internlink_admin_profile_standard";
+const PREFERENCES_KEY = "internlink_admin_notification_preferences";
 
 export const AccountView = ({
   onShowToast,
@@ -121,24 +116,50 @@ export const AccountView = ({
   const [prefReportDeadlines, setPrefReportDeadlines] = useState(true);
   const [prefWeeklyDigest, setPrefWeeklyDigest] = useState(false);
 
-  // Active Sessions
-  const [activeSessions, setActiveSessions] = useState<any[]>([]);
-
-  const [showLogoutOtherModal, setShowLogoutOtherModal] = useState(false);
-
-  // Activity Logs
-  const activityLogs: any[] = [];
+  const [activeSessions, setActiveSessions] = useState<AuthSessionDto[]>([]);
+  const [activityLogs, setActivityLogs] = useState<AuthActivityDto[]>([]);
 
   // Sync with user auth if available
   useEffect(() => {
     if (!user) return;
-    setProfile((prev) => ({
+    const nextProfile = (prev: AdminProfileData): AdminProfileData => ({
       ...prev,
       fullName: user.name || prev.fullName,
       email: user.email || prev.email,
       adminCode: user.id ? `AD-${user.id.slice(0, 6).toUpperCase()}` : prev.adminCode,
-    }));
-  }, [user]);
+    });
+    setProfile(nextProfile);
+    if (!isEditing) setTempProfile(nextProfile);
+  }, [user, isEditing]);
+
+  useEffect(() => {
+    try {
+      const savedPreferences = localStorage.getItem(PREFERENCES_KEY);
+      if (!savedPreferences) return;
+      const preferences = JSON.parse(savedPreferences) as Partial<{
+        emailNotif: boolean;
+        accountRequests: boolean;
+        reportDeadlines: boolean;
+        weeklyDigest: boolean;
+      }>;
+      if (typeof preferences.emailNotif === "boolean") setPrefEmailNotif(preferences.emailNotif);
+      if (typeof preferences.accountRequests === "boolean") setPrefAccountRequests(preferences.accountRequests);
+      if (typeof preferences.reportDeadlines === "boolean") setPrefReportDeadlines(preferences.reportDeadlines);
+      if (typeof preferences.weeklyDigest === "boolean") setPrefWeeklyDigest(preferences.weeklyDigest);
+    } catch {
+      localStorage.removeItem(PREFERENCES_KEY);
+    }
+  }, []);
+
+  const savePreferences = (next: {
+    emailNotif: boolean;
+    accountRequests: boolean;
+    reportDeadlines: boolean;
+    weeklyDigest: boolean;
+  }) => {
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(next));
+    onShowToast("Đã lưu tùy chọn thông báo trên thiết bị này.");
+  };
 
   // Load from backend me endpoint if in live mode
   useEffect(() => {
@@ -152,6 +173,25 @@ export const AccountView = ({
         }));
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([authService.getSessions(), authService.getActivity(30)])
+      .then(([sessions, activity]) => {
+        if (cancelled) return;
+        setActiveSessions(sessions);
+        setActivityLogs(activity);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setActiveSessions([]);
+          setActivityLogs([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Save Profile Handler
@@ -225,12 +265,6 @@ export const AccountView = ({
     }
   };
 
-  const handleLogoutOtherDevices = () => {
-    setActiveSessions((prev) => prev.filter((s) => s.isCurrent));
-    setShowLogoutOtherModal(false);
-    onShowToast("Đã đăng xuất khỏi tất cả các thiết bị khác thành công.");
-  };
-
   // Helper for password strength
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { label: "Chưa nhập", score: 0, color: "bg-slate-200", text: "text-slate-400" };
@@ -255,13 +289,6 @@ export const AccountView = ({
 
   const passStrength = getPasswordStrength(newPassword);
 
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return "AD";
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto min-w-0 font-sans pb-12 animate-in fade-in">
       {/* 1. PAGE HEADER */}
@@ -276,20 +303,12 @@ export const AccountView = ({
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
           {/* Avatar Container */}
           <div className="relative group shrink-0">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-900 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center ring-4 ring-blue-50 shadow-xs overflow-hidden">
-              {profile.avatarUrl ? (
-                <img
-                  src={profile.avatarUrl}
-                  alt={profile.fullName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <span>{getInitials(profile.fullName)}</span>
-              )}
-            </div>
+            <InitialsAvatar
+              name={profile.fullName || "Quản trị viên"}
+              seed={profile.email || profile.fullName}
+              size={112}
+              className="text-2xl sm:text-3xl ring-4 ring-blue-50"
+            />
             <button
               type="button"
               onClick={() => {
@@ -814,20 +833,16 @@ export const AccountView = ({
                     </div>
                   </div>
 
-                  {activeSessions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowLogoutOtherModal(true)}
-                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-md border border-rose-200 transition-colors flex items-center gap-1"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Đăng xuất thiết bị khác</span>
-                    </button>
-                  )}
                 </div>
 
-                <div className="space-y-2.5 text-xs">
-                  {activeSessions.map((sess) => (
+                <div className="space-y-2.5 text-xs max-h-80 overflow-y-auto pr-1">
+                  {activeSessions.length === 0 ? (
+                    <div className="py-6 text-center border border-dashed border-slate-200 rounded-md text-slate-500">
+                      <Laptop className="w-5 h-5 mx-auto mb-2 text-slate-400" />
+                      <p className="font-semibold">Chưa có dữ liệu phiên đăng nhập.</p>
+                      <p className="text-[11px] mt-1">Tính năng quản lý phiên sẽ khả dụng khi hệ thống cung cấp dữ liệu thiết bị.</p>
+                    </div>
+                  ) : activeSessions.map((sess) => (
                     <div
                       key={sess.id}
                       className="p-3 bg-slate-50 rounded-md border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -888,8 +903,9 @@ export const AccountView = ({
                     type="checkbox"
                     checked={prefEmailNotif}
                     onChange={(e) => {
-                      setPrefEmailNotif(e.target.checked);
-                      onShowToast("Đã lưu tùy chọn thông báo.");
+                      const emailNotif = e.target.checked;
+                      setPrefEmailNotif(emailNotif);
+                      savePreferences({ emailNotif, accountRequests: prefAccountRequests, reportDeadlines: prefReportDeadlines, weeklyDigest: prefWeeklyDigest });
                     }}
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
@@ -908,8 +924,9 @@ export const AccountView = ({
                     type="checkbox"
                     checked={prefAccountRequests}
                     onChange={(e) => {
-                      setPrefAccountRequests(e.target.checked);
-                      onShowToast("Đã lưu tùy chọn thông báo.");
+                      const accountRequests = e.target.checked;
+                      setPrefAccountRequests(accountRequests);
+                      savePreferences({ emailNotif: prefEmailNotif, accountRequests, reportDeadlines: prefReportDeadlines, weeklyDigest: prefWeeklyDigest });
                     }}
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
@@ -928,8 +945,9 @@ export const AccountView = ({
                     type="checkbox"
                     checked={prefReportDeadlines}
                     onChange={(e) => {
-                      setPrefReportDeadlines(e.target.checked);
-                      onShowToast("Đã lưu tùy chọn thông báo.");
+                      const reportDeadlines = e.target.checked;
+                      setPrefReportDeadlines(reportDeadlines);
+                      savePreferences({ emailNotif: prefEmailNotif, accountRequests: prefAccountRequests, reportDeadlines, weeklyDigest: prefWeeklyDigest });
                     }}
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
@@ -948,8 +966,9 @@ export const AccountView = ({
                     type="checkbox"
                     checked={prefWeeklyDigest}
                     onChange={(e) => {
-                      setPrefWeeklyDigest(e.target.checked);
-                      onShowToast("Đã lưu tùy chọn thông báo.");
+                      const weeklyDigest = e.target.checked;
+                      setPrefWeeklyDigest(weeklyDigest);
+                      savePreferences({ emailNotif: prefEmailNotif, accountRequests: prefAccountRequests, reportDeadlines: prefReportDeadlines, weeklyDigest });
                     }}
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
@@ -977,8 +996,14 @@ export const AccountView = ({
                 </div>
               </div>
 
-              <div className="space-y-3 text-xs">
-                {activityLogs.map((log) => (
+              <div className="space-y-3 text-xs max-h-80 overflow-y-auto pr-1">
+                  {activityLogs.length === 0 ? (
+                    <div className="py-8 text-center border border-dashed border-slate-200 rounded-md text-slate-500">
+                      <History className="w-5 h-5 mx-auto mb-2 text-slate-400" />
+                      <p className="font-semibold">Chưa có nhật ký hoạt động.</p>
+                      <p className="text-[11px] mt-1">Audit log sẽ hiển thị khi backend cung cấp dữ liệu cho tài khoản này.</p>
+                    </div>
+                  ) : activityLogs.map((log) => (
                   <div
                     key={log.id}
                     className="p-3.5 bg-slate-50 rounded-md border border-slate-100 flex items-start justify-between gap-3"
@@ -986,18 +1011,18 @@ export const AccountView = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${log.badgeColor}`}
+                          className="px-2 py-0.5 rounded text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-100"
                         >
                           {log.module}
                         </span>
                         <p className="font-bold text-slate-900">{log.action}</p>
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium">
-                        Địa chỉ IP: <span className="font-mono">{log.ip}</span>
+                        Địa chỉ IP: <span className="font-mono">{log.ip || "Không xác định"}</span>
                       </p>
                     </div>
                     <span className="text-[11px] text-slate-400 font-medium shrink-0">
-                      {log.time}
+                      {new Date(log.time).toLocaleString("vi-VN")}
                     </span>
                   </div>
                 ))}
@@ -1126,16 +1151,6 @@ export const AccountView = ({
         </div>
       )}
 
-      {/* LOGOUT OTHER SESSIONS MODAL */}
-      <ConfirmDialog
-        open={showLogoutOtherModal}
-        title="Đăng xuất thiết bị khác"
-        description="Bạn có chắc chắn muốn đăng xuất phiên đăng nhập trên tất cả các thiết bị khác? Chỉ phiên đăng nhập trên thiết bị này sẽ được duy trì."
-        confirmLabel="Đăng xuất tất cả"
-        variant="danger"
-        onConfirm={handleLogoutOtherDevices}
-        onCancel={() => setShowLogoutOtherModal(false)}
-      />
     </div>
   );
 };

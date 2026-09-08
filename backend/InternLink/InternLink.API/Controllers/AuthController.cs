@@ -5,6 +5,8 @@ using InternLink.Application.DTOs;
 using InternLink.API.Extensions;
 using InternLink.Shared.Responses;
 using Microsoft.AspNetCore.StaticFiles;
+using InternLink.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace InternLink.API.Controllers;
 
@@ -13,10 +15,12 @@ namespace InternLink.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly AppDbContext _db;
 
-    public AuthController(IAuthService auth)
+    public AuthController(IAuthService auth, AppDbContext db)
     {
         _auth = auth;
+        _db = db;
     }
 
     [HttpPost("login")]
@@ -98,6 +102,55 @@ public class AuthController : ControllerBase
         var user = await _auth.GetCurrentUserAsync(userId.Value);
         if (user == null) return NotFound(ApiResponse<object>.Fail(new ApiError { Title = "User not found" }));
         return Ok(ApiResponse<CurrentUserResponse>.Ok(user));
+    }
+
+    [HttpGet("sessions")]
+    [Authorize]
+    public async Task<IActionResult> Sessions()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var tokens = await _db.RefreshTokens
+            .AsNoTracking()
+            .Where(t => t.UserId == userId.Value && !t.IsDeleted && !t.IsRevoked && !t.IsUsed && t.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+        var currentId = tokens.FirstOrDefault()?.Id;
+        var sessions = tokens.Select(token => new AuthSessionDto
+        {
+            Id = token.Id.ToString(),
+            Ip = token.CreatedByIp,
+            LastActive = token.UpdatedAt ?? token.CreatedAt,
+            CreatedAt = token.CreatedAt,
+            IsCurrent = token.Id == currentId,
+        }).ToList();
+
+        return Ok(ApiResponse<IReadOnlyList<AuthSessionDto>>.Ok(sessions));
+    }
+
+    [HttpGet("activity")]
+    [Authorize]
+    public async Task<IActionResult> Activity([FromQuery] int limit = 30)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(ApiResponse<object>.Fail(new ApiError { Title = "Unauthorized" }));
+
+        var tokens = await _db.RefreshTokens
+            .AsNoTracking()
+            .Where(t => t.UserId == userId.Value && !t.IsDeleted)
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(Math.Clamp(limit, 1, 100))
+            .ToListAsync();
+        var activity = tokens.Select(token => new AuthActivityDto
+        {
+            Id = token.Id.ToString(),
+            Action = token.IsRevoked || token.IsUsed ? "Phiên đăng nhập đã kết thúc" : "Đăng nhập hệ thống",
+            Ip = token.CreatedByIp,
+            Time = token.CreatedAt,
+        }).ToList();
+
+        return Ok(ApiResponse<IReadOnlyList<AuthActivityDto>>.Ok(activity));
     }
 
     [HttpPost("change-password")]

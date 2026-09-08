@@ -44,6 +44,25 @@ export interface CurrentUserDto {
   mustChangePassword: boolean;
 }
 
+export interface AuthSessionDto {
+  id: string;
+  device: string;
+  browser: string;
+  ip?: string | null;
+  location: string;
+  lastActive: string;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
+export interface AuthActivityDto {
+  id: string;
+  module: string;
+  action: string;
+  ip?: string | null;
+  time: string;
+}
+
 export interface ChangePasswordRequestDto {
   currentPassword: string;
   newPassword: string;
@@ -170,6 +189,7 @@ export interface AssignmentHistoryItemDto {
 
 export interface AutoAssignRequestDto {
   strategy: "department" | "even";
+  semesterId?: string;
 }
 
 export interface AutoAssignResultDto {
@@ -231,6 +251,7 @@ export interface StudentPortalProfileDto {
   student: StudentDto;
   internship?: InternshipDto | null;
   lecturerName?: string | null;
+  progressPercent?: number | null;
 }
 
 // --- Portal DTOs (Lecturer / Student) ---
@@ -307,7 +328,9 @@ export interface LecturerCompanySummaryDto {
 
 export interface LecturerDashboardStatsDto {
   totalStudents: number;
+  assignedCompanyCount: number;
   interningCount: number;
+  averageProgress: number;
   pendingReviewsCount: number;
   completedCount: number;
   overdueReportsCount: number;
@@ -397,7 +420,19 @@ export interface SubmissionDto {
   fileName?: string | null;
   fileUrl?: string | null;
   submittedAt: string;
+  assets?: SubmissionAssetDto[];
   feedbacks?: FeedbackDto[];
+}
+
+export interface SubmissionAssetDto {
+  id: string;
+  label?: string | null;
+  fileName?: string | null;
+  fileUrl?: string | null;
+  assetType: "file" | "link" | string;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  uploadedAt: string;
 }
 
 export interface WeeklyReportDto {
@@ -574,6 +609,11 @@ export interface DocumentListItemDto {
   description?: string | null;
   fileName: string;
   fileSize: number;
+  downloadCount: number;
+  isPublished: boolean;
+  archiveReason?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   mimeType: string;
   uploadedAt: string;
   category?: string | null;
@@ -616,6 +656,7 @@ export interface InternshipListItemDto {
   id: string;
   studentId: string;
   studentName?: string;
+  studentCode?: string;
   companyId?: string;
   companyName?: string;
   startDate?: string;
