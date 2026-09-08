@@ -11,28 +11,28 @@ import {
   LayoutGrid,
   List,
   Archive,
+  Trash2,
   CheckCircle2,
-  History,
   RotateCcw,
   AlertTriangle,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { UploadDocumentWorkspace } from "../components/UploadDocumentWorkspace";
 import { DocumentDetailWorkspace } from "../components/DocumentDetailWorkspace";
+import { StudentDocumentLibrary } from "../components/StudentDocumentLibrary";
 import { useSemester } from "../../../contexts/SemesterContext";
 import { getApiErrorMessage } from "../../../lib/apiClient";
 import { mapDocumentListItemToUi } from "../../../lib/documentMappers";
 import { documentService } from "../../../services/document.service";
 import { lecturerInternshipsService } from "../../../services/lecturerInternships.service";
-import type { DocumentItem, DocumentStatus, ArchiveLogEntry } from "../../../types/document";
+import type { DocumentItem } from "../../../types/document";
 
 export const TemplatesView = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [defaultInternshipId, setDefaultInternshipId] = useState<string | null>(null);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [subView, setSubView] = useState<"list" | "upload" | "detail" | "student_library">("list");
-  const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED" | "DRAFT">("CIRCULATING");
+  const [activeTab, setActiveTab] = useState<"ALL" | "CIRCULATING" | "ARCHIVED">("CIRCULATING");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const { semesters, selectedSemester, selectSemester } = useSemester();
   const [semesterFilter, setSemesterFilter] = useState("Tất cả");
@@ -47,8 +47,6 @@ export const TemplatesView = () => {
   const [archivingDoc, setArchivingDoc] = useState<DocumentItem | null>(null);
   const [archiveReasonInput, setArchiveReasonInput] = useState("Thay thế bằng mẫu mới chuẩn hóa");
   const [archiveCustomNote, setArchiveCustomNote] = useState("");
-  const [viewingAuditLogDoc, setViewingAuditLogDoc] = useState<DocumentItem | null>(null);
-  const [showGlobalAuditLogs, setShowGlobalAuditLogs] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
 
@@ -128,8 +126,6 @@ export const TemplatesView = () => {
       matchesTab = doc.status === "Đang lưu hành" || (doc as any).status === "Đang áp dụng";
     } else if (activeTab === "ARCHIVED") {
       matchesTab = doc.status === "Ngưng lưu hành" || (doc as any).status === "Lưu trữ";
-    } else if (activeTab === "DRAFT") {
-      matchesTab = doc.status === "Bản nháp" || (doc as any).status === "Cần cập nhật";
     }
 
     return (
@@ -163,117 +159,59 @@ export const TemplatesView = () => {
   };
 
   // Archive (Ngưng lưu hành & Ghi log)
-  const handleConfirmArchive = () => {
+  // Modal state cho xóa
+  const [deletingDoc, setDeletingDoc] = useState<DocumentItem | null>(null);
+
+  const handleDeleteClick = (doc: DocumentItem) => {
+    setDeletingDoc(doc);
+  };
+
+  const handleConfirmDeleteClick = () => {
+    if (!deletingDoc) return;
+    const doc = deletingDoc;
+    setDeletingDoc(null);
+    handleConfirmDelete(doc);
+  };
+
+  const handleConfirmArchive = async () => {
     if (!archivingDoc) return;
     const finalReason = `${archiveReasonInput}${archiveCustomNote ? ` - ${archiveCustomNote}` : ""}`;
-    const timestamp = new Date().toISOString();
-    const dateStr = new Date().toLocaleDateString("vi-VN") + " " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-    const newLogEntry: ArchiveLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp,
-      date: dateStr,
-      action: "ARCHIVED",
-      actionLabel: "Ngưng lưu hành & Chuyển vào Log",
-      performedBy: "TS. Giảng viên",
-      performedRole: "Giảng viên Hướng dẫn",
-      reason: finalReason,
-      note: "Đã ẩn khỏi giao diện sinh viên và lưu vào nhật ký kiểm toán.",
-      previousStatus: archivingDoc.status,
-      newStatus: "Ngưng lưu hành",
-    };
-
-    setDocuments((prev) =>
-      prev.map((d) => {
-        if (d.id === archivingDoc.id) {
-          return {
-            ...d,
-            status: "Ngưng lưu hành" as DocumentStatus,
-            isPublished: false,
-            archiveReason: finalReason,
-            archivedAt: dateStr,
-            archivedBy: "TS. Giảng viên",
-            archiveLogs: [newLogEntry, ...(d.archiveLogs || [])],
-          };
-        }
-        return d;
-      }),
-    );
-
-    if (selectedDoc && selectedDoc.id === archivingDoc.id) {
-      setSelectedDoc((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "Ngưng lưu hành",
-              isPublished: false,
-              archiveReason: finalReason,
-              archivedAt: dateStr,
-              archivedBy: "TS. Giảng viên",
-              archiveLogs: [newLogEntry, ...(prev.archiveLogs || [])],
-            }
-          : null,
-      );
-    }
-
-    showToast(`Đã ngưng lưu hành biểu mẫu "${archivingDoc.title}" và lưu trữ vào Nhật ký Log.`);
-    setArchivingDoc(null);
-    setArchiveCustomNote("");
+    try {
+      const updated = await documentService.update(archivingDoc.id, { isPublished: false, archiveReason: finalReason });
+      const mapped = mapDocumentListItemToUi(updated) as unknown as DocumentItem;
+      setDocuments((prev) => prev.map((d) => d.id === mapped.id ? mapped : d));
+      setSelectedDoc((prev) => prev?.id === mapped.id ? mapped : prev);
+      showToast(`Đã ngưng lưu hành biểu mẫu "${archivingDoc.title}".`);
+      setArchivingDoc(null);
+      setArchiveCustomNote("");
+    } catch (err) { showToast(getApiErrorMessage(err)); }
   };
 
   // Re-activate / Circulate (Mở lưu hành lại cho SV)
-  const handleReactivateCirculation = (doc: DocumentItem) => {
-    const timestamp = new Date().toISOString();
-    const dateStr = new Date().toLocaleDateString("vi-VN") + " " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-    const newLogEntry: ArchiveLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp,
-      date: dateStr,
-      action: "CIRCULATING",
-      actionLabel: "Mở lưu hành lại (Public cho SV)",
-      performedBy: "TS. Giảng viên",
-      performedRole: "Giảng viên Hướng dẫn",
-      reason: `Kích hoạt lại lưu hành cho đợt thực tập ${doc.semester}`,
-      note: "Sinh viên trong đợt thực tập có thể thấy và tải về lại.",
-      previousStatus: doc.status,
-      newStatus: "Đang lưu hành",
-    };
-
-    setDocuments((prev) =>
-      prev.map((d) => {
-        if (d.id === doc.id) {
-          return {
-            ...d,
-            status: "Đang lưu hành" as DocumentStatus,
-            isPublished: true,
-            archiveReason: undefined,
-            archivedAt: undefined,
-            archivedBy: undefined,
-            archiveLogs: [newLogEntry, ...(d.archiveLogs || [])],
-          };
-        }
-        return d;
-      }),
-    );
-
-    if (selectedDoc && selectedDoc.id === doc.id) {
-      setSelectedDoc((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "Đang lưu hành",
-              isPublished: true,
-              archiveReason: undefined,
-              archivedAt: undefined,
-              archivedBy: undefined,
-              archiveLogs: [newLogEntry, ...(prev.archiveLogs || [])],
-            }
-          : null,
-      );
+  // Xóa tài liệu hoàn toàn (xóa bản ghi + xóa file upload)
+  const handleConfirmDelete = async (doc: DocumentItem) => {
+    if (!doc) return;
+    try {
+      await documentService.delete(doc.id);
+      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+      if (selectedDoc && selectedDoc.id === doc.id) {
+        setSelectedDoc(null);
+        setSubView("list");
+      }
+      showToast(`Đã xóa biểu mẫu "${doc.title}"`);
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
     }
+  };
 
-    showToast(`Đã mở lưu hành công khai trở lại cho biểu mẫu "${doc.title}".`);
+  const handleReactivateCirculation = async (doc: DocumentItem) => {
+    try {
+      const updated = await documentService.update(doc.id, { isPublished: true });
+      const mapped = mapDocumentListItemToUi(updated) as unknown as DocumentItem;
+      setDocuments((prev) => prev.map((d) => d.id === mapped.id ? mapped : d));
+      setSelectedDoc((prev) => prev?.id === mapped.id ? mapped : prev);
+      showToast(`Đã mở lưu hành lại cho biểu mẫu "${doc.title}".`);
+    } catch (err) { showToast(getApiErrorMessage(err)); }
   };
 
   const handleSaveDocument = async (payload: any) => {
@@ -316,23 +254,6 @@ export const TemplatesView = () => {
       showToast(getApiErrorMessage(err));
     }
   };
-
-  // Collect all audit logs for global audit log modal
-  const allAuditLogs = useMemo(() => {
-    const logs: Array<ArchiveLogEntry & { docTitle: string; docId: string }> = [];
-    documents.forEach((d) => {
-      if (d.archiveLogs && Array.isArray(d.archiveLogs)) {
-        d.archiveLogs.forEach((l) => {
-          logs.push({
-            ...l,
-            docTitle: d.title,
-            docId: d.id,
-          });
-        });
-      }
-    });
-    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [documents]);
 
   if (subView === "detail" && selectedDoc) {
     return (
@@ -393,14 +314,8 @@ export const TemplatesView = () => {
       <PageHeader
         icon={FolderOpen}
         title="Kho biểu mẫu & Tài liệu thực tập"
-        subtitle="Đăng tải mẫu chuẩn cho phép public cho sinh viên thấy và tải về theo từng đợt thực tập. Tự động ẩn và lưu vào Nhật ký Log khi ngưng lưu hành."
+        subtitle="Đăng tải và quản lý biểu mẫu để sinh viên xem, tải xuống theo từng đợt thực tập."
         actions={[
-          {
-            label: "Nhật ký & Log lưu trữ toàn hệ thống",
-            icon: History,
-            onClick: () => setShowGlobalAuditLogs(true),
-            variant: "secondary",
-          },
           {
             label: "+ Đăng biểu mẫu mới",
             icon: CloudUpload,
@@ -449,7 +364,7 @@ export const TemplatesView = () => {
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>🟢 Đang lưu hành (Public SV)</span>
+              <span>Đang lưu hành (Public SV)</span>
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] ${
                   activeTab === "CIRCULATING" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
@@ -468,7 +383,7 @@ export const TemplatesView = () => {
               }`}
             >
               <Archive className="w-3.5 h-3.5" />
-              <span>📦 Ngưng lưu hành &amp; Lưu log</span>
+              <span>Ngưng lưu hành</span>
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] ${
                   activeTab === "ARCHIVED" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
@@ -476,17 +391,6 @@ export const TemplatesView = () => {
               >
                 {documents.filter((d) => d.status === "Ngưng lưu hành" || (d as any).status === "Lưu trữ").length}
               </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("DRAFT")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "DRAFT"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              <span>📝 Bản nháp</span>
             </button>
 
             <button
@@ -630,20 +534,19 @@ export const TemplatesView = () => {
                   <th className="py-3.5 px-3">Phiên bản</th>
                   <th className="py-3.5 px-3">Trạng thái lưu hành</th>
                   <th className="py-3.5 px-3 text-center">Lượt tải SV</th>
-                  <th className="py-3.5 px-3">Nhật ký Log</th>
                   <th className="py-3.5 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
                 {isLoadingDocs ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                    <td colSpan={7} className="py-10 text-center text-slate-400 font-medium">
                       Đang tải danh sách tài liệu...
                     </td>
                   </tr>
                 ) : filteredDocuments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                    <td colSpan={7} className="py-10 text-center text-slate-400 font-medium">
                       Không có biểu mẫu nào phù hợp với bộ lọc hiện tại.
                     </td>
                   </tr>
@@ -679,7 +582,7 @@ export const TemplatesView = () => {
                             </div>
                             {!isCirc && doc.archiveReason && (
                               <p className="text-[10px] text-amber-700 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 line-clamp-1">
-                                📦 Lý do ngưng: {doc.archiveReason}
+                                Lý do ngưng: {doc.archiveReason}
                               </p>
                             )}
                           </div>
@@ -733,17 +636,6 @@ export const TemplatesView = () => {
                           {doc.downloads.toLocaleString()}
                         </td>
 
-                        {/* Log Trail Button */}
-                        <td className="py-3.5 px-3">
-                          <button
-                            onClick={() => setViewingAuditLogDoc(doc)}
-                            className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-blue-700 font-bold bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
-                          >
-                            <History className="w-3 h-3" />
-                            <span>{doc.archiveLogs?.length || 1} logs</span>
-                          </button>
-                        </td>
-
                         {/* Actions */}
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -756,17 +648,23 @@ export const TemplatesView = () => {
                               title="Xem chi tiết"
                             >
                               <Eye className="w-4 h-4" />
-                            </button>
+                            </button>          <button
+              onClick={() => handleDeleteClick(doc)}
+              className="p-1.5 hover:bg-rose-100 rounded-lg text-slate-600 hover:text-rose-700"
+              title="Xóa biểu mẫu"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
 
-                            <button
-                              onClick={() => handleDownload(doc)}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-emerald-600"
-                              title="Tải xuống"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
+            <button
+              onClick={() => handleDownload(doc)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-emerald-600"
+              title="Tải xuống"
+            >
+              <Download className="w-4 h-4" />
+            </button>
 
-                            {/* Archive / Reactivate Button */}
+            {/* Archive / Reactivate Button */}
                             {isCirc ? (
                               <button
                                 onClick={() => setArchivingDoc(doc)}
@@ -868,17 +766,23 @@ export const TemplatesView = () => {
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>Chi tiết</span>
-                    </button>
+                    </button>                      <button
+                        onClick={() => handleDeleteClick(doc)}
+                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md border border-rose-200"
+                        title="Xóa biểu mẫu"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
 
-                    <button
-                      onClick={() => handleDownload(doc)}
-                      className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Tải về</span>
-                    </button>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Tải về</span>
+                      </button>
 
-                    {isCirc ? (
+                      {isCirc ? (
                       <button
                         onClick={() => setArchivingDoc(doc)}
                         className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md border border-amber-200"
@@ -949,6 +853,64 @@ export const TemplatesView = () => {
               }}
               onSave={handleSaveDocument}
             />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN XÓA */}
+      {deletingDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Xóa biểu mẫu / tài liệu
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    File cũng sẽ bị xóa khỏi thư mục upload
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeletingDoc(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-rose-50 rounded-lg border border-rose-200/80 text-xs text-rose-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-rose-800">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>Biểu mẫu: {deletingDoc.title}</span>
+              </div>
+              <p className="text-rose-800/90 text-[11px] leading-relaxed">
+                Hành động này sẽ <strong>xóa vĩnh viễn biểu mẫu và file đính kèm</strong> khỏi hệ thống. Không thể hoàn tác.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingDoc(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
+              >
+                Hủy bỏ
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteClick}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-md shadow-xs flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác nhận xóa</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1053,195 +1015,6 @@ export const TemplatesView = () => {
         </div>
       )}
 
-      {/* MODAL 2: AUDIT LOG TIMELINE MODAL FOR SINGLE DOC */}
-      {viewingAuditLogDoc && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Nhật ký lưu hành &amp; Log kiểm toán
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium truncate max-w-sm">
-                    {viewingAuditLogDoc.title}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setViewingAuditLogDoc(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-              {viewingAuditLogDoc.archiveLogs && viewingAuditLogDoc.archiveLogs.length > 0 ? (
-                viewingAuditLogDoc.archiveLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className={`p-3.5 rounded-lg border text-xs space-y-2 ${
-                      log.action === "ARCHIVED"
-                        ? "bg-amber-50/80 border-amber-200"
-                        : log.action === "CIRCULATING"
-                        ? "bg-emerald-50/80 border-emerald-200"
-                        : "bg-slate-50 border-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                          log.action === "ARCHIVED"
-                            ? "bg-amber-100 text-amber-800"
-                            : log.action === "CIRCULATING"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-200 text-slate-800"
-                        }`}
-                      >
-                        {log.actionLabel}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {log.date}
-                      </span>
-                    </div>
-
-                    {log.reason && (
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Lý do:</p>
-                        <p className="text-slate-800 font-medium leading-relaxed bg-white/70 p-2 rounded border border-slate-200/60">
-                          {log.reason}
-                        </p>
-                      </div>
-                    )}
-
-                    {log.note && (
-                      <p className="text-[11px] text-slate-600 italic">
-                        Ghi chú: {log.note}
-                      </p>
-                    )}
-
-                    <div className="pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
-                      <span>
-                        Thực hiện: <strong className="text-slate-700">{log.performedBy}</strong>
-                      </span>
-                      <span>{log.performedRole}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-xs text-slate-400">
-                  Chưa có lịch sử thay đổi trạng thái nào cho tài liệu này.
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setViewingAuditLogDoc(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: GLOBAL AUDIT LOGS OVERVIEW */}
-      {showGlobalAuditLogs && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
-                  <History className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Nhật ký lưu hành &amp; Log kiểm toán toàn hệ thống
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Toàn bộ lịch sử phát hành, chuyển trạng thái và ngưng lưu hành biểu mẫu
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowGlobalAuditLogs(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
-              {allAuditLogs.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  Chưa có bản ghi nhật ký nào trong hệ thống.
-                </div>
-              ) : (
-                allAuditLogs.map((log, idx) => (
-                  <div
-                    key={`${log.id}-${idx}`}
-                    className={`p-3.5 rounded-lg border text-xs space-y-1.5 ${
-                      log.action === "ARCHIVED"
-                        ? "bg-amber-50/70 border-amber-200"
-                        : log.action === "CIRCULATING"
-                        ? "bg-emerald-50/70 border-emerald-200"
-                        : "bg-slate-50 border-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                            log.action === "ARCHIVED"
-                              ? "bg-amber-100 text-amber-800"
-                              : log.action === "CIRCULATING"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-slate-200 text-slate-800"
-                          }`}
-                        >
-                          {log.actionLabel}
-                        </span>
-                        <span className="font-bold text-slate-900">{log.docTitle}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono">{log.date}</span>
-                    </div>
-
-                    {log.reason && (
-                      <p className="text-slate-700 text-xs">
-                        <strong>Lý do:</strong> {log.reason}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/50">
-                      <span>
-                        Thực hiện: <strong>{log.performedBy}</strong> ({log.performedRole})
-                      </span>
-                      <span>ID: {log.id}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="flex items-center justify-end pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowGlobalAuditLogs(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-md"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

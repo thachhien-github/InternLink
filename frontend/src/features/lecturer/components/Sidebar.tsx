@@ -8,11 +8,11 @@ import {
   BarChart3,
   Bell,
   User,
-  FileSpreadsheet,
 } from "lucide-react";
 import { FEATURES } from "../../../config/featureFlags";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLecturerNavStats } from "../../../hooks/useLecturerNavStats";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 
 import type { UserRole } from "../../../types/common";
 
@@ -39,12 +39,6 @@ export const Sidebar = ({
   const { stats } = useLecturerNavStats();
 
   const displayName = user?.name || currentLecturer || "Giảng viên";
-  const userInitials = displayName
-    .split(" ")
-    .slice(-2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase() || "GV";
 
   const navSections: { title: string; items: NavItem[] }[] = [
     {
@@ -52,7 +46,7 @@ export const Sidebar = ({
       items: [{ id: "dashboard", label: "Tổng quan", icon: LayoutDashboard }],
     },
     {
-      title: "QUẢN LÝ THỰC TẬP",
+      title: "ĐỐI TƯỢNG PHỤ TRÁCH",
       items: [
         {
           id: "students",
@@ -66,6 +60,11 @@ export const Sidebar = ({
           icon: Building2,
           badge: stats.enterpriseCount > 0 ? String(stats.enterpriseCount) : undefined,
         },
+      ],
+    },
+    {
+      title: "BÁO CÁO & ĐÁNH GIÁ",
+      items: [
         {
           id: "reports",
           label: "Báo cáo & Bài nộp",
@@ -77,11 +76,6 @@ export const Sidebar = ({
           label: "Đánh giá & Chấm điểm",
           icon: Award,
           badge: stats.evaluatedCount > 0 ? String(stats.evaluatedCount) : undefined,
-        },
-        {
-          id: "export",
-          label: "Export cuối kỳ",
-          icon: FileSpreadsheet,
         },
         {
           id: "analytics",
@@ -177,18 +171,12 @@ export const Sidebar = ({
           className="il-sidebar-profile"
         >
           <div className="relative shrink-0">
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={displayName}
-                referrerPolicy="no-referrer"
-                className="w-9 h-9 rounded-full object-cover border border-slate-200"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200">
-                {userInitials}
-              </div>
-            )}
+            <InitialsAvatar
+              name={displayName}
+              seed={user?.id || user?.email || displayName}
+              size={36}
+              className="border border-slate-200"
+            />
             <span
               className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"
               title="Đang hoạt động"

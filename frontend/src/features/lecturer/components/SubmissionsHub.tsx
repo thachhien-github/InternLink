@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   FileCheck,
   Search,
@@ -13,12 +13,19 @@ import {
   ShieldAlert,
   Building2,
   FileSpreadsheet,
-  Bot,
+  MessageSquare,
+  Send,
+  X,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Toolbar } from "../../../components/common/Toolbar";
 import { Panel } from "../../../components/common/Panel";
+import { InitialsAvatar } from "../../../components/common/InitialsAvatar";
 import { submissionApiService } from "../../../services/submissionApi.service";
+import { weeklyReportService } from "../../../services/weeklyReport.service";
 
 export const SubmissionsHub = ({
   submissions,
@@ -34,8 +41,19 @@ export const SubmissionsHub = ({
     useState("T\u1EA5t c\u1EA3");
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [lecturerNoteInput, setLecturerNoteInput] = useState("");
+  const [feedbackInput, setFeedbackInput] = useState("");
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; fileName: string; isPreviewable: boolean } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedSubIds, setSelectedSubIds] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => () => {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+  }, [preview]);
   const companyList = useMemo((): string[] => {
     const unique = new Set<string>();
     for (const s of submissions as { company?: string }[]) {
@@ -134,6 +152,16 @@ export const SubmissionsHub = ({
     selectedDuplicateFilter,
     searchQuery,
   ]);
+  const totalPages = Math.max(1, Math.ceil(filteredSubmissions.length / pageSize));
+  const visiblePage = Math.min(currentPage, totalPages);
+  const paginatedSubmissions = useMemo(() => {
+    const start = (visiblePage - 1) * pageSize;
+    return filteredSubmissions.slice(start, start + pageSize);
+  }, [filteredSubmissions, pageSize, visiblePage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSubTab, selectedReportType, selectedCompany, selectedDuplicateFilter, searchQuery]);
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedSubIds(filteredSubmissions.map((s) => s.id));
@@ -179,28 +207,144 @@ export const SubmissionsHub = ({
     const ids = selectedSubIds.length > 0
       ? selectedSubIds
       : filteredSubmissions.map((submission) => submission.id);
-    if (ids.length === 0) {
+    const submissionIds = ids.filter((id) => !id.startsWith("weekly:"));
+    if (submissionIds.length === 0) {
       onToast?.("Chưa có bài nộp để tải xuống.");
       return;
     }
     try {
-      await submissionApiService.downloadLecturerZip(ids);
-      onToast?.(`Đã tải xuống ${ids.length} bài nộp dưới dạng ZIP.`);
+      await submissionApiService.downloadLecturerZip(submissionIds);
+      onToast?.(`Đã tải xuống ${submissionIds.length} bài nộp dưới dạng ZIP.`);
     } catch (err) {
       onToast?.(err instanceof Error ? err.message : "Không thể tạo file ZIP.");
     }
   };
-  const handleOpenDetail = (sub) => {
+  const handleOpenDetail = async (sub) => {
     setSelectedSubmission(sub);
-    setLecturerNoteInput(sub.lecturerNote || "");
+    setFeedbackInput("");
     setShowDetailModal(true);
+    setIsLoadingFeedback(true);
+    try {
+      const isWeekly = sub.sourceType === "weeklyReport" || sub.id.startsWith("weekly:");
+      const reportId = sub.sourceId ?? sub.id.replace(/^weekly:/, "");
+      const detail = isWeekly
+        ? await weeklyReportService.getById(reportId)
+        : await submissionApiService.getById(sub.id);
+      setSelectedSubmission((current) => current ? {
+        ...current,
+        fileName: detail.fileName ?? current.fileName,
+        fileUrl: detail.fileUrl ?? detail.fileName ?? current.fileUrl,
+        assets: "assets" in detail ? detail.assets ?? current.assets ?? [] : current.assets ?? [],
+        feedbacks: detail.feedbacks ?? [],
+        lecturerNote: detail.feedbacks?.[detail.feedbacks.length - 1]?.comment
+          ?? ("lecturerComment" in detail ? detail.lecturerComment : undefined)
+          ?? current.lecturerNote,
+      } : current);
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : "Không thể tải luồng nhận xét.");
+    } finally {
+      setIsLoadingFeedback(false);
+    }
+  };
+  const handlePreview = async (assetId?: string) => {
+    if (!selectedSubmission) return;
+    setPreviewLoading(true);
+    try {
+      const isWeekly = selectedSubmission.sourceType === "weeklyReport" || selectedSubmission.id.startsWith("weekly:");
+      const reportId = selectedSubmission.sourceId ?? selectedSubmission.id.replace(/^weekly:/, "");
+      const asset = selectedSubmission.assets?.find((item) => item.id === assetId && item.assetType === "file")
+        ?? selectedSubmission.assets?.find((item) => item.assetType === "file")
+        ?? null;
+      if (!isWeekly && selectedSubmission.assets?.length && !asset) {
+        const link = selectedSubmission.assets.find((item) => item.assetType === "link")?.fileUrl;
+        if (link) window.open(link, "_blank", "noopener,noreferrer");
+        return;
+      }
+      const fallbackName = asset?.fileName ?? selectedSubmission.fileUrl ?? "Tài liệu nộp";
+      const { blob, filename } = isWeekly
+        ? await weeklyReportService.download(reportId, selectedSubmission.fileUrl ?? fallbackName, false)
+        : asset
+          ? await submissionApiService.downloadAsset(selectedSubmission.id, asset.id, fallbackName, false)
+          : await submissionApiService.download(selectedSubmission.id, fallbackName, false);
+      const mime = blob.type.toLowerCase();
+      const isPreviewable = mime.includes("pdf") || mime.startsWith("image/");
+      if (preview?.url) URL.revokeObjectURL(preview.url);
+      setPreview({ url: URL.createObjectURL(blob), fileName: filename, isPreviewable });
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : "Không thể xem trước file.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+  const handleDownload = async (assetId?: string) => {
+    if (!selectedSubmission || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const isWeekly = selectedSubmission.sourceType === "weeklyReport" || selectedSubmission.id.startsWith("weekly:");
+      const reportId = selectedSubmission.sourceId ?? selectedSubmission.id.replace(/^weekly:/, "");
+      const asset = selectedSubmission.assets?.find((item) => item.id === assetId && item.assetType === "file")
+        ?? selectedSubmission.assets?.find((item) => item.assetType === "file")
+        ?? null;
+      if (!isWeekly && selectedSubmission.assets?.length && !asset) {
+        const link = selectedSubmission.assets.find((item) => item.assetType === "link")?.fileUrl;
+        if (link) window.open(link, "_blank", "noopener,noreferrer");
+        return;
+      }
+      const fallbackName = asset?.fileName ?? selectedSubmission.fileUrl ?? "Tài liệu nộp";
+      await (isWeekly
+        ? weeklyReportService.download(reportId, selectedSubmission.fileUrl ?? fallbackName)
+        : asset
+          ? submissionApiService.downloadAsset(selectedSubmission.id, asset.id, fallbackName)
+          : submissionApiService.download(selectedSubmission.id, fallbackName));
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : "Không thể tải file.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+  const handleSendFeedback = async (event) => {
+    event.preventDefault();
+    if (!selectedSubmission || !feedbackInput.trim() || isSendingFeedback) return;
+    setIsSendingFeedback(true);
+    try {
+      const isWeekly = selectedSubmission.sourceType === "weeklyReport" || selectedSubmission.id.startsWith("weekly:");
+      const reportId = selectedSubmission.sourceId ?? selectedSubmission.id.replace(/^weekly:/, "");
+      const updated = isWeekly
+        ? await weeklyReportService.review(reportId, {
+            status: "Reviewed",
+            lecturerComment: feedbackInput.trim(),
+          })
+        : await submissionApiService.addFeedback(selectedSubmission.id, {
+            comment: feedbackInput.trim(),
+            isPublic: true,
+          });
+      const latestFeedback = updated.feedbacks?.[updated.feedbacks.length - 1];
+      const localFeedback = {
+        id: `local-${Date.now()}`,
+        comment: feedbackInput.trim(),
+        authorRole: "Lecturer",
+        lecturerName: "Giảng viên",
+        createdAt: new Date().toISOString(),
+      };
+      setSelectedSubmission((current) => current ? {
+        ...current,
+        lecturerNote: latestFeedback?.comment ?? current.lecturerNote,
+        feedbacks: updated.feedbacks ?? [...(current.feedbacks ?? []), localFeedback],
+      } : current);
+      setFeedbackInput("");
+      onToast?.("Đã gửi nhận xét cho sinh viên.");
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : "Không thể gửi nhận xét.");
+    } finally {
+      setIsSendingFeedback(false);
+    }
   };
   const handleApproveSingle = () => {
     if (!selectedSubmission) return;
     onUpdateSubmissionStatus?.(
       selectedSubmission.id,
       "\u0110\xE3 duy\u1EC7t",
-      lecturerNoteInput ||
+      feedbackInput ||
         "\u0110\xE3 ki\u1EC3m tra & ph\xEA duy\u1EC7t b\xE0i n\u1ED9p",
     );
     onToast?.(
@@ -213,7 +357,7 @@ export const SubmissionsHub = ({
     onUpdateSubmissionStatus?.(
       selectedSubmission.id,
       "Y\xEAu c\u1EA7u s\u1EEDa",
-      lecturerNoteInput ||
+      feedbackInput ||
         "C\u1EA7n b\u1ED5 sung chi ti\u1EBFt theo y\xEAu c\u1EA7u",
     );
     onToast?.(
@@ -420,7 +564,7 @@ export const SubmissionsHub = ({
                   </td>
                 </tr>
               ) : (
-                filteredSubmissions.map((sub) => {
+                paginatedSubmissions.map((sub) => {
                   const isChecked = selectedSubIds.includes(sub.id);
                   return (
                     <tr
@@ -440,14 +584,7 @@ export const SubmissionsHub = ({
                       {/* Student Info */}
                       <td className="py-3.5 px-3.5">
                         <div className="flex items-center gap-2.5">
-                          <img
-                            src={
-                              sub.avatar ||
-                              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                            }
-                            alt={sub.studentName}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-                          />
+                          <InitialsAvatar name={sub.studentName} seed={sub.mssv} size={36} />
                           <div>
                             <p
                               className="font-bold text-slate-900 hover:text-blue-600 cursor-pointer"
@@ -475,14 +612,15 @@ export const SubmissionsHub = ({
                         <div className="space-y-0.5">
                           <span className="font-bold text-slate-900 block">
                             {sub.reportType}
+                            {sub.assetCount ? ` · ${sub.assetCount} tài nguyên` : ""}
                           </span>
                           <button
                             onClick={() => handleOpenDetail(sub)}
                             className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-1"
                           >
                             <FileText className="w-3 h-3" />
-                            <span>{sub.fileUrl || "bao_cao_thuc_tap.pdf"}</span>
-                            {sub.fileSize && (
+                            <span>{sub.fileName || "Không có tệp đính kèm"}</span>
+                            {sub.fileName && sub.fileSize && (
                               <span className="text-slate-400 text-[10px]">
                                 ({sub.fileSize})
                               </span>
@@ -580,6 +718,50 @@ export const SubmissionsHub = ({
           </table>
         </div>
       </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div className="flex items-center gap-2">
+          <span>
+            Hiển thị {filteredSubmissions.length === 0 ? 0 : (visiblePage - 1) * pageSize + 1}
+            –{Math.min(visiblePage * pageSize, filteredSubmissions.length)} / {filteredSubmissions.length} bài nộp
+          </span>
+          <select
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-2 py-1 border border-slate-200 rounded-md bg-white font-medium text-slate-700 outline-none"
+            aria-label="Số bài nộp mỗi trang"
+          >
+            <option value={10}>10 / trang</option>
+            <option value={25}>25 / trang</option>
+            <option value={50}>50 / trang</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={visiblePage === 1}
+            className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Trang trước"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="min-w-16 text-center font-semibold text-slate-700">
+            {visiblePage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={visiblePage === totalPages}
+            className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Trang sau"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
       </Panel>
 
       {/* DETAIL DOCUMENT MODAL */}
@@ -615,10 +797,10 @@ export const SubmissionsHub = ({
               {/* Student Header Summary */}
               <div className="p-3.5 bg-slate-50 rounded-md border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <img
-                    src={selectedSubmission.avatar}
-                    alt={selectedSubmission.studentName}
-                    className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                  <InitialsAvatar
+                    name={selectedSubmission.studentName}
+                    seed={selectedSubmission.mssv}
+                    size={40}
                   />
                   <div>
                     <span className="font-bold text-slate-900 block text-sm">
@@ -657,63 +839,102 @@ export const SubmissionsHub = ({
               </div>
 
               {/* Document File Card */}
-              <div className="p-3.5 bg-blue-50/60 rounded-md border border-blue-100 flex items-center justify-between">
+              <div className="p-3.5 bg-blue-50/60 rounded-md border border-blue-100 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
                     PDF
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 block">
-                      {selectedSubmission.fileUrl || "bao_cao_thuc_tap.pdf"}
+                      {selectedSubmission.assets?.length
+                        ? `${selectedSubmission.assets.length} tài nguyên đính kèm`
+                        : selectedSubmission.fileUrl || "Chưa có file đính kèm"}
                     </span>
                     <span className="text-[10px] text-slate-500">
-                      Kích thước: {selectedSubmission.fileSize || "2.8 MB"} •
-                      Trùng lặp: {selectedSubmission.duplicateScore || 0}%
+                      {selectedSubmission.assets?.length
+                        ? selectedSubmission.assets.map((asset) => asset.label || asset.fileName || asset.fileUrl).join(" • ")
+                        : `Kích thước: ${selectedSubmission.fileSize || "—"} • Trùng lặp: ${selectedSubmission.duplicateScore || 0}%`}
                     </span>
                   </div>
                 </div>
 
-                <button
-                  onClick={() =>
-                    onToast?.(
-                      `\u0110ang t\u1EA3i file ${selectedSubmission.fileUrl}...`,
-                    )
-                  }
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Tải file</span>
-                </button>
-              </div>
-
-              {/* AI Plagiarism Analysis */}
-              <div className="p-3 bg-amber-50/60 rounded-md border border-amber-100 flex items-start gap-2.5">
-                <Bot className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-amber-900 block text-xs">
-                    Đánh giá tự động từ AI:
-                  </span>
-                  <p className="text-[11px] text-amber-800 leading-relaxed">
-                    Tỷ lệ trùng lặp{" "}
-                    <strong>{selectedSubmission.duplicateScore || 0}%</strong>{" "}
-                    (Nằm trong ngưỡng an toàn cho phép &lt;15%). Cấu trúc báo
-                    cáo tuân thủ biểu mẫu chuẩn Khoa CNTT.
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void handlePreview()}
+                    disabled={previewLoading}
+                    className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 font-bold rounded-lg text-xs flex items-center gap-1 border border-blue-200 disabled:opacity-60"
+                  >
+                    {previewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>Xem trước</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDownload()}
+                    disabled={isDownloading}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs disabled:opacity-60"
+                  >
+                    {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    <span>{isDownloading ? "Đang tải..." : "Tải file"}</span>
+                  </button>
                 </div>
+
+                {selectedSubmission.assets && selectedSubmission.assets.length > 0 && (
+                  <div className="grid gap-1 border-t border-blue-100 pt-2">
+                    {selectedSubmission.assets.map((asset) => (
+                      <div key={asset.id} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="truncate text-slate-700">{asset.label || asset.fileName || asset.fileUrl}</span>
+                        {asset.assetType === "link" ? (
+                          <a href={asset.fileUrl ?? "#"} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-blue-700 hover:underline">
+                            Mở link
+                          </a>
+                        ) : (
+                          <button type="button" disabled={isDownloading} onClick={() => void handleDownload(asset.id)} className="shrink-0 font-bold text-blue-700 hover:underline disabled:opacity-60">
+                            Tải file
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Lecturer Note Input */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-800 block text-xs">
-                  Phản hồi / Ghi chú của Giảng viên hướng dẫn:
-                </label>
-                <textarea
-                  rows={3}
-                  value={lecturerNoteInput}
-                  onChange={(e) => setLecturerNoteInput(e.target.value)}
-                  placeholder="Nhập ghi chú hoặc nhận xét chi tiết cho sinh viên..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200/80 rounded-md text-xs font-medium outline-none focus:border-blue-500"
-                />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
+                  <label className="font-bold text-slate-800 text-xs">Trao đổi với sinh viên</label>
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+                  {isLoadingFeedback ? (
+                    <p className="flex items-center justify-center gap-2 text-[11px] text-slate-400 py-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang tải nhận xét…
+                    </p>
+                  ) : (selectedSubmission.feedbacks ?? []).length === 0 ? (
+                    <p className="text-[11px] text-slate-400 text-center py-2">Chưa có nhận xét nào.</p>
+                  ) : (
+                    (selectedSubmission.feedbacks ?? []).map((feedback) => (
+                      <div key={feedback.id} className={`rounded-md px-3 py-2 text-[11px] ${feedback.authorRole === "Lecturer" ? "bg-blue-50 border border-blue-100 ml-5" : "bg-white border border-slate-200 mr-5"}`}>
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                          <strong className="text-slate-700">{feedback.lecturerName ?? (feedback.authorRole === "Lecturer" ? "Giảng viên" : "Sinh viên")}</strong>
+                          <span>{new Date(feedback.createdAt).toLocaleString("vi-VN")}</span>
+                        </div>
+                        <p className="mt-1 text-slate-700 leading-relaxed">{feedback.comment}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form onSubmit={handleSendFeedback} className="flex items-end gap-2">
+                  <textarea
+                    rows={2}
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    placeholder="Nhập nhận xét, sinh viên sẽ nhận được ngay…"
+                    className="flex-1 p-2.5 bg-white border border-slate-200 rounded-md text-xs outline-none focus:border-blue-500 resize-none"
+                  />
+                  <button type="submit" disabled={!feedbackInput.trim() || isSendingFeedback} className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50" title="Gửi nhận xét">
+                    {isSendingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
+                </form>
               </div>
 
               {/* Action Buttons */}
@@ -745,6 +966,27 @@ export const SubmissionsHub = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {preview && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-5xl h-[86vh] shadow-xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+              <p className="text-sm font-bold text-slate-900 truncate">{preview.fileName}</p>
+              <button type="button" onClick={() => setPreview(null)} className="p-1.5 text-slate-500 hover:text-slate-900" title="Đóng xem trước">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {preview.isPreviewable ? (
+              <iframe title={`Xem trước ${preview.fileName}`} src={preview.url} className="flex-1 w-full" />
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                <FileText className="h-10 w-10 text-slate-400" />
+                <p className="text-sm font-semibold text-slate-700">Định dạng này không hỗ trợ xem trước trực tiếp.</p>
+                <p className="text-xs text-slate-500">Hãy đóng cửa sổ này và dùng nút “Tải file”.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
