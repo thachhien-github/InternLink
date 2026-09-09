@@ -14,6 +14,13 @@ import { getApiErrorMessage } from "../../lib/apiClient";
 import { mapBackendRole } from "../../lib/roleMap";
 import { authService } from "../../services/auth.service";
 import type { UserRole } from "../../contexts/AuthContext";
+import { DEMO_MODE } from "../../config/env";
+
+const DEMO_ACCOUNTS = [
+  { label: "Quản trị viên", username: "admin.demo" },
+  { label: "Giảng viên", username: "gv.demo" },
+  { label: "Sinh viên", username: "sv.demo" },
+] as const;
 
 interface LoginUser {
   username: string;
@@ -128,6 +135,12 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const chooseDemoAccount = (account: (typeof DEMO_ACCOUNTS)[number]) => {
+    setUsername(account.username);
+    setPassword("Demo123!");
+    setErrorMessage(null);
   };
 
   return (
@@ -273,6 +286,27 @@ export function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                   <div className="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5 -mt-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                     <span>Chế độ Caps Lock đang bật</span>
+                  </div>
+                )}
+
+                {DEMO_MODE && (
+                  <div className="rounded-md border border-blue-100 bg-blue-50/70 p-3 -mt-1">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[11px] font-bold text-blue-900">Tài khoản xem thử</span>
+                      <span className="text-[10px] text-blue-700">Mật khẩu: Demo123!</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {DEMO_ACCOUNTS.map((account) => (
+                        <button
+                          key={account.username}
+                          type="button"
+                          onClick={() => chooseDemoAccount(account)}
+                          className="min-w-0 rounded border border-blue-200 bg-white px-1.5 py-2 text-[10px] font-semibold text-blue-800 hover:border-blue-500 hover:bg-blue-100 transition-colors"
+                        >
+                          {account.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

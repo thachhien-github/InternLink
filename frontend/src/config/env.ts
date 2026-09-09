@@ -20,5 +20,8 @@ export const ENABLE_REAL_LECTURER_DATA =
 export const ENABLE_REAL_AUTH =
   import.meta.env.VITE_ENABLE_REAL_AUTH !== 'false';
 
+/** Offline presentation mode for the Vercel demo deployment. */
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+
 export const TOKEN_STORAGE_KEY = 'internlink_access_token';
 export const REFRESH_TOKEN_STORAGE_KEY = 'internlink_refresh_token';
