@@ -1,5 +1,6 @@
-import { API_BASE_URL, TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "../config/env";
+import { API_BASE_URL, TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY, DEMO_MODE } from "../config/env";
 import type { ApiResponse } from "../types/api";
+import { resolveMockData } from "./mockData";
 
 export class ApiClientError extends Error {
   status: number;
@@ -148,6 +149,14 @@ export async function apiRequest<T>(
   const url = resolveApiUrl(path);
   const cacheKey = `${url}|auth=${Boolean(options.auth !== false)}`;
 
+  // ── DEMO MODE: return mock data instead of hitting the backend ───────
+  if (DEMO_MODE) {
+    const mockResult = resolveMockData(url, method, options.body);
+    if (mockResult !== undefined) {
+      return mockResult as T;
+    }
+  }
+
   if (isGet && !options.skipCache) {
     const cached = apiGetCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
@@ -257,6 +266,15 @@ export async function apiRequestRaw<T>(
   const { body, auth = true, headers, _retry = false, ...rest } = options;
   const url = resolveApiUrl(path);
 
+  // ── DEMO MODE: return mock data instead of hitting the backend ───────
+  if (DEMO_MODE) {
+    const method = (options.method ?? "GET").toUpperCase();
+    const mockResult = resolveMockData(url, method, body);
+    if (mockResult !== undefined) {
+      return mockResult as T;
+    }
+  }
+
   const reqHeaders = new Headers(headers);
   if (body !== undefined && !(body instanceof FormData)) {
     reqHeaders.set("Content-Type", "application/json");
@@ -335,6 +353,13 @@ export async function downloadAuthenticatedFile(
   autoTrigger = true,
   options: RequestInit = {},
 ): Promise<{ blob: Blob; filename: string }> {
+  // ── DEMO MODE: return a dummy PDF blob ──────────────────────────────
+  if (DEMO_MODE) {
+    const dummyContent = new TextEncoder().encode("Demo mode — file không khả dụng");
+    const blob = new Blob([dummyContent], { type: "application/octet-stream" });
+    return { blob, filename: fallbackFilename };
+  }
+
   const url = resolveApiUrl(path);
   const token = getStoredToken();
   const headers = new Headers(options.headers);
